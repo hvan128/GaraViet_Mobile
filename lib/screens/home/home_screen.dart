@@ -7,13 +7,16 @@ import 'package:gara/models/reputable_product/reputable_product_model.dart';
 import 'package:gara/models/review/review_model.dart';
 import 'package:gara/theme/index.dart';
 import 'package:gara/utils/url.dart';
+import 'package:gara/widgets/app_dialog.dart';
 import 'package:gara/widgets/button.dart';
-import 'package:gara/services/auth/auth_state_manager.dart';
 import 'package:gara/navigation/navigation.dart';
 import 'package:gara/services/auth/auth_service.dart';
 import 'package:gara/widgets/dropdown.dart';
 import 'package:gara/widgets/svg_icon.dart';
 import 'package:gara/widgets/text.dart';
+import 'package:gara/providers/user_provider.dart';
+import 'package:gara/widgets/app_toast.dart';
+import 'package:provider/provider.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -25,7 +28,6 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final ScrollController _scrollController = ScrollController();
   bool _showRequestSection = true;
-  late AuthStateManager _authStateManager;
   String? _selectedLocation = 'hanoi'; // Giá trị mặc định
 
   // Data giả định cho danh sách sản phẩm uy tín
@@ -125,151 +127,140 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
-    _authStateManager = AuthStateManager();
-    _authStateManager.addListener(_onAuthStateChanged);
-
-    // Load user info if logged in
-    if (_authStateManager.isLoggedIn) {
-      _authStateManager.loadUserInfo();
-    }
   }
 
   @override
   void dispose() {
     _scrollController.dispose();
-    _authStateManager.removeListener(_onAuthStateChanged);
     super.dispose();
   }
 
-  void _onAuthStateChanged() {
-    setState(() {
-      // Rebuild when auth state changes
-    });
-
-    // Load user info if user just logged in and doesn't have user info yet
-    if (_authStateManager.isLoggedIn && 
-        (_authStateManager.userName == null || _authStateManager.userPhone == null)) {
-      _authStateManager.loadUserInfo();
-    }
-  }
-
   Widget _buildAuthActions() {
-    if (_authStateManager.isLoggedIn) {
-      // User is logged in - show profile header
-      return Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Row(
-            children: [
-              // Profile picture
-              Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: DesignTokens.borderSecondary),
-                ),
-                child: CircleAvatar(
-                  radius: 20,
-                  backgroundColor: Colors.white.withAlpha(20),
-                  backgroundImage:
-                      _authStateManager.userAvatar != null &&
-                              _authStateManager.userAvatar!.isNotEmpty
-                          ? NetworkImage(resolveImageUrl(_authStateManager.userAvatar!)!)
-                          : null,
-                  child:
-                      _authStateManager.userAvatar == null ||
-                              _authStateManager.userAvatar!.isEmpty
-                          ? Text(
-                            _authStateManager.userName?.isNotEmpty == true
-                                ? _authStateManager.userName![0].toUpperCase()
-                                : 'U',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          )
-                          : null,
-                ),
-              ),
-              const SizedBox(width: 8),
+    return Consumer<UserProvider>(
+      builder: (context, userProvider, child) {
+        final userInfo = userProvider.userInfo;
+        final userDisplayName = userProvider.userDisplayName;
+        final userAvatar = userInfo?.avatarPath;
+        final isLoggedIn = userProvider.isLoggedIn;
 
-              // Greeting text
-              Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
+        if (isLoggedIn) {
+          // User is logged in - show profile header
+
+          return Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Row(
                 children: [
-                  MyText(
-                    text: 'Xin chào,',
-                    textStyle: 'body',
-                    textSize: '12',
-                    textColor: 'invert',
+                  // Profile picture
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: DesignTokens.borderSecondary),
+                    ),
+                    child: CircleAvatar(
+                      radius: 20,
+                      backgroundColor: Colors.white.withAlpha(20),
+                      backgroundImage:
+                          (userAvatar != null && userAvatar.isNotEmpty)
+                              ? (resolveImageUrl(userAvatar) != null
+                                  ? NetworkImage(resolveImageUrl(userAvatar)!)
+                                  : null)
+                              : null,
+                      child:
+                          (userAvatar == null || userAvatar.isEmpty)
+                              ? Text(
+                                userDisplayName.isNotEmpty
+                                    ? userDisplayName[0].toUpperCase()
+                                    : 'U',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              )
+                              : null,
+                    ),
                   ),
-                  const SizedBox(height: 2),
-                  MyText(
-                    text: _authStateManager.userName ?? 'Người dùng',
-                    textStyle: 'title',
-                    textSize: '14',
-                    textColor: 'invert',
+                  const SizedBox(width: 8),
+
+                  // Greeting text
+                  Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      MyText(
+                        text: 'Xin chào,',
+                        textStyle: 'body',
+                        textSize: '12',
+                        textColor: 'invert',
+                      ),
+                      const SizedBox(height: 2),
+                      MyText(
+                        text: userDisplayName,
+                        textStyle: 'title',
+                        textSize: '14',
+                        textColor: 'invert',
+                      ),
+                    ],
+                  ),
+
+                  // Notification icon
+                ],
+              ),
+              Row(
+                children: [
+                  SvgIcon(
+                    svgPath: 'assets/icons_final/notification.svg',
+                    width: 24,
+                    height: 24,
+                  ),
+
+                  const SizedBox(width: 8),
+
+                  // Profile icon
+                  GestureDetector(
+                    onTap: _showAccountMenu,
+                    child: SvgIcon(
+                      svgPath: 'assets/icons_final/profile.svg',
+                      width: 24,
+                      height: 24,
+                    ),
                   ),
                 ],
               ),
-
-              // Notification icon
             ],
-          ),
-        
-          Row(
+          );
+        } else {
+          // User is not logged in - show login/register buttons
+          return Row(
+            mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              SvgIcon(
-                svgPath: 'assets/icons_final/notification.svg',
-                width: 24,
-                height: 24,
+              MyButton(
+                text: 'Đăng nhập',
+                buttonType: ButtonType.transparent,
+                color: MyColors.white['c900'],
+                height: 48,
+                width: 100,
+                onPressed: () {
+                  Navigate.pushNamed('/login');
+                },
               ),
-
-              const SizedBox(width: 8),
-
-              // Profile icon
-              GestureDetector(
-                onTap: _showAccountMenu,
-                child: SvgIcon(
-                  svgPath: 'assets/icons_final/profile.svg',
-                  width: 24,
-                  height: 24,
-                ),
+              const SizedBox(width: 16),
+              MyButton(
+                text: 'Đăng ký',
+                buttonType: ButtonType.secondary,
+                height: 48,
+                width: 100,
+                onPressed: () {
+                  Navigate.pushNamed('/register');
+                },
               ),
             ],
-          ),
-        ],
-      );
-    } else {
-      // User is not logged in - show login/register buttons
-      return Row(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          MyButton(
-            text: 'Đăng nhập',
-            buttonType: ButtonType.transparent,
-            color: MyColors.white['c900'],
-            height: 48,
-            width: 100,
-            onPressed: () {
-              Navigate.pushNamed('/login');
-            },
-          ),
-          const SizedBox(width: 16),
-          MyButton(
-            text: 'Đăng ký',
-            buttonType: ButtonType.secondary,
-            height: 48,
-            width: 100,
-            onPressed: () {
-              Navigate.pushNamed('/register');
-            },
-          ),
-        ],
-      );
-    }
+          );
+        }
+      },
+    );
   }
 
   void _showAccountMenu() {
@@ -279,93 +270,113 @@ class _HomeScreenState extends State<HomeScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (BuildContext context) {
-        return Container(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Handle bar
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(height: 20),
+        return Consumer<UserProvider>(
+          builder: (context, userProvider, child) {
+            final userInfo = userProvider.userInfo;
+            final userDisplayName = userProvider.userDisplayName;
+            final userAvatar = userInfo?.avatarPath;
 
-              // User info
-              Row(
+            return Container(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  CircleAvatar(
-                    radius: 25,
-                    backgroundColor: Colors.blue[600],
-                    child: Text(
-                      _authStateManager.userName?.isNotEmpty == true
-                          ? _authStateManager.userName![0].toUpperCase()
-                          : 'U',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
+                  // Handle bar
+                  Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(2),
                     ),
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _authStateManager.userName ?? 'Người dùng',
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
+                  const SizedBox(height: 20),
+
+                  // User info
+                  Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 25,
+                        backgroundColor: Colors.blue[600],
+                        backgroundImage:
+                            (userAvatar != null && userAvatar.isNotEmpty)
+                                ? (resolveImageUrl(userAvatar) != null
+                                    ? NetworkImage(resolveImageUrl(userAvatar)!)
+                                    : null)
+                                : null,
+                        child:
+                            (userAvatar == null || userAvatar.isEmpty)
+                                ? Text(
+                                  userDisplayName.isNotEmpty
+                                      ? userDisplayName[0].toUpperCase()
+                                      : 'U',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                )
+                                : null,
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              userDisplayName,
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Text(
+                              userInfo?.phone ?? '',
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
                         ),
-                        Text(
-                          _authStateManager.userPhone ?? '',
-                          style: TextStyle(
-                            color: Colors.grey[600],
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Menu items
+                  ListTile(
+                    leading: const Icon(Icons.person, color: Colors.blue),
+                    title: const Text('Thông tin tài khoản'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigate.pushNamed('/user-info');
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.settings, color: Colors.grey),
+                    title: const Text('Cài đặt'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      AppToastHelper.showInfo(
+                        context,
+                        message: 'Tính năng đang được phát triển',
+                      );
+                    },
+                  ),
+                  const Divider(),
+                  ListTile(
+                    leading: const Icon(Icons.logout, color: Colors.red),
+                    title: const Text('Đăng xuất'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _showLogoutDialog();
+                    },
                   ),
                 ],
               ),
-              const SizedBox(height: 20),
-
-              // Menu items
-              ListTile(
-                leading: const Icon(Icons.person, color: Colors.blue),
-                title: const Text('Thông tin tài khoản'),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigate.pushNamed('/user-info');
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.settings, color: Colors.grey),
-                title: const Text('Cài đặt'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _showErrorSnackBar('Tính năng đang được phát triển');
-                },
-              ),
-              const Divider(),
-              ListTile(
-                leading: const Icon(Icons.logout, color: Colors.red),
-                title: const Text('Đăng xuất'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _showLogoutDialog();
-                },
-              ),
-            ],
-          ),
+            );
+          },
         );
       },
     );
@@ -401,22 +412,13 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _logout() async {
     try {
       await AuthService.logout();
-      _showSuccessSnackBar('Đã đăng xuất thành công');
+      AppToastHelper.showSuccess(context, message: 'Đã đăng xuất thành công');
     } catch (e) {
-      _showErrorSnackBar('Lỗi khi đăng xuất: ${e.toString()}');
+      AppToastHelper.showError(
+        context,
+        message: 'Lỗi khi đăng xuất: ${e.toString()}',
+      );
     }
-  }
-
-  void _showSuccessSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.green),
-    );
-  }
-
-  void _showErrorSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.red),
-    );
   }
 
   void _onScroll() {
@@ -437,6 +439,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isLoggedIn =
+        Provider.of<UserProvider>(context, listen: false).isLoggedIn;
+    final isGarage =
+        Provider.of<UserProvider>(context, listen: false).isGarageUser;
     return Scaffold(
       backgroundColor: DesignTokens.surfaceBrand,
       body: SafeArea(
@@ -444,8 +450,8 @@ class _HomeScreenState extends State<HomeScreen> {
           slivers: [
             SliverAppBar(
               pinned: false,
-              expandedHeight: 270,
-              
+              expandedHeight: !isLoggedIn || !isGarage ? 270 : 214,
+
               automaticallyImplyLeading: false,
               toolbarHeight: 80, // Tăng chiều cao của toolbar
               actions: [
@@ -523,8 +529,9 @@ class _HomeScreenState extends State<HomeScreen> {
             products: _reputableProducts,
             onSeeMorePressed: () {
               // TODO: Navigate to reputable products page
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Tính năng đang được phát triển')),
+              AppToastHelper.showInfo(
+                context,
+                message: 'Tính năng đang được phát triển',
               );
             },
           ),
@@ -535,8 +542,9 @@ class _HomeScreenState extends State<HomeScreen> {
             reviews: _recentReviews,
             onSeeMorePressed: () {
               // TODO: Navigate to reviews page
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Tính năng đang được phát triển')),
+              AppToastHelper.showInfo(
+                context,
+                message: 'Tính năng đang được phát triển',
               );
             },
           ),
@@ -550,6 +558,10 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildRequestSection() {
+    final isLoggedIn =
+        Provider.of<UserProvider>(context, listen: false).isLoggedIn;
+    final isGarage =
+        Provider.of<UserProvider>(context, listen: false).isGarageUser;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
       child: Container(
@@ -580,40 +592,59 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 8),
 
             // Button đăng yêu cầu
-            GestureDetector(
-              onTap: () {
-                Navigator.pushNamed(context, '/create-request');
-              },
-              child: Container(
-                width: double.infinity,
-                // height: 48,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 12,
-                ),
-                decoration: BoxDecoration(
-                  color: Color(0xFFF5F9FF),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: DesignTokens.borderBrandPrimary),
-                ),
-                child: Row(
-                  children: [
-                    SvgIcon(
-                      svgPath: 'assets/icons_final/add-square.svg',
-                      width: 24,
-                      height: 24,
+            !isLoggedIn || !isGarage
+                ? GestureDetector(
+                  onTap: () {
+                    if (!isLoggedIn) {
+                      AppDialogHelper.confirm(
+                        context,
+                        title: 'Đăng nhập',
+                        message: 'Vui lòng đăng nhập để đăng yêu cầu',
+                        confirmText: 'Đăng nhập',
+                        cancelText: 'Hủy',
+                        confirmButtonType: ButtonType.primary,
+                        cancelButtonType: ButtonType.secondary,
+                        onConfirm: () {
+                          Navigator.pushNamed(context, '/login');
+                        },
+                      );
+                      return;
+                    }
+                    Navigator.pushNamed(context, '/create-request');
+                  },
+                  child: Container(
+                    width: double.infinity,
+                    // height: 48,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 12,
                     ),
-                    const SizedBox(width: 8),
-                    MyText(
-                      text: 'Đăng yêu cầu ngay và nhận báo giá',
-                      textStyle: 'title',
-                      textSize: '14',
-                      textColor: 'brand',
+                    decoration: BoxDecoration(
+                      color: Color(0xFFF5F9FF),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: DesignTokens.borderBrandPrimary,
+                      ),
                     ),
-                  ],
-                ),
-              ),
-            ),
+                    child: Row(
+                      children: [
+                        SvgIcon(
+                          svgPath: 'assets/icons_final/add-square.svg',
+                          width: 24,
+                          height: 24,
+                        ),
+                        const SizedBox(width: 8),
+                        MyText(
+                          text: 'Đăng yêu cầu ngay và nhận báo giá',
+                          textStyle: 'title',
+                          textSize: '14',
+                          textColor: 'brand',
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+                : const SizedBox.shrink(),
           ],
         ),
       ),

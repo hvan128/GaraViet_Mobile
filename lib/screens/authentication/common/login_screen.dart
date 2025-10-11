@@ -7,6 +7,7 @@ import 'package:gara/widgets/text_field.dart';
 import 'package:gara/widgets/button.dart';
 import 'package:gara/navigation/navigation.dart';
 import 'package:gara/services/auth/auth_service.dart';
+import 'package:gara/widgets/app_toast.dart';
 import 'package:gara/models/user/login_model.dart';
 import 'package:gara/services/storage_service.dart';
 import 'package:gara/theme/index.dart';
@@ -87,7 +88,7 @@ class _LoginScreenState extends State<LoginScreen> {
       final response = await AuthService.loginUser(request);
 
       if (response.success) {
-        _showSuccessSnackBar('Đăng nhập thành công!');
+        AppToastHelper.showSuccess(context, message: 'Đăng nhập thành công!');
 
         // Save phone if remember me is checked
         if (_rememberMe) {
@@ -101,27 +102,15 @@ class _LoginScreenState extends State<LoginScreen> {
         // Navigate to home screen or next step
         Navigate.pushNamed('/home');
       } else {
-        _showErrorSnackBar(response.message ?? 'Đăng nhập thất bại');
+        AppToastHelper.showError(context, message: response.message ?? 'Đăng nhập thất bại');
       }
     } catch (e) {
-      _showErrorSnackBar('Có lỗi xảy ra: ${e.toString()}');
+      AppToastHelper.showError(context, message: 'Có lỗi xảy ra: ${e.toString()}');
     } finally {
       setState(() {
         _isLoading = false;
       });
     }
-  }
-
-  void _showErrorSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.red),
-    );
-  }
-
-  void _showSuccessSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.green),
-    );
   }
 
   @override

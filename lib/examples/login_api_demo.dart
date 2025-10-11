@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:gara/services/auth/auth_service.dart';
 import 'package:gara/models/user/login_model.dart';
 import 'package:gara/services/storage_service.dart';
+import 'package:gara/widgets/app_toast.dart';
 
 class LoginApiDemo extends StatefulWidget {
   const LoginApiDemo({super.key});
@@ -40,12 +41,12 @@ class _LoginApiDemoState extends State<LoginApiDemo> {
 
   Future<void> _testLogin() async {
     if (_phoneController.text.trim().isEmpty) {
-      _showSnackBar('Vui lòng nhập số điện thoại', Colors.red);
+      _showToastError('Vui lòng nhập số điện thoại');
       return;
     }
     
     if (_passwordController.text.isEmpty) {
-      _showSnackBar('Vui lòng nhập mật khẩu', Colors.red);
+      _showToastError('Vui lòng nhập mật khẩu');
       return;
     }
 
@@ -75,15 +76,15 @@ Data: ${response.data?.toString() ?? 'N/A'}
       });
 
       if (response.success) {
-        _showSnackBar('Đăng nhập thành công!', Colors.green);
+        _showToastSuccess('Đăng nhập thành công!');
       } else {
-        _showSnackBar('Đăng nhập thất bại: ${response.message}', Colors.red);
+        _showToastError('Đăng nhập thất bại: ${response.message}');
       }
     } catch (e) {
       setState(() {
         _lastResponse = 'Error: ${e.toString()}';
       });
-      _showSnackBar('Lỗi: ${e.toString()}', Colors.red);
+      _showToastError('Lỗi: ${e.toString()}');
     } finally {
       setState(() {
         _isLoading = false;
@@ -91,13 +92,12 @@ Data: ${response.data?.toString() ?? 'N/A'}
     }
   }
 
-  void _showSnackBar(String message, Color color) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: color,
-      ),
-    );
+  void _showToastSuccess(String message) {
+    AppToastHelper.showSuccess(context, message: message);
+  }
+
+  void _showToastError(String message) {
+    AppToastHelper.showError(context, message: message);
   }
 
   @override

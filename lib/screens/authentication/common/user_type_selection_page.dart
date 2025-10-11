@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:gara/components/auth/icon_field.dart';
 import 'package:gara/theme/index.dart';
+import 'package:gara/widgets/app_toast.dart';
 import 'package:gara/widgets/header.dart';
 import 'package:gara/widgets/text.dart';
 import 'package:provider/provider.dart';
@@ -39,11 +40,9 @@ class _UserTypeSelectionPageState extends State<UserTypeSelectionPage> {
 
   void _continue() {
     if (_selectedUserType == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Vui lòng chọn loại tài khoản'),
-          backgroundColor: Colors.red,
-        ),
+      AppToastHelper.showError(
+        context,
+        message: 'Vui lòng chọn loại tài khoản',
       );
       return;
     }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:gara/navigation/navigation.dart';
 import 'package:gara/services/storage_service.dart';
+import 'package:gara/widgets/app_toast.dart';
 
 class AuthHelper {
   // Kiểm tra response có yêu cầu đăng nhập lại không
@@ -16,12 +17,10 @@ class AuthHelper {
     
     // Hiển thị thông báo
     if (message != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          backgroundColor: Colors.red,
-          duration: const Duration(seconds: 3),
-        ),
+      AppToastHelper.showError(
+        context,
+        message: message,
+        duration: const Duration(seconds: 3),
       );
     }
     
@@ -60,12 +59,10 @@ class AuthHelper {
       // Lấy context từ navigation key
       final context = Navigate().navigationKey.currentContext;
       if (context != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(response['message'] ?? 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.'),
-            backgroundColor: Colors.orange,
-            duration: const Duration(seconds: 3),
-          ),
+        AppToastHelper.showWarning(
+          context,
+          message: response['message'] ?? 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
+          duration: const Duration(seconds: 3),
         );
       }
     } catch (e) {

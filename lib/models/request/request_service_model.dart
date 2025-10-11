@@ -1,71 +1,21 @@
 import 'package:gara/models/car/car_info_model.dart';
+import 'package:gara/models/user/user_info_model.dart';
+import 'package:gara/models/quotation/quotation_model.dart';
+import 'package:gara/models/file/file_info_model.dart';
 
-class ImageAttachment {
-  final int id;
-  final String name;
-  final String path;
-  final String timeUpload;
-
-  const ImageAttachment({
-    required this.id,
-    required this.name,
-    required this.path,
-    required this.timeUpload,
-  });
-
-  factory ImageAttachment.fromJson(Map<String, dynamic> json) {
-    return ImageAttachment(
-      id: RequestServiceModel._toInt(json['id']),
-      name: (json['name'] ?? '').toString(),
-      path: (json['path'] ?? '').toString(),
-      timeUpload: (json['time_upload'] ?? json['timeUpload'] ?? '').toString(),
-    );
-  }
-}
-
-class Quotation {
-  final int id;
-  final int price;
-  final int status;
-  final String warranty;
-  final String description;
-  final String createdAt;
-  final String updatedAt;
-
-  const Quotation({
-    required this.id,
-    required this.price,
-    required this.status,
-    required this.warranty,
-    required this.description,
-    required this.createdAt,
-    required this.updatedAt,
-  });
-
-  factory Quotation.fromJson(Map<String, dynamic> json) {
-    return Quotation(
-      id: RequestServiceModel._toInt(json['id']),
-      price: RequestServiceModel._toInt(json['price']),
-      status: RequestServiceModel._toInt(json['status']),
-      warranty: (json['warranty'] ?? '').toString(),
-      description: (json['description'] ?? '').toString(),
-      createdAt: (json['created_at'] ?? json['createdAt'] ?? '').toString(),
-      updatedAt: (json['updated_at'] ?? json['updatedAt'] ?? '').toString(),
-    );
-  }
-}
+// Removed inline Quotation; use QuotationModel instead
 
 class RequestServiceModel {
   final int id;
   final String requestCode;
-  final int createdBy;
+  final UserInfoResponse? inforUser;
   final CarInfo? carInfo;
   final int status; // 1 WAITING_FOR_QUOTATION, 2 ACCEPTED, 3 REJECTED, 4 COMPLETED
   final String address;
   final String? description;
   final String? radiusSearch;
-  final List<ImageAttachment> listImageAttachment;
-  final List<Quotation>? listQuotation;
+  final List<FileInfo> listImageAttachment;
+  final List<QuotationModel>? listQuotation;
   final String createdAt;
   final String updatedAt;
   final String? timeAgo;
@@ -73,7 +23,7 @@ class RequestServiceModel {
   const RequestServiceModel({
     required this.id,
     required this.requestCode,
-    required this.createdBy,
+    required this.inforUser,
     this.carInfo,
     required this.status,
     required this.address,
@@ -87,25 +37,47 @@ class RequestServiceModel {
   });
 
   factory RequestServiceModel.fromJson(Map<String, dynamic> json) {
+    // Normalize textual fields: collapse multiple whitespaces/newlines to single space and trim
+    String _normalize(String? v) => (v ?? '').replaceAll(RegExp(r'\s+'), ' ').trim();
     return RequestServiceModel(
       id: _toInt(json['id']),
-      requestCode: (json['request_code'] ?? json['requestCode'] ?? '').toString(),
-      createdBy: _toInt(json['created_by'] ?? json['createdBy']),
+      requestCode: _normalize((json['request_code'] ?? json['requestCode'])?.toString()),
+      inforUser: (json['infor_user'] is Map<String, dynamic>)
+          ? UserInfoResponse.fromJson(json['infor_user'] as Map<String, dynamic>)
+          : null,
       carInfo: json['car_infor'] != null ? CarInfo.fromJson(json['car_infor']) : null,
       status: _toInt(json['status']),
-      address: (json['address'] ?? '').toString(),
-      description: json['description']?.toString(),
-      radiusSearch: (json['radius_search'] ?? json['radiusSearch'])?.toString(),
+      address: _normalize((json['address'] ?? '').toString()),
+      description: _normalize(json['description']?.toString()),
+      radiusSearch: _normalize((json['radius_search'] ?? json['radiusSearch'])?.toString()),
       listImageAttachment: (json['list_image_attachment'] as List?)
-          ?.map((e) => ImageAttachment.fromJson(e))
+          ?.map((e) => FileInfo.fromJson(e))
           .toList() ?? [],
       listQuotation: (json['list_quotation'] as List?)
-          ?.map((e) => Quotation.fromJson(e))
+          ?.map((e) => QuotationModel.fromJson(e))
           .toList(),
-      createdAt: (json['created_at'] ?? json['createdAt'] ?? '').toString(),
-      updatedAt: (json['updated_at'] ?? json['updatedAt'] ?? '').toString(),
-      timeAgo: json['time_ago']?.toString(),
+      createdAt: _normalize((json['created_at'] ?? json['createdAt'] ?? '').toString()),
+      updatedAt: _normalize((json['updated_at'] ?? json['updatedAt'] ?? '').toString()),
+      timeAgo: _normalize(json['time_ago']?.toString()),
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'request_code': requestCode,
+      'infor_user': inforUser?.toJson(),
+      'car_infor': carInfo?.toJson(),
+      'status': status,
+      'address': address,
+      'description': description,
+      'radius_search': radiusSearch,
+      'list_image_attachment': listImageAttachment.map((e) => e.toJson()).toList(),
+      'list_quotation': listQuotation?.map((e) => e.toJson()).toList(),
+      'created_at': createdAt,
+      'updated_at': updatedAt,
+      'time_ago': timeAgo,
+    };
   }
 
   static int _toInt(dynamic v) {

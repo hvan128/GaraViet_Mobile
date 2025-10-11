@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:gara/theme/color.dart';
 import 'package:gara/widgets/svg_icon.dart';
 import 'package:gara/widgets/text.dart';
 
@@ -95,9 +94,7 @@ class _HeaderState extends State<MyHeader> {
           if (widget.showRightButton)
             GestureDetector(
               onTap: widget.onRightPressed,
-              child: Container(
-                width: widget.rightIconSize,
-                height: widget.rightIconSize,
+              child: Padding(
                 padding: const EdgeInsets.all(4),
                 child: widget.rightIcon ?? 
                   SvgIcon(

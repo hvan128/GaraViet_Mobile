@@ -9,6 +9,7 @@ import 'package:gara/theme/design_tokens.dart';
 import 'package:gara/theme/effects.dart';
 import 'package:gara/widgets/svg_icon.dart';
 import 'package:gara/widgets/text.dart';
+import 'package:gara/utils/haptic_utils.dart';
 
 class MainNavigationScreen extends StatefulWidget {
   const MainNavigationScreen({super.key});
@@ -81,32 +82,41 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                     ],
                   ),
                   child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
-                      _buildNavItem(
-                        icon: 'assets/icons_final/home.svg',
-                        label: 'Trang chủ',
-                        index: 0,
+                      Expanded(
+                        child: _buildNavItem(
+                          icon: 'assets/icons_final/home.svg',
+                          label: 'Trang chủ',
+                          index: 0,
+                        ),
                       ),
-                      _buildNavItem(
-                        icon: 'assets/icons_final/document-text.svg',
-                        label: 'Yêu cầu',
-                        index: 1,
+                      Expanded(
+                        child: _buildNavItem(
+                          icon: 'assets/icons_final/document-text.svg',
+                          label: 'Yêu cầu',
+                          index: 1,
+                        ),
                       ),
-                      _buildNavItem(
-                        icon: 'assets/icons_final/calendar.svg',
-                        label: 'Lịch',
-                        index: 2,
+                      Expanded(
+                        child: _buildNavItem(
+                          icon: 'assets/icons_final/calendar.svg',
+                          label: 'Đơn hàng',
+                          index: 2,
+                        ),
                       ),
-                      _buildNavItem(
-                        icon: 'assets/icons_final/message-text.svg',
-                        label: 'tin nhắn',
-                        index: 3,
+                      Expanded(
+                        child: _buildNavItem(
+                          icon: 'assets/icons_final/message-text.svg',
+                          label: 'tin nhắn',
+                          index: 3,
+                        ),
                       ),
-                      _buildNavItem(
-                        icon: 'assets/icons_final/car.svg',
-                        label: 'Xe bạn',
-                        index: 4,
+                      Expanded(
+                        child: _buildNavItem(
+                          icon: 'assets/icons_final/car.svg',
+                          label: 'Xe bạn',
+                          index: 4,
+                        ),
                       ),
                     ],
                   ),
@@ -128,12 +138,17 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     
     return GestureDetector(
       onTap: () {
+        // Thêm haptic feedback khi chuyển tab
+        HapticUtils.selection();
         setState(() {
           _currentIndex = index;
         });
       },
-      child: SizedBox(
+      child: Container(
+        height: 64,
+        width: double.infinity,
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
             SvgIcon(

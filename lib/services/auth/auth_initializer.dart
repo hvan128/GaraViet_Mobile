@@ -1,7 +1,6 @@
 import 'package:gara/services/auth/jwt_token_manager.dart';
 import 'package:gara/services/storage_service.dart';
 import 'package:gara/services/auth/app_lifecycle_manager.dart';
-import 'package:gara/services/auth/auth_state_manager.dart';
 import 'package:gara/providers/user_provider.dart';
 
 class AuthInitializer {
@@ -14,9 +13,8 @@ class AuthInitializer {
       print('🚀 [AuthInitializer] Initializing AppLifecycleManager...');
       AppLifecycleManager().initialize();
       
-      // Khởi tạo AuthStateManager
-      print('🚀 [AuthInitializer] Initializing AuthStateManager...');
-      await AuthStateManager().initialize();
+      // AuthStateManager đã được xóa, sử dụng UserProvider
+      print('🚀 [AuthInitializer] Using UserProvider for user state management');
       
       // Kiểm tra xem có refresh token không (access token lưu trong memory)
       print('🚀 [AuthInitializer] Checking for existing refresh token...');

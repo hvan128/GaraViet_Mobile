@@ -12,6 +12,7 @@ import 'package:gara/services/auth/auth_service.dart';
 import 'package:gara/models/user/user_model.dart';
 import 'package:gara/widgets/error_dialog.dart';
 import 'package:gara/widgets/debug_dialog.dart';
+import 'package:gara/widgets/app_toast.dart';
 import 'package:gara/services/debug_helper.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
@@ -102,11 +103,9 @@ class _PhoneVerificationPageState extends State<PhoneVerificationPage> {
       if (mounted) {
         if (response['success'] == true) {
           // OTP sent successfully
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Mã OTP đã được gửi đến số điện thoại của bạn'),
-              backgroundColor: Colors.green,
-            ),
+          AppToastHelper.showSuccess(
+            context,
+            message: 'Mã OTP đã được gửi đến số điện thoại của bạn',
           );
         } else {
           ErrorDialog.showSnackBar(
@@ -281,11 +280,9 @@ class _PhoneVerificationPageState extends State<PhoneVerificationPage> {
         registrationData.setOtpVerified(true);
         registrationData.setRegistrationComplete(true);
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Đăng ký garage thành công!'),
-            backgroundColor: Colors.green,
-          ),
+        AppToastHelper.showSuccess(
+          context,
+          message: 'Đăng ký garage thành công!',
         );
 
         // Cập nhật UserProvider với thông tin user mới
@@ -295,7 +292,6 @@ class _PhoneVerificationPageState extends State<PhoneVerificationPage> {
           final userInfo = userProvider.userInfo;
           
           DebugHelper.logError('GetUserInfo Response', {
-            'avatar': userInfo?.avatar,
             'avatarPath': userInfo?.avatarPath,
             'nameGarage': userInfo?.nameGarage,
             'listFileAvatar': userInfo?.listFileAvatar?.map((e) => e.toJson()).toList(),
@@ -352,11 +348,9 @@ class _PhoneVerificationPageState extends State<PhoneVerificationPage> {
 
         if (response['success'] == true) {
           _startCountdown();
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Mã OTP mới đã được gửi'),
-              backgroundColor: Colors.green,
-            ),
+          AppToastHelper.showSuccess(
+            context,
+            message: 'Mã OTP mới đã được gửi',
           );
         } else {
           ErrorDialog.showSnackBar(

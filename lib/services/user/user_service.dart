@@ -2,8 +2,10 @@
 import 'package:http/http.dart' as http;
 import 'package:gara/config.dart';
 import 'package:gara/models/user/user_info_model.dart';
+import 'package:gara/models/car/car_info_model.dart';
 import 'package:gara/services/storage_service.dart';
 import 'package:gara/services/auth/token_cache.dart';
+import 'package:gara/services/api/base_api_service.dart';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 
@@ -13,7 +15,7 @@ class UserService {
     return http.Client();
   }
 
-  static Future<List<Map<String, dynamic>>> getAllCars() async {
+  static Future<List<CarInfo>> getAllCars() async {
     try {
       final tokenFromCache = TokenCache.getAccessToken();
       final tokenFromStorage = await Storage.getAccessToken();
@@ -36,24 +38,69 @@ class UserService {
       client.close();
 
       if (response.statusCode == 200) {
-        debugPrint('[getAllCars] status=200 body=${response.body}');
         final decoded = json.decode(response.body);
+        Iterable listPayload = const [];
         if (decoded is List) {
-          debugPrint('[getAllCars] decoded List length=${decoded.length}');
-          return List<Map<String, dynamic>>.from(decoded.map((e) => Map<String, dynamic>.from(e)));
+          listPayload = decoded;
+        } else if (decoded is Map && decoded['data'] is List) {
+          listPayload = decoded['data'] as List;
         }
-        if (decoded is Map && decoded['data'] is List) {
-          debugPrint('[getAllCars] decoded Map.data length=${(decoded['data'] as List).length}');
-          return List<Map<String, dynamic>>.from((decoded['data'] as List).map((e) => Map<String, dynamic>.from(e)));
-        }
-        debugPrint('[getAllCars] Unexpected payload type: ${decoded.runtimeType}');
-        return [];
+        return listPayload
+            .whereType<dynamic>()
+            .map((e) => CarInfo.fromJson(Map<String, dynamic>.from(e as Map)))
+            .toList();
       }
       debugPrint('[getAllCars] non-200 status=${response.statusCode} body=${response.body}');
       return [];
     } catch (e, st) {
       debugPrint('[getAllCars] error=$e\n$st');
       return [];
+    }
+  }
+
+  static Future<CarInfo?> getCarById(String carId) async {
+    try {
+      final tokenFromCache = TokenCache.getAccessToken();
+      final tokenFromStorage = await Storage.getAccessToken();
+      final accessToken = tokenFromCache ?? tokenFromStorage;
+      if (accessToken == null) {
+        throw Exception('No access token found');
+      }
+
+      final client = _createHttpClient();
+      final uri = Uri.parse('${Config.carGetByIdUrl}?car_id=$carId');
+      final response = await client.get(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $accessToken',
+        },
+      ).timeout(const Duration(seconds: 30), onTimeout: () {
+        throw Exception('Request timeout');
+      });
+
+      client.close();
+
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        Map<String, dynamic>? data;
+        if (decoded is Map && decoded['data'] is Map) {
+          data = Map<String, dynamic>.from(decoded['data']);
+        } else if (decoded is Map<String, dynamic>) {
+          data = decoded;
+        } else if (decoded is List && decoded.isNotEmpty && decoded.first is Map) {
+          data = Map<String, dynamic>.from(decoded.first as Map);
+        }
+        if (data != null) {
+          return CarInfo.fromJson(data);
+        }
+        return null;
+      }
+      debugPrint('[getCarById] non-200 status=${response.statusCode} body=${response.body}');
+      return null;
+    } catch (e, st) {
+      debugPrint('[getCarById] error=$e\n$st');
+      return null;
     }
   }
 
@@ -169,6 +216,40 @@ class UserService {
     }
   }
 
+  static Future<bool> deleteCar(String carId) async {
+    try {
+      final tokenFromCache = TokenCache.getAccessToken();
+      final tokenFromStorage = await Storage.getAccessToken();
+      final accessToken = tokenFromCache ?? tokenFromStorage;
+      if (accessToken == null) {
+        throw Exception('No access token found');
+      }
+
+      final client = _createHttpClient();
+      final uri = Uri.parse(Config.carDeleteUrl);
+      final response = await client.delete(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $accessToken',
+        },
+        body: jsonEncode({'car_id': carId}),
+      ).timeout(const Duration(seconds: 30), onTimeout: () {
+        throw Exception('Request timeout');
+      });
+
+      client.close();
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return true;
+      }
+      debugPrint('[deleteCar] non-2xx status=${response.statusCode} body=${response.body}');
+      return false;
+    } catch (e, st) {
+      debugPrint('[deleteCar] error=$e\n$st');
+      return false;
+    }
+  }
+
   static Future<bool> uploadAvatar(File file) async {
     try {
       final tokenFromCache = TokenCache.getAccessToken();
@@ -194,63 +275,24 @@ class UserService {
     }
   }
 
-  // Fallback method sử dụng HTTP thay vì HTTPS
+  // Fallback method sử dụng HTTP thay vì HTTPS với authentication flow
   static Future<UserInfoResponse?> _getUserInfoWithHttpFallback() async {
     try {
-      final tokenFromCache = TokenCache.getAccessToken();
-      final tokenFromStorage = await Storage.getAccessToken();
-      final accessToken = tokenFromCache ?? tokenFromStorage;
+      // Sử dụng BaseApiService để có authentication flow đầy đủ
+      final endpoint = Config.userGetInfoUrl.replaceFirst(Config.baseUrl, '');
+      final httpEndpoint = endpoint.replaceFirst('https://', 'http://');
       
-      if (accessToken == null) {
-        return null;
-      }
-
-      // Thay HTTPS bằng HTTP
-      final httpUrl = Config.userGetInfoUrl.replaceFirst('https://', 'http://');
-      
-      final client = _createHttpClient();
-      
-      final response = await client.get(
-        Uri.parse(httpUrl),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $accessToken',
-        },
-      ).timeout(
-        const Duration(seconds: 30),
-        onTimeout: () {
-          throw Exception('Request timeout');
-        },
+      final response = await BaseApiService.get(
+        httpEndpoint,
+        includeAuth: true,
       );
 
-      if (response.statusCode == 200) {
-        final decoded = json.decode(response.body);
-
-        Map<String, dynamic>? userData;
-
-        if (decoded is Map && decoded['data'] is Map) {
-          userData = Map<String, dynamic>.from(decoded['data']);
-        } else if (decoded is Map) {
-          userData = Map<String, dynamic>.from(decoded);
-        } else if (decoded is List && decoded.isNotEmpty && decoded.first is Map) {
-          userData = Map<String, dynamic>.from(decoded.first as Map);
-        }
-
-        if (userData != null) {
-          final userInfo = UserInfoResponse.fromJson(userData);
-          client.close();
-          return userInfo;
-        }
-
-        client.close();
-        return null;
-      } else if (response.statusCode == 404) {
-        client.close();
-        return null;
-      } else {
-        client.close();
-        return null;
+      if (response['success'] == true && response['data'] != null) {
+        final userData = response['data'] as Map<String, dynamic>;
+        return UserInfoResponse.fromJson(userData);
       }
+      
+      return null;
     } catch (e) {
       return null;
     }

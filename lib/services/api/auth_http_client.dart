@@ -7,6 +7,7 @@ import 'package:gara/services/auth/token_cache.dart';
 import 'package:gara/services/auth/jwt_token_manager.dart';
 import 'package:gara/navigation/navigation.dart';
 import 'package:gara/services/error_handler.dart';
+import 'package:gara/widgets/app_toast.dart';
 
 class AuthHttpClient {
   static HttpClient? _httpClient;
@@ -317,12 +318,9 @@ class AuthHttpClient {
       // Lấy context từ navigation key
       final context = Navigate().navigationKey.currentContext;
       if (context != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.'),
-            backgroundColor: Colors.orange,
-            duration: Duration(seconds: 3),
-          ),
+        AppToastHelper.showInfo(
+          context,
+          message: 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
         );
       }
     } catch (e) {

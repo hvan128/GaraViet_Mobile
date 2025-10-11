@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:gara/theme/design_tokens.dart';
-import 'package:gara/utils/url.dart';
 import 'package:gara/widgets/button.dart';
 import 'package:gara/widgets/header.dart';
 import 'package:gara/widgets/svg_icon.dart';
@@ -9,8 +8,11 @@ import 'package:gara/services/request/request_service.dart';
 import 'package:gara/services/quotation/quotation_service.dart';
 import 'package:gara/models/request/request_service_model.dart';
 import 'package:gara/widgets/text.dart';
+import 'package:gara/widgets/app_toast.dart';
 import 'package:gara/providers/user_provider.dart';
 import 'package:provider/provider.dart';
+import 'package:gara/utils/status/status_library.dart';
+import 'package:gara/widgets/image_carousel_widget.dart';
 
 class RequestScreen extends StatefulWidget {
   const RequestScreen({super.key});
@@ -85,9 +87,6 @@ class _RequestScreenState extends State<RequestScreen> {
     try {
       final userProvider = Provider.of<UserProvider>(context, listen: false);
 
-      debugPrint(
-        '[RequestScreen] _fetch: isGarageUser=${isGarageUser}, page=$_currentPage, status=$_selectedStatus, search=$_searchQuery',
-      );
 
       final response =
           isGarageUser
@@ -141,65 +140,7 @@ class _RequestScreenState extends State<RequestScreen> {
     await _fetch();
   }
 
-  String _statusText(int status) {
-    switch (status) {
-      case 1:
-        return 'Chờ báo giá';
-      case 2:
-        return 'Đã xác nhận';
-      case 3:
-        return 'Từ chối';
-      case 4:
-        return 'Hoàn thành';
-      default:
-        return 'Không xác định';
-    }
-  }
-
-  Color _statusBgColor(int status) {
-    switch (status) {
-      case 1:
-        return DesignTokens.primaryBlue4; // waiting for quotation
-      case 2:
-        return Color(0xFFFFFDEA); // accepted
-      case 3:
-        return Color(0xFFFFEAEA); // rejected
-      case 4:
-        return const Color(0xFFF5FFF8); // completed
-      default:
-        return DesignTokens.gray400;
-    }
-  }
-
-  Color _statusTextColor(int status) {
-    switch (status) {
-      case 1:
-        return DesignTokens.textBrand; // waiting for quotation
-      case 2:
-        return Color(0xFFD0B304); // accepted
-      case 3:
-        return DesignTokens.secondaryOrange; // rejected
-      case 4:
-        return DesignTokens.secondaryGreen;
-      default:
-        return DesignTokens.textPrimary;
-    }
-  }
-
-  Color _statusBorderColor(int status) {
-    switch (status) {
-      case 1:
-        return DesignTokens.borderBrandPrimary; // waiting for quotation
-      case 2:
-        return DesignTokens.secondaryYellow; // accepted
-      case 3:
-        return DesignTokens.secondaryOrange; // rejected
-      case 4:
-        return DesignTokens.secondaryGreen; // completed
-      default:
-        return DesignTokens.borderBrandPrimary;
-    }
-  }
+  
 
   @override
   Widget build(BuildContext context) {
@@ -213,9 +154,7 @@ class _RequestScreenState extends State<RequestScreen> {
               builder: (context, userProvider, child) {
                 return MyHeader(
                   title:
-                      isGarageUser
-                          ? 'Danh sách yêu cầu (Gara)'
-                          : 'Danh sách yêu cầu',
+                     'Danh sách yêu cầu',
                   showLeftButton: false,
                   showRightButton: true,
                   rightIcon: SvgIcon(
@@ -236,8 +175,13 @@ class _RequestScreenState extends State<RequestScreen> {
                         child:
                             _items.isEmpty
                                 ? ListView(
+                                  padding: EdgeInsets.only(
+                                    top: 80,
+                                    left: 12,
+                                    right: 12,
+                                    bottom: 50 + kBottomNavigationBarHeight,
+                                  ),
                                   children: [
-                                    SizedBox(height: 80),
                                     Center(
                                       child: MyText(
                                         text: 'Chưa có yêu cầu nào',
@@ -252,19 +196,21 @@ class _RequestScreenState extends State<RequestScreen> {
                                   onNotification: (
                                     ScrollNotification scrollInfo,
                                   ) {
+                                    final threshold = 200.0;
                                     if (!_loadingMore &&
-                                        scrollInfo.metrics.pixels ==
-                                            scrollInfo
-                                                .metrics
-                                                .maxScrollExtent) {
+                                        scrollInfo.metrics.pixels >=
+                                            scrollInfo.metrics.maxScrollExtent -
+                                                threshold) {
                                       _loadMore();
                                     }
                                     return false;
                                   },
                                   child: ListView.separated(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 12,
+                                    padding: EdgeInsets.only(
+                                      left: 20,
+                                      right: 20,
+                                      top: 0,
+                                      bottom: 50 + kBottomNavigationBarHeight,
                                     ),
                                     itemCount:
                                         _items.length + (_loadingMore ? 1 : 0),
@@ -463,105 +409,14 @@ class _RequestScreenState extends State<RequestScreen> {
   }
 
   Widget _buildImageSection(RequestServiceModel item) {
-    return Stack(
-      children: [
-        // Ảnh hoặc placeholder
-        if (item.listImageAttachment.isNotEmpty)
-          ClipRRect(
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(12),
-              topRight: Radius.circular(12),
-            ),
-            child: Container(
-              height: 159,
-              width: double.infinity,
-              decoration: BoxDecoration(color: DesignTokens.gray100),
-              child: Image.network(
-                resolveImageUrl(item.listImageAttachment.first.path)!,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return _buildImagePlaceholder();
-                },
-              ),
-            ),
-          )
-        else
-          _buildImagePlaceholder(),
-
-        // Trạng thái ở góc trái trên
-        if (!isGarageUser) ...[
-          Positioned(
-          top: 8,
-          left: 8,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: _statusBgColor(item.status),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: _statusBorderColor(item.status),
-                width: 1,
-              ),
-            ),
-            child: MyText(
-              text: _statusText(item.status),
-              textStyle: 'title',
-              textSize: '12',
-              color: _statusTextColor(item.status),
-            ),
-          ),
-        ),
-        ],
-
-        // Nút more ở góc phải trên
-        if (!isGarageUser) ...[
-          Positioned(
-          top: 8,
-          right: 8,
-          child: Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.8),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: IconButton(
-              onPressed: () {
-                // TODO: Show more options
-              },
-              icon: SvgIcon(
-                svgPath: 'assets/icons_final/more.svg',
-                size: 16,
-                color: DesignTokens.textPrimary,
-              ),
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(),
-            ),
-          ),
-        ),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildImagePlaceholder() {
-    return Container(
-      height: 159,
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: DesignTokens.gray100,
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(12),
-          topRight: Radius.circular(12),
-        ),
-      ),
-      child: Center(
-        child: SvgIcon(
-          svgPath: 'assets/icons_final/car.svg',
-          size: 32,
-          color: DesignTokens.gray400,
-        ),
-      ),
+    return ImageCarouselWidget(
+      files: item.listImageAttachment,
+      isGarageUser: isGarageUser,
+      status: item.status,
+      statusType: StatusType.request,
+      onMorePressed: () {
+        // TODO: Show more options
+      },
     );
   }
 }
@@ -615,21 +470,17 @@ class _QuotationBottomSheetState extends State<_QuotationBottomSheet> {
     final description = descriptionController.text.trim();
     
     if (price <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Vui lòng nhập giá dự kiến hợp lệ'),
-          backgroundColor: Colors.red,
-        ),
+      AppToastHelper.showError(
+        context,
+        message: 'Vui lòng nhập giá dự kiến hợp lệ',
       );
       return;
     }
     
     if (description.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Vui lòng nhập mô tả'),
-          backgroundColor: Colors.red,
-        ),
+      AppToastHelper.showWarning(
+        context,
+        message: 'Vui lòng nhập mô tả',
       );
       return;
     }
@@ -647,27 +498,21 @@ class _QuotationBottomSheetState extends State<_QuotationBottomSheet> {
 
       if (response.success) {
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Tạo báo giá thành công'),
-            backgroundColor: Colors.green,
-          ),
+        AppToastHelper.showSuccess(
+          context,
+          message: 'Tạo báo giá thành công',
         );
         widget.onSuccess();
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(response.message),
-            backgroundColor: Colors.red,
-          ),
+        AppToastHelper.showError(
+          context,
+          message: response.message,
         );
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Lỗi tạo báo giá: $e'),
-          backgroundColor: Colors.red,
-        ),
+      AppToastHelper.showError(
+        context,
+        message: 'Lỗi tạo báo giá: $e',
       );
     } finally {
       setState(() {
@@ -781,3 +626,4 @@ class _QuotationBottomSheetState extends State<_QuotationBottomSheet> {
     );
   }
 }
+

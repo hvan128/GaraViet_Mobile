@@ -11,6 +11,7 @@ import 'package:gara/widgets/svg_icon.dart';
 import 'package:gara/widgets/text.dart';
 import 'package:gara/widgets/header.dart';
 import 'package:gara/utils/url.dart';
+import 'package:gara/widgets/skeleton.dart';
 
 class UserInfoScreen extends StatefulWidget {
   const UserInfoScreen({super.key});
@@ -105,7 +106,43 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
 
   Widget _buildBody() {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header giả
+            Container(
+              height: 56,
+              color: DesignTokens.surfaceBrand,
+            ),
+            Container(height: 12, color: DesignTokens.surfaceBrand),
+            // Hero section skeleton
+            Container(
+              color: DesignTokens.surfaceSecondary,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Column(
+                children: [
+                  Skeleton.circle(size: 64),
+                  const SizedBox(height: 12),
+                  Skeleton.line(width: 120, height: 16),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            // Card settings skeleton
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                children: [
+                  Skeleton.box(height: 120),
+                  const SizedBox(height: 12),
+                  Skeleton.box(height: 160),
+                ],
+              ),
+            )
+          ],
+        ),
+      );
     }
 
     if (_errorMessage != null) {
@@ -379,13 +416,13 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
               child: CircleAvatar(
                 backgroundColor: DesignTokens.surfaceBrand,
                 backgroundImage:
-                    (_userInfo?.avatar != null && _userInfo!.avatar!.isNotEmpty)
-                        ? (resolveImageUrl(_userInfo!.avatar!) != null
-                            ? NetworkImage(resolveImageUrl(_userInfo!.avatar!)!)
+                    (_userInfo?.avatarPath != null && _userInfo!.avatarPath!.isNotEmpty)
+                        ? (resolveImageUrl(_userInfo!.avatarPath!) != null
+                            ? NetworkImage(resolveImageUrl(_userInfo!.avatarPath!)!)
                             : null)
                         : null,
                 child:
-                    (_userInfo?.avatar == null || _userInfo!.avatar!.isEmpty)
+                    (_userInfo?.avatarPath == null || _userInfo!.avatarPath!.isEmpty)
                         ? MyText(
                           text:
                               _userInfo!.name.isNotEmpty
@@ -543,10 +580,10 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
             scrollDirection: Axis.horizontal,
             itemBuilder:
                 (ctx, i) => _serviceItem(
-                  images.isNotEmpty ? images[i % images.length] : null,
+                  images[i],
                 ),
             separatorBuilder: (_, __) => const SizedBox(width: 12),
-            itemCount: images.isEmpty ? 3 : images.length.clamp(3, 10),
+            itemCount: images.length,
           ),
         ),
         const SizedBox(height: 8),
@@ -608,7 +645,7 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
                         return child;
                       }
                       debugPrint('[UserInfoScreen] Certificate image loading: $resolvedUrl');
-                      return const Center(child: CircularProgressIndicator());
+                      return Center(child: Skeleton.box(height: 80));
                     },
                     errorBuilder: (context, error, stackTrace) {
                       debugPrint('[UserInfoScreen] Certificate image error: $resolvedUrl, error: $error');

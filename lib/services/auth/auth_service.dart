@@ -2,8 +2,8 @@ import 'package:gara/services/api/base_api_service.dart';
 import 'package:gara/models/user/user_model.dart';
 import 'package:gara/models/user/login_model.dart';
 import 'package:gara/services/auth/jwt_token_manager.dart';
-import 'package:gara/services/auth/auth_state_manager.dart';
 import 'package:gara/services/debug_helper.dart';
+import 'package:gara/utils/debug_logger.dart';
 import 'package:gara/providers/user_provider.dart';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
@@ -27,11 +27,21 @@ class AuthService {
 
   // User login
   static Future<UserLoginResponse> loginUser(UserLoginRequest request) async {
+    // Log request (mask sensitive fields)
+    final Map<String, dynamic> maskedBody = {
+      ...request.toJson(),
+      if (request.toJson().containsKey('password')) 'password': '******',
+    };
+    DebugHelper.logApiCall('POST', '/auth/user-login', body: maskedBody);
+
     final response = await BaseApiService.post(
       '/auth/user-login',
       body: request.toJson(),
       includeAuth: false, // Login doesn't need auth
     );
+
+    // Log raw response for debugging
+    DebugLogger.largeJson('LOGIN /auth/user-login RESPONSE', response);
     
     final loginResponse = UserLoginResponse.fromJson(response);
     
@@ -40,12 +50,6 @@ class AuthService {
       await JwtTokenManager.saveNewTokens(
         accessToken: loginResponse.accessToken!,
         refreshToken: loginResponse.refreshToken,
-      );
-      
-      // Update auth state
-      await AuthStateManager().setLoggedIn(
-        phone: request.phone,
-        name: loginResponse.data?['name'],
       );
       
       // Initialize user provider với thông tin mới
@@ -72,9 +76,6 @@ class AuthService {
     
     // Xóa token và hủy timer refresh
     await JwtTokenManager.clearTokens();
-    
-    // Clear auth state
-    await AuthStateManager().setLoggedOut();
     
     // Clear user provider
     UserProvider().clearUserInfo();
@@ -229,11 +230,8 @@ class AuthService {
         refreshToken: garageResponse.refreshToken,
       );
       
-      // Update auth state
-      await AuthStateManager().setLoggedIn(
-        phone: request.phone,
-        name: garageResponse.data?['name_garage'],
-      );
+      // Initialize user provider với thông tin mới
+      await UserProvider().initializeUserInfo();
     }
     
     return garageResponse;
