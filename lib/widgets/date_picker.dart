@@ -157,8 +157,7 @@ class _MyDatePickerState extends State<MyDatePicker> {
             ];
 
             // Đặt chiều rộng dialog theo đúng chiều rộng lưới (7 ô x 44)
-            const double _gridWidth = 44 * 7;
-            const EdgeInsets _contentPadding = EdgeInsets.symmetric(horizontal: 16, vertical: 12);
+            // (khai báo không cần thiết đã được bỏ)
 
             return Theme(
               data: themed,
@@ -453,7 +452,7 @@ class _MyDatePickerState extends State<MyDatePicker> {
                                         ? isToday
                                             ? 'brand'
                                             : 'primary'
-                                        : 'secondary',
+                                        : 'placeholder',
                               ),
                             ),
                           ),
@@ -562,7 +561,7 @@ class _MyDatePickerState extends State<MyDatePicker> {
       svgPath: 'assets/icons_final/calendar.svg',
       width: 18,
       height: 18,
-      color: widget.enabled ? DesignTokens.textBrand : DesignTokens.textDisable,
+      color: widget.enabled ? DesignTokens.surfaceBrand : DesignTokens.textDisable,
     );
 
     return Column(

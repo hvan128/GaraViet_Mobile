@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:dotted_border/dotted_border.dart';
 import 'package:gara/theme/design_tokens.dart';
+import 'package:gara/widgets/app_toast.dart';
 
 class SimpleImagePicker extends StatefulWidget {
   final String label;
@@ -65,22 +66,18 @@ class _SimpleImagePickerState extends State<SimpleImagePicker> {
         widget.onImageSelected(_selectedImage);
         
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Ảnh đã được chọn thành công!'),
-              backgroundColor: Colors.green,
-            ),
+          AppToastHelper.showSuccess(
+            context,
+            message: 'Ảnh đã được chọn thành công!',
           );
         }
       }
     } catch (e) {
       print('Error in gallery picker: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Lỗi khi chọn ảnh: $e'),
-            backgroundColor: Colors.red,
-          ),
+        AppToastHelper.showError(
+          context,
+          message: 'Lỗi khi chọn ảnh: $e',
         );
       }
     }
@@ -106,22 +103,18 @@ class _SimpleImagePickerState extends State<SimpleImagePicker> {
         widget.onImageSelected(_selectedImage);
         
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Ảnh đã được chụp thành công!'),
-              backgroundColor: Colors.green,
-            ),
+          AppToastHelper.showSuccess(
+            context,
+            message: 'Ảnh đã được chụp thành công!',
           );
         }
       }
     } catch (e) {
       print('Error in camera: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Lỗi khi chụp ảnh: $e'),
-            backgroundColor: Colors.red,
-          ),
+        AppToastHelper.showError(
+          context,
+          message: 'Lỗi khi chụp ảnh: $e',
         );
       }
     }

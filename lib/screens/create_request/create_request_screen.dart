@@ -11,6 +11,7 @@ import 'package:gara/widgets/text.dart';
 import 'package:gara/widgets/text_field.dart';
 import 'package:gara/services/user/user_service.dart';
 import 'package:gara/utils/format.dart';
+import 'package:gara/widgets/app_toast.dart';
 
 class CreateRequestScreen extends StatefulWidget {
   const CreateRequestScreen({super.key});
@@ -38,37 +39,13 @@ class _CreateRequestScreenState extends State<CreateRequestScreen> {
     final cars = await UserService.getAllCars();
     if (!mounted) return;
     setState(() {
-      _carItems =
-          cars.map((c) {
-            final id = (c['id'] ?? c['car_id'] ?? '').toString();
-            // Ưu tiên hiển thị theo type_car + year_model, fallback brand/model/plate
-            final typeCar = (c['type_car'] ?? '').toString();
-            final yearModel = (c['year_model'] ?? '').toString();
-            final plateRaw =
-                (c['vehicle_license_plate'] ??
-                        c['license_plate'] ??
-                        c['plate'] ??
-                        '')
-                    .toString();
-            final plate = formatLicensePlate(plateRaw);
-            String label = '';
-            if (typeCar.isNotEmpty || yearModel.isNotEmpty) {
-              label = [typeCar, yearModel].where((s) => s.isNotEmpty).join(' ');
-              if (plate.isNotEmpty) label = '$label • $plate';
-            } else {
-              final brand = (c['brand'] ?? '').toString();
-              final model = (c['model'] ?? '').toString();
-              label = [
-                brand,
-                model,
-                plate,
-              ].where((s) => s.isNotEmpty).join(' ');
-            }
-            return DropdownItem(
-              value: id,
-              label: label.isEmpty ? 'Xe $id' : label,
-            );
-          }).toList();
+      _carItems = cars.map((c) {
+        final id = c.id.toString();
+        final plate = formatLicensePlate(c.vehicleLicensePlate);
+        String label = [c.typeCar, c.yearModel].where((s) => s.isNotEmpty).join(' ');
+        if (plate.isNotEmpty) label = '$label • $plate';
+        return DropdownItem(value: id, label: label.isEmpty ? 'Xe $id' : label);
+      }).toList();
       if (_carItems.isEmpty) {
         _carItems = [DropdownItem(value: 'none', label: 'Chưa có xe')];
       }
@@ -194,10 +171,9 @@ class _CreateRequestScreenState extends State<CreateRequestScreen> {
                 onImageSelected: (file) {
                   if (file == null) return;
                   if (_attachedImages.length >= _maxImages) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Chỉ được thêm tối đa 3 ảnh dịch vụ'),
-                      ),
+                    AppToastHelper.showWarning(
+                      context,
+                      message: 'Chỉ được thêm tối đa 3 ảnh dịch vụ',
                     );
                     return;
                   }
@@ -362,13 +338,9 @@ class _CreateRequestScreenState extends State<CreateRequestScreen> {
             (route) => false,
             arguments: {'selectedTab': 1}, // Tab yêu cầu
           );
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text('Gửi yêu cầu thành công'),
-          ));
+          AppToastHelper.showSuccess(context, message: 'Gửi yêu cầu thành công');
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text('Gửi yêu cầu thất bại'),
-          ));
+          AppToastHelper.showError(context, message: 'Gửi yêu cầu thất bại');
         }
       },
       buttonType: ButtonType.primary,

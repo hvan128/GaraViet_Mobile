@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:gara/widgets/app_toast.dart';
 import 'dart:math';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:gara/components/auth/icon_field.dart';
@@ -294,8 +295,9 @@ class _ElectronicContractPageState extends State<ElectronicContractPage> {
 
       if (mounted) {
         if (resp['success'] == true) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(resp['message'] ?? 'Ký hợp đồng thành công')),
+          AppToastHelper.showSuccess(
+            context,
+            message: resp['message'] ?? 'Ký hợp đồng thành công',
           );
           setState(() {
             _isLoading = false;
@@ -303,8 +305,9 @@ class _ElectronicContractPageState extends State<ElectronicContractPage> {
           // Điều hướng về trang chủ và xóa toàn bộ lịch sử
           Navigate.pushNamedAndRemoveAll('/');
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(resp['message'] ?? 'Ký hợp đồng thất bại')),
+          AppToastHelper.showError(
+            context,
+            message: resp['message'] ?? 'Ký hợp đồng thất bại',
           );
           setState(() {
             _isLoading = false;
@@ -313,8 +316,9 @@ class _ElectronicContractPageState extends State<ElectronicContractPage> {
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Có lỗi xảy ra khi ký hợp đồng')),
+      AppToastHelper.showError(
+        context,
+        message: 'Có lỗi xảy ra khi ký hợp đồng',
       );
       setState(() {
         _isLoading = false;

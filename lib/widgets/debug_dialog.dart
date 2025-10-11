@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:gara/services/error_handler.dart';
+import 'package:gara/widgets/app_toast.dart';
 
 class DebugDialog {
   // Hiển thị dialog debug với thông tin chi tiết
@@ -180,27 +181,19 @@ class DebugDialog {
     try {
       final errorDetails = ErrorHandler.getErrorDetails(error);
     
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Debug: ${errorDetails['type']} - ${errorDetails['code']}'),
-        backgroundColor: Colors.orange,
-        duration: const Duration(seconds: 5),
-        action: SnackBarAction(
-          label: 'Details',
-          textColor: Colors.white,
-          onPressed: () {
-            show(context, error);
-          },
-        ),
-      ),
+    // Dùng toast thay cho snackbar: hiển thị ngắn gọn
+    final message = 'Debug: ${errorDetails['type']} - ${errorDetails['code']}';
+    AppToastHelper.showWarning(
+      context,
+      message: message,
+      duration: const Duration(seconds: 3),
     );
     } catch (e) {
       // Fallback nếu có lỗi khi xử lý debug info
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Debug Error: $e'),
-          backgroundColor: Colors.orange,
-        ),
+      AppToastHelper.showWarning(
+        context,
+        message: 'Debug Error: $e',
+        duration: const Duration(seconds: 3),
       );
     }
   }

@@ -68,14 +68,14 @@ class MyButton extends StatelessWidget {
         case ButtonType.secondary:
           bgColor = DesignTokens.surfaceSecondary;
           break;
-        case ButtonType.yellow:
-          bgColor = DesignTokens.secondaryYellow;
+        case ButtonType.red:
+          bgColor = Colors.transparent;
           break;
         case ButtonType.disable:
           bgColor = DesignTokens.surfaceTertiary;
           break;
         case ButtonType.delete:
-          bgColor = DesignTokens.surfaceInvert;
+          bgColor = DesignTokens.alertError;
           break;
         case ButtonType.transparent:
           bgColor = Colors.transparent;
@@ -93,14 +93,14 @@ class MyButton extends StatelessWidget {
         case ButtonType.secondary:
           textColorStyle = DesignTokens.surfaceBrand;
           break;
-        case ButtonType.yellow:
-          textColorStyle = DesignTokens.surfaceTertiary;
+        case ButtonType.red:
+          textColorStyle = DesignTokens.alertError;
           break;
         case ButtonType.disable:
           textColorStyle = DesignTokens.textDisable;
           break;
         case ButtonType.delete:
-          textColorStyle = DesignTokens.surfaceInvert;
+          textColorStyle = DesignTokens.textInvert;
           break;
         case ButtonType.transparent:
           textColorStyle = DesignTokens.surfaceBrand;
@@ -117,14 +117,14 @@ class MyButton extends StatelessWidget {
         case ButtonType.secondary:
           borderColorStyle = DesignTokens.surfaceBrand;
           break;
-        case ButtonType.yellow:
-          borderColorStyle = DesignTokens.surfaceTertiary;
+        case ButtonType.red:
+          borderColorStyle = null;  
           break;
         case ButtonType.disable:
           borderColorStyle = DesignTokens.surfaceTertiary;
           break;
         case ButtonType.delete:
-          borderColorStyle = DesignTokens.surfaceInvert;
+          borderColorStyle = DesignTokens.alertError;
           break;
         case ButtonType.transparent:
           borderColorStyle = DesignTokens.borderSecondary;
@@ -253,8 +253,8 @@ class MyButtonFeature extends StatelessWidget {
         textColorStyle = MyColors.primary['blue']!;
         break;
 
-      case ButtonType.yellow:
-        bgColor = MyColors.secondary['yellow']!;
+      case ButtonType.red:
+        bgColor = MyColors.alerts['error']!;
         textColorStyle = MyColors.white['c900'];
         break;
 
@@ -340,4 +340,4 @@ class MyButtonFeature extends StatelessWidget {
   }
 }
 
-enum ButtonType { primary, secondary, disable, delete, transparent, yellow }
+enum ButtonType { primary, secondary, disable, delete, transparent, red }

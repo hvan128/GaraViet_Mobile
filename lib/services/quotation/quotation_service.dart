@@ -36,4 +36,69 @@ class QuotationServiceApi {
       );
     }
   }
+
+  /// Lấy danh sách báo giá theo ID yêu cầu dịch vụ
+  static Future<QuotationListResponse> getQuotationsByRequestId({
+    required int requestServiceId,
+    int? status,
+    String? dateFrom,
+    String? dateTo,
+    int? priceMin,
+    int? priceMax,
+  }) async {
+    try {
+      final queryParams = <String, String>{
+        'request_service_id': requestServiceId.toString(),
+      };
+
+      if (status != null) {
+        queryParams['status'] = status.toString();
+      }
+      if (dateFrom != null && dateFrom.isNotEmpty) {
+        queryParams['date_from'] = dateFrom;
+      }
+      if (dateTo != null && dateTo.isNotEmpty) {
+        queryParams['date_to'] = dateTo;
+      }
+      if (priceMin != null) {
+        queryParams['price_min'] = priceMin.toString();
+      }
+      if (priceMax != null) {
+        queryParams['price_max'] = priceMax.toString();
+      }
+
+      debugPrint('[QuotationServiceApi.getQuotationsByRequestId] queryParams=$queryParams');
+
+      final response = await BaseApiService.get(
+        '/manager-quotation/get-all-quotations-by-request-service-id',
+        queryParams: queryParams,
+      );
+
+      debugPrint('[QuotationServiceApi.getQuotationsByRequestId] rawResponse=$response');
+      try {
+        final dynamic rawData = response['data'];
+        if (rawData is List && rawData.isNotEmpty) {
+          final first = rawData.first;
+          if (first is Map<String, dynamic>) {
+            debugPrint('[QuotationServiceApi.getQuotationsByRequestId] firstItem.keys=${first.keys.toList()}');
+            debugPrint('[QuotationServiceApi.getQuotationsByRequestId] firstItemSample=$first');
+          }
+        } else {
+          debugPrint('[QuotationServiceApi.getQuotationsByRequestId] data is empty or not a list');
+        }
+      } catch (e) {
+        debugPrint('[QuotationServiceApi.getQuotationsByRequestId] debug parse error: $e');
+      }
+
+      final quotationResponse = QuotationListResponse.fromJson(response);
+      debugPrint('[QuotationServiceApi.getQuotationsByRequestId] message=${quotationResponse.message}, count=${quotationResponse.data.length}');
+      return quotationResponse;
+    } catch (e) {
+      debugPrint('[QuotationServiceApi.getQuotationsByRequestId] error=$e');
+      return QuotationListResponse(
+        message: 'Error fetching quotations: $e',
+        data: [],
+      );
+    }
+  }
 }

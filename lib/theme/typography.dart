@@ -4,6 +4,13 @@ class MyTypography {
   // Typography Styles based on design tokens
   static final typography = {
     'body': {
+      '10': const TextStyle(
+        fontSize: 10,
+        fontWeight: FontWeight.w400,
+        fontFamily: 'Manrope',
+        letterSpacing: -0.1,
+        height: 1.2, // 15/10
+      ),
       '12': const TextStyle(
         fontSize: 12,
         fontWeight: FontWeight.w400,

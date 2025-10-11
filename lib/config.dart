@@ -1,6 +1,6 @@
 class Config {
   // static const String baseUrl = 'https://14.224.137.80:5009/api/v1';
-  static const String baseUrl = 'https://dev-dao.aiptgroup.site/api/v1';
+  static const String baseUrl = 'https://157.66.219.148:5006/api/v1';
 
   //* Auth API *//
   static const String createRoleUrl = '$baseUrl/auth/create-role';
@@ -87,4 +87,62 @@ class Config {
   static const String locationSavedUrl = '$baseUrl/location/saved-locations';
   static const String locationSearchUrl = '$baseUrl/location/search-places';
   static const String locationUpdateUrl = '$baseUrl/location/update-location';
+
+  //* Admin API *//
+  static const String adminCacheStatsUrl = '$baseUrl/admin/cache-stats';
+  static const String adminChangeStarRatingStandardNoJwtUrl =
+      '$baseUrl/admin/change-star-rating-standard-no-jwt';
+  static const String adminChangeWarrantyNoJwtUrl =
+      '$baseUrl/admin/change-warranty-no-jwt';
+  static const String adminClearPhoneCacheUrl =
+      '$baseUrl/admin/clear-phone-cache';
+
+  // Vouchers
+  static const String adminCreateVoucherUrl = '$baseUrl/admin/vouchers';
+  static const String adminGetActiveVouchersUrl =
+      '$baseUrl/admin/vouchers/active';
+  static const String adminGetVoucherDetailUrl =
+      '$baseUrl/admin/vouchers/detail';
+  static const String adminToggleVoucherStatusUrl =
+      '$baseUrl/admin/vouchers/toggle-status';
+  // For DELETE: append '/{voucher_id}' when calling
+  static const String adminDeleteVoucherUrl = '$baseUrl/admin/vouchers';
+
+  // Data Contract
+  static const String adminCreateDataContractUrl =
+      '$baseUrl/admin/data-contract/create-data-contract';
+  static const String adminDeleteDataContractUrl =
+      '$baseUrl/admin/data-contract/delete-data-contract';
+  static const String adminGetAllDataContractsUrl =
+      '$baseUrl/admin/data-contract/get-all-data-contracts';
+  static const String adminGetDataContractByIdUrl =
+      '$baseUrl/admin/data-contract/get-data-contract-by-id';
+  static const String adminGetDataContractByVersionUrl =
+      '$baseUrl/admin/data-contract/get-data-contract-by-version';
+  static const String adminUpdateDataContractUrl =
+      '$baseUrl/admin/data-contract/update-data-contract';
+
+  //* Payment API *//
+  static const String paymentCheckVietqrConnectionUrl =
+      '$baseUrl/payment/check-vietqr-connection';
+  static const String paymentCreateQrUrl = '$baseUrl/payment/create-qr';
+  static const String paymentCheckStatusUrl = '$baseUrl/payment/check-status';
+  static const String paymentManualUpdateStatusUrl =
+      '$baseUrl/payment/manual-update-status';
+  static const String paymentPollingUrl = '$baseUrl/payment/polling';
+  static const String paymentWebhookUrl = '$baseUrl/payment/webhook';
+
+  //* Booking API *//
+  static const String bookingCreateUrl = '$baseUrl/booking/create-booking';
+  static const String bookingDetailUrl = '$baseUrl/booking/detail';
+  static const String bookingGarageBookedQuotationsUrl =
+      '$baseUrl/booking/garage-booked-quotations';
+  static const String bookingUserBookedServicesUrl =
+      '$baseUrl/booking/user-booked-services';
+  static const String bookingCompleteOrderUrl =
+      '$baseUrl/booking/complete-order';
+  static const String bookingCancelOrderUrl =
+      '$baseUrl/booking/cancel-order';
+  static const String bookingCalculateGarageOrdersPriceUrl =
+      '$baseUrl/booking/calculate-garage-orders-price';
 }

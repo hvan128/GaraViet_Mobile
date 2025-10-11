@@ -3,6 +3,7 @@ import 'package:gara/services/api/auth_http_client.dart';
 import 'package:gara/services/auth/auth_helper.dart';
 import 'package:gara/services/error_handler.dart';
 import 'dart:developer' as developer;
+import 'package:gara/widgets/app_toast.dart';
 
 class BaseApiService {
   // GET request
@@ -21,9 +22,10 @@ class BaseApiService {
       
       // Kiểm tra nếu response là HTML (thường là error page)
       if (response is String && response.toString().startsWith('<!doctype html>')) {
+        AppToastHelper.showGlobalError('Lỗi hệ thống, vui lòng thử lại sau!');
         return {
           'success': false,
-          'message': 'API endpoint không tồn tại hoặc server lỗi',
+          'message': 'Lỗi hệ thống, vui lòng thử lại sau!',
           'data': null,
         };
       }
@@ -43,6 +45,7 @@ class BaseApiService {
         error: e,
         stackTrace: StackTrace.current,
       );
+      AppToastHelper.showGlobalError(ErrorHandler.getErrorMessage(e));
       
       return {
         'success': false,
@@ -66,20 +69,21 @@ class BaseApiService {
       final url = '${Config.baseUrl}$endpoint';
       final response = await AuthHttpClient.post(
         url,
-        body: body,
+        body: body, 
         includeAuth: includeAuth,
       );
       
       // Kiểm tra nếu response là HTML (thường là error page)
       if (response is String && response.toString().startsWith('<!doctype html>')) {
+        AppToastHelper.showGlobalError('Lỗi hệ thống, vui lòng thử lại sau!');
         return {
           'success': false,
-          'message': 'API endpoint không tồn tại hoặc server lỗi',
+          'message': 'Lỗi hệ thống, vui lòng thử lại sau!',
           'data': null,
         };
       }
       
-      // Tự động xử lý auth error cho tất cả request
+      // Tự động xử lý auth error cho tất cả request  
       if (includeAuth && AuthHelper.checkAuthError(response)) {
         // AuthHelper đã tự động navigate đến login
         return response; // Response đã chứa thông tin lỗi auth
@@ -94,6 +98,7 @@ class BaseApiService {
         error: e,
         stackTrace: StackTrace.current,
       );
+      AppToastHelper.showGlobalError(ErrorHandler.getErrorMessage(e));
       
       return {
         'success': false,
@@ -123,6 +128,7 @@ class BaseApiService {
       
       // Kiểm tra nếu response là HTML (thường là error page)
       if (response is String && response.toString().startsWith('<!doctype html>')) {
+        AppToastHelper.showGlobalError('API endpoint không tồn tại hoặc server lỗi');
         return {
           'success': false,
           'message': 'API endpoint không tồn tại hoặc server lỗi',
@@ -145,6 +151,7 @@ class BaseApiService {
         error: e,
         stackTrace: StackTrace.current,
       );
+      AppToastHelper.showGlobalError(ErrorHandler.getErrorMessage(e));
       
       return {
         'success': false,
@@ -176,6 +183,7 @@ class BaseApiService {
       
       // Kiểm tra nếu response là HTML (thường là error page)
       if (response is String && response.toString().startsWith('<!doctype html>')) {
+        AppToastHelper.showGlobalError('API endpoint không tồn tại hoặc server lỗi');
         return {
           'success': false,
           'message': 'API endpoint không tồn tại hoặc server lỗi',
@@ -198,6 +206,7 @@ class BaseApiService {
         error: e,
         stackTrace: StackTrace.current,
       );
+      AppToastHelper.showGlobalError(ErrorHandler.getErrorMessage(e));
       
       return {
         'success': false,
@@ -227,6 +236,7 @@ class BaseApiService {
       
       // Kiểm tra nếu response là HTML (thường là error page)
       if (response is String && response.toString().startsWith('<!doctype html>')) {
+        AppToastHelper.showGlobalError('API endpoint không tồn tại hoặc server lỗi');
         return {
           'success': false,
           'message': 'API endpoint không tồn tại hoặc server lỗi',
@@ -249,6 +259,7 @@ class BaseApiService {
         error: e,
         stackTrace: StackTrace.current,
       );
+      AppToastHelper.showGlobalError(ErrorHandler.getErrorMessage(e));
       
       return {
         'success': false,

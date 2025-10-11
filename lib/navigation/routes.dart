@@ -10,7 +10,11 @@ import 'package:gara/examples/user_info_demo.dart';
 import 'package:gara/screens/user/edit_user_info_screen.dart';
 import 'package:gara/models/user/user_info_model.dart';
 import 'package:gara/screens/quotation/quotation_list_screen.dart';
+import 'package:gara/screens/booking/booking_screen.dart';
 import 'package:gara/models/request/request_service_model.dart';
+import 'package:gara/models/quotation/quotation_model.dart';
+import 'package:gara/screens/transaction/transaction_detail_screen.dart';
+import 'package:gara/screens/my_car/add_car_screen.dart';
 
 Map<String, WidgetBuilder> routes = {
   //* Initial Screen
@@ -44,10 +48,26 @@ Map<String, WidgetBuilder> routes = {
   '/quotation-list': (context) {
     final args = ModalRoute.of(context)?.settings.arguments;
     if (args is RequestServiceModel) {
-      return QuotationListScreen(request: args);
+      return QuotationListScreen(requestItem: args);
     }
     // fallback: return to home if no request data
+    return const QuotationListScreen();
+  },
+  //* Booking Screen
+  '/booking': (context) {
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args is QuotationModel) {
+      return BookingScreen(quotation: args);
+    }
+    // fallback: return to home if no quotation data
     return const MainNavigationScreen();
   },
+  //* Transaction Detail Screen
+  '/transaction-detail': (context) {
+    final args = ModalRoute.of(context)?.settings.arguments;
+    return TransactionDetailScreen(arguments: args);
+  },
+  //* Add Car Screen
+  '/add-car': (context) => const AddCarScreen(),
   
 };

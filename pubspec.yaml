@@ -46,6 +46,8 @@ dependencies:
   flutter_markdown: ^0.7.3
   signature: ^5.4.0
   dotted_border: ^2.1.0
+  gal: ^2.3.0
+  carousel_slider: 5.1.1
 
 dev_dependencies:
   flutter_test:

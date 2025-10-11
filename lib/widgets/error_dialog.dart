@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:gara/services/error_handler.dart';
+import 'package:gara/widgets/app_toast.dart';
 
 class ErrorDialog {
   // Hiển thị dialog lỗi với thông báo thân thiện
@@ -29,30 +30,9 @@ class ErrorDialog {
     
     try {
       final message = ErrorHandler.getErrorMessage(error);
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          backgroundColor: backgroundColor ?? Colors.red,
-          duration: const Duration(seconds: 4),
-          action: SnackBarAction(
-            label: 'Đóng',
-            textColor: Colors.white,
-            onPressed: () {
-              ScaffoldMessenger.of(context).hideCurrentSnackBar();
-            },
-          ),
-        ),
-      );
+      AppToastHelper.showError(context, message: message);
     } catch (e) {
-      // Fallback nếu có lỗi khi xử lý error
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Đã xảy ra lỗi không xác định'),
-          backgroundColor: backgroundColor ?? Colors.red,
-          duration: const Duration(seconds: 4),
-        ),
-      );
+      AppToastHelper.showError(context, message: 'Đã xảy ra lỗi không xác định');
     }
   }
   

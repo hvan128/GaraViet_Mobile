@@ -1,47 +1,16 @@
+import 'package:gara/models/file/file_info_model.dart';
+
 List<UserInfoResponse> userInfoResponseFromJson(dynamic str) =>
     List<UserInfoResponse>.from(
       (str).map((x) => UserInfoResponse.fromJson(x)),
     );
-
-class FileInfo {
-  final int id;
-  final String name;
-  final String path;
-  final String uploadTime;
-
-  FileInfo({
-    required this.id,
-    required this.name,
-    required this.path,
-    required this.uploadTime,
-  });
-
-  factory FileInfo.fromJson(Map<String, dynamic> json) {
-    return FileInfo(
-      id: json['id'] ?? 0,
-      name: json['name'] ?? '',
-      path: json['path'] ?? '',
-      uploadTime: json['upload_time'] ?? '',
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'name': name,
-      'path': path,
-      'upload_time': uploadTime,
-    };
-  }
-}
 
 class UserInfoResponse {
   final int id;
   final int userId;
   final String name;
   final String phone;
-  final String? avatar;
-  final String? avatarPath; // New field from API
+  final String? avatarPath;
   final int roleId;
   final String roleCode;
   final String roleName;
@@ -72,7 +41,6 @@ class UserInfoResponse {
     required this.userId,
     required this.name,
     required this.phone,
-    this.avatar,
     this.avatarPath,
     required this.roleId,
     required this.roleCode,
@@ -123,7 +91,6 @@ class UserInfoResponse {
       userId: json['user_id'] ?? 0,
       name: normalizedName,
       phone: json['phone'] ?? '',
-      avatar: json['avatar'],
       avatarPath: json['avatar_path'],
       roleId: roleId,
       roleCode: json['role_code'] ?? '',
@@ -164,7 +131,6 @@ class UserInfoResponse {
       'user_id': userId,
       'name': name,
       'phone': phone,
-      'avatar': avatar,
       'avatar_path': avatarPath,
       'role_id': roleId,
       'role_code': roleCode,
