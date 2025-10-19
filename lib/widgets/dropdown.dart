@@ -18,7 +18,8 @@ class MyDropdown extends StatefulWidget {
   final Color? textColor;
   final double borderRadius;
   final bool showIcon;
-  final dynamic icon; // Hỗ trợ cả IconData và Widget; null thì không có prefix icon
+  final dynamic
+  icon; // Hỗ trợ cả IconData và Widget; null thì không có prefix icon
   final IconData? dropdownIcon;
   final String? title;
   final bool showTitle;
@@ -123,7 +124,7 @@ class _MyDropdownState extends State<MyDropdown> {
         (item) => item.value == _selectedValue,
         orElse: () => DropdownItem(value: '', label: widget.hintText ?? 'Chọn'),
       );
-      
+
       if (selectedItem.icon != null) {
         if (selectedItem.icon is IconData) {
           return Icon(
@@ -136,7 +137,7 @@ class _MyDropdownState extends State<MyDropdown> {
         }
       }
     }
-    
+
     // Fallback to provided icon
     if (widget.icon is IconData) {
       return Icon(
@@ -169,21 +170,25 @@ class _MyDropdownState extends State<MyDropdown> {
           onTap: widget.enabled ? _showDropdown : null,
           child: Container(
             height: widget.height ?? 44,
-            padding: widget.padding ?? const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            padding:
+                widget.padding ??
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
             decoration: BoxDecoration(
               color: widget.backgroundColor ?? DesignTokens.surfacePrimary,
               borderRadius: BorderRadius.circular(widget.borderRadius),
               border: Border.all(
-                color: widget.hasError 
-                    ? DesignTokens.alerts['error']!
-                    : widget.borderColor ?? DesignTokens.borderPrimary,
+                color:
+                    widget.hasError
+                        ? DesignTokens.alerts['error']!
+                        : widget.borderColor ?? DesignTokens.borderPrimary,
                 width: widget.hasError ? 2 : 1,
               ),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                if (widget.showIcon && (widget.icon != null || _selectedValue != null)) ...[
+                if (widget.showIcon &&
+                    (widget.icon != null || _selectedValue != null)) ...[
                   _buildSelectedItemIcon(),
                   const SizedBox(width: 4),
                 ],
@@ -195,9 +200,17 @@ class _MyDropdownState extends State<MyDropdown> {
                     textColor: _isShowingHint() ? 'placeholder' : 'primary',
                   ),
                 ),
-                _isOpen 
-                    ? SvgIcon(svgPath: 'assets/icons_final/arrow-up.svg', width: 16, height: 16)
-                    : SvgIcon(svgPath: 'assets/icons_final/arrow-down.svg', width: 16, height: 16),
+                _isOpen
+                    ? SvgIcon(
+                      svgPath: 'assets/icons_final/arrow-up.svg',
+                      width: 16,
+                      height: 16,
+                    )
+                    : SvgIcon(
+                      svgPath: 'assets/icons_final/arrow-down.svg',
+                      width: 16,
+                      height: 16,
+                    ),
               ],
             ),
           ),
@@ -226,17 +239,12 @@ class _MyDropdownState extends State<MyDropdown> {
       backgroundColor: Colors.transparent,
       builder: (BuildContext context) {
         return Container(
-          margin: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.1),
-                blurRadius: 10,
-                offset: const Offset(0, 5),
-              ),
-            ],
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(16),
+              topRight: Radius.circular(16),
+            ),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -245,7 +253,6 @@ class _MyDropdownState extends State<MyDropdown> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.grey[50],
                   borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(16),
                     topRight: Radius.circular(16),
@@ -256,10 +263,10 @@ class _MyDropdownState extends State<MyDropdown> {
                     if (widget.showIcon && widget.icon != null) ...[
                       widget.icon is IconData
                           ? Icon(
-                              widget.icon as IconData,
-                              color: Colors.blue[600],
-                              size: 20,
-                            )
+                            widget.icon as IconData,
+                            color: Colors.blue[600],
+                            size: 20,
+                          )
                           : widget.icon as Widget,
                       const SizedBox(width: 12),
                     ],
@@ -277,16 +284,16 @@ class _MyDropdownState extends State<MyDropdown> {
                           _isOpen = false;
                         });
                       },
-                      child: Icon(
-                        Icons.close,
-                        color: Colors.grey[600],
-                        size: 20,
+                      child: SvgIcon(
+                        svgPath: 'assets/icons_final/close.svg',
+                        width: 16,
+                        height: 16,
                       ),
                     ),
                   ],
                 ),
               ),
-              
+
               // Items list
               Flexible(
                 child: ListView.builder(
@@ -295,49 +302,60 @@ class _MyDropdownState extends State<MyDropdown> {
                   itemBuilder: (context, index) {
                     final item = widget.items[index];
                     final isSelected = item.value == _selectedValue;
-                    
+
                     return ListTile(
-                      leading: widget.showIcon && (item.icon != null || widget.icon != null)
-                          ? (item.icon != null
-                              ? (item.icon is IconData
-                                  ? Icon(
-                                      item.icon as IconData,
-                                      color: isSelected ? Colors.blue[600] : Colors.grey[400],
-                                      size: 20,
-                                    )
-                                  : item.icon as Widget)
-                              : (widget.icon is IconData
-                                  ? Icon(
-                                      widget.icon as IconData,
-                                      color: isSelected ? Colors.blue[600] : Colors.grey[400],
-                                      size: 20,
-                                    )
-                                  : widget.icon as Widget))
-                          : null,
+                      leading:
+                          widget.showIcon &&
+                                  (item.icon != null || widget.icon != null)
+                              ? (item.icon != null
+                                  ? (item.icon is IconData
+                                      ? Icon(
+                                        item.icon as IconData,
+                                        color:
+                                            isSelected
+                                                ? Colors.blue[600]
+                                                : Colors.grey[400],
+                                        size: 20,
+                                      )
+                                      : item.icon as Widget)
+                                  : (widget.icon is IconData
+                                      ? Icon(
+                                        widget.icon as IconData,
+                                        color:
+                                            isSelected
+                                                ? Colors.blue[600]
+                                                : Colors.grey[400],
+                                        size: 20,
+                                      )
+                                      : widget.icon as Widget))
+                              : null,
                       title: Text(
                         item.label,
                         style: TextStyle(
                           fontSize: 16,
-                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                          fontWeight:
+                              isSelected ? FontWeight.w600 : FontWeight.w400,
                           color: isSelected ? Colors.blue[600] : Colors.black87,
                         ),
                       ),
-                      subtitle: item.description != null
-                          ? Text(
-                              item.description!,
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey[600],
-                              ),
-                            )
-                          : null,
-                      trailing: isSelected
-                          ? Icon(
-                              Icons.check_circle,
-                              color: Colors.blue[600],
-                              size: 20,
-                            )
-                          : null,
+                      subtitle:
+                          item.description != null
+                              ? Text(
+                                item.description!,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey[600],
+                                ),
+                              )
+                              : null,
+                      trailing:
+                          isSelected
+                              ? Icon(
+                                Icons.check_circle,
+                                color: Colors.blue[600],
+                                size: 20,
+                              )
+                              : null,
                       onTap: () {
                         setState(() {
                           _selectedValue = item.value;

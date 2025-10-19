@@ -8,6 +8,7 @@ import 'package:gara/providers/user_provider.dart';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
+import 'package:gara/services/messaging/fcm_token_service.dart';
 
 class AuthService {
   // User registration
@@ -40,8 +41,12 @@ class AuthService {
       includeAuth: false, // Login doesn't need auth
     );
 
-    // Log raw response for debugging
-    DebugLogger.largeJson('LOGIN /auth/user-login RESPONSE', response);
+    // Log raw response for debugging (sanitize error objects)
+    final sanitized = Map<String, dynamic>.from(response);
+    if (sanitized.containsKey('error') && sanitized['error'] is! String) {
+      sanitized['error'] = sanitized['error'].toString();
+    }
+    DebugLogger.largeJson('LOGIN /auth/user-login RESPONSE', sanitized);
     
     final loginResponse = UserLoginResponse.fromJson(response);
     
@@ -51,9 +56,18 @@ class AuthService {
         accessToken: loginResponse.accessToken!,
         refreshToken: loginResponse.refreshToken,
       );
-      
-      // Initialize user provider với thông tin mới
-      await UserProvider().initializeUserInfo();
+
+      // Clear cache cũ (nếu có) rồi ép tải lại thông tin người dùng mới
+      final userProvider = UserProvider();
+      userProvider.clearUserInfo();
+      await userProvider.refreshUserInfo();
+
+      // Đăng ký FCM token sau khi đăng nhập thành công
+      try {
+        await FcmTokenService.getAndRegisterFcmToken();
+      } catch (e) {
+        DebugLogger.log('FCM register failed after user login: $e');
+      }
     }
     
     return loginResponse;
@@ -232,6 +246,13 @@ class AuthService {
       
       // Initialize user provider với thông tin mới
       await UserProvider().initializeUserInfo();
+
+      // Đăng ký FCM token ngay sau khi có access token
+      try {
+        await FcmTokenService.getAndRegisterFcmToken();
+      } catch (e) {
+        DebugLogger.log('FCM register failed after garage registration: $e');
+      }
     }
     
     return garageResponse;

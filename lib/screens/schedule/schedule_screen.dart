@@ -30,6 +30,8 @@ class _ScheduleScreenState extends State<ScheduleScreen>
   BookingPagination? _pagination;
   int _page = 1;
   final int _perPage = 10;
+  // Key để neo menu lọc ngay dưới nút "Lọc"
+  final GlobalKey _filterKey = GlobalKey();
   // Lọc theo nhiều trạng thái: lưu set và build CSV khi gọi API
   final Set<int> _selectedStatuses = <int>{};
   bool _isLoading = false;
@@ -37,15 +39,29 @@ class _ScheduleScreenState extends State<ScheduleScreen>
   final ScrollController _scrollController = ScrollController();
 
   // Summary sticky bar (chỉ cho gara)
-  DateTime _fromDate = DateTime(DateTime.now().year, DateTime.now().month - 1, 1);
-  DateTime _toDate = DateTime.now();
+  DateTime _fromDate = DateTime(
+  DateTime.now().year,
+  DateTime.now().month,
+  1,
+  );
+  DateTime _toDate = DateTime(
+    DateTime.now().year,
+    DateTime.now().month + 1,
+    0,
+    23,
+    59,
+    59,
+  );
   bool _isCalculating = false;
   int? _totalRevenue; // total_revenue (G)
   int? _totalUnpaid; // total_unpaid (10%*G - V - C)
   int? _totalPaid; // total_paid (C + V)
   int? _totalPlatformFee; // total_platform_fee (10% * G)
   bool _summaryExpanded = true;
-  DateTime _selectedMonth = DateTime(DateTime.now().year, DateTime.now().month - 1);
+  DateTime _selectedMonth = DateTime(
+    DateTime.now().year,
+    DateTime.now().month,
+  );
 
   // Banner thông báo phí nền tảng
   DateTime? _dueDate; // Ngày hết hạn (sẽ được tính toán)
@@ -80,13 +96,16 @@ class _ScheduleScreenState extends State<ScheduleScreen>
     // Chỉ gọi tính toán cho tài khoản gara sau 1 frame để có context
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final isGarage = context.read<UserProvider>().isGarageUser;
-      DebugLogger.largeJson('isGarage in addPostFrameCallback', isGarage);
+      // DebugLogger.largeJson('isGarage in addPostFrameCallback', isGarage);
       if (isGarage) {
-        DebugLogger.largeJson('Calling _calculateDueDate', 'start');
+        // DebugLogger.largeJson('Calling _calculateDueDate', 'start');
         _calculateDueDate();
         _fetchSummary();
       } else {
-        DebugLogger.largeJson('Not garage user, skipping _calculateDueDate', 'skip');
+        // DebugLogger.largeJson(
+        //   'Not garage user, skipping _calculateDueDate',
+        //   'skip',
+        // );
       }
     });
   }
@@ -163,18 +182,24 @@ class _ScheduleScreenState extends State<ScheduleScreen>
 
   void _calculateDueDate() {
     final now = DateTime.now();
-    DebugLogger.largeJson('now.day', now.day);
-    DebugLogger.largeJson('now.month', now.month);
-    DebugLogger.largeJson('now.year', now.year);
-    
+    // DebugLogger.largeJson('now.day', now.day);
+    // DebugLogger.largeJson('now.month', now.month);
+    // DebugLogger.largeJson('now.year', now.year);
+
     if (now.day <= 15) {
       // Nếu ngày hiện tại <= 15, hết hạn ngày 15 tháng này
       _dueDate = DateTime(now.year, now.month, 15);
-      DebugLogger.largeJson('dueDate calculated (this month)', _dueDate!.toIso8601String());
+      // DebugLogger.largeJson(
+      //   'dueDate calculated (this month)',
+      //   _dueDate!.toIso8601String(),
+      // );
     } else {
       // Nếu ngày hiện tại > 15, hết hạn ngày 15 tháng sau
       _dueDate = DateTime(now.year, now.month + 1, 15);
-      DebugLogger.largeJson('dueDate calculated (next month)', _dueDate!.toIso8601String());
+      // DebugLogger.largeJson(
+      //   'dueDate calculated (next month)',
+      //   _dueDate!.toIso8601String(),
+      // );
     }
   }
 
@@ -233,22 +258,22 @@ class _ScheduleScreenState extends State<ScheduleScreen>
         ),
         toDate: DateTime(_toDate.year, _toDate.month, _toDate.day, 23, 59, 59),
       );
-      debugPrint(
-        '[Schedule] calculateGarageOrdersPrice raw: ${res.toString()}',
-      );
+      // debugPrint(
+      //   '[Schedule] calculateGarageOrdersPrice raw: ${res.toString()}',
+      // );
       final data = (res['data'] ?? {}) as Map<String, dynamic>;
-      debugPrint('[Schedule] data keys: ${data.keys.toList()}');
+      // debugPrint('[Schedule] data keys: ${data.keys.toList()}');
       final summary = (data['summary'] ?? {}) as Map<String, dynamic>;
-      debugPrint('[Schedule] summary: ${summary.toString()}');
+      // debugPrint('[Schedule] summary: ${summary.toString()}');
       setState(() {
         _totalRevenue = (summary['total_revenue'] ?? 0) as int;
         _totalPlatformFee = (summary['total_platform_fee'] ?? 0) as int;
         _totalPaid = (summary['total_paid'] ?? 0) as int;
         _totalUnpaid = (summary['total_unpaid'] ?? 0) as int;
       });
-      debugPrint(
-        '[Schedule] parsed => total_revenue=${_totalRevenue}, total_platform_fee=${_totalPlatformFee}, total_paid=${_totalPaid}, total_unpaid=${_totalUnpaid}',
-      );
+      // debugPrint(
+      //   '[Schedule] parsed => total_revenue=${_totalRevenue}, total_platform_fee=${_totalPlatformFee}, total_paid=${_totalPaid}, total_unpaid=${_totalUnpaid}',
+      // );
     } catch (e) {
       if (mounted) {
         AppToastHelper.showError(
@@ -269,121 +294,70 @@ class _ScheduleScreenState extends State<ScheduleScreen>
       else
         for (final s in BookingStatus.values) s.value: s.displayName,
     };
-    final temp = Set<int>.from(_selectedStatuses);
-    await showModalBottomSheet(
-      context: context,
-      isScrollControlled: false,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+
+    // Tính vị trí của nút lọc để neo menu ngay bên dưới
+    final RenderBox? button =
+        _filterKey.currentContext?.findRenderObject() as RenderBox?;
+    final RenderBox overlay =
+        Overlay.of(context).context.findRenderObject() as RenderBox;
+
+    final Offset buttonOffset =
+        button?.localToGlobal(Offset.zero) ?? const Offset(0, 0);
+    final Size buttonSize = button?.size ?? const Size(0, 0);
+
+    final RelativeRect position = RelativeRect.fromRect(
+      Rect.fromLTWH(
+        buttonOffset.dx,
+        buttonOffset.dy + buttonSize.height,
+        buttonSize.width,
+        0,
       ),
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (ctx, setModalState) {
-            return Container(
-              color: DesignTokens.surfacePrimary,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const MyText(
-                      text: 'Lọc trạng thái',
-                      textStyle: 'title',
-                      textSize: '16',
-                      textColor: 'primary',
-                    ),
-                    const SizedBox(height: 12),
-                    ConstrainedBox(
-                      constraints: BoxConstraints(
-                        maxHeight: MediaQuery.of(ctx).size.height * 0.6,
-                      ),
-                      child: GridView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2,
-                              childAspectRatio: 3.5,
-                              crossAxisSpacing: 12,
-                              mainAxisSpacing: 12,
-                            ),
-                        itemCount: statusLabels.length,
-                        itemBuilder: (context, index) {
-                          final entry = statusLabels.entries.elementAt(index);
-                          return StatusWidget(
-                            status: entry.key,
-                            type:
-                                isGarage
-                                    ? StatusType.quotation
-                                    : StatusType.booking,
-                            isSelected: temp.contains(entry.key),
-                            height: 40,
-                            onTap: () {
-                              setModalState(() {
-                                if (temp.contains(entry.key)) {
-                                  temp.remove(entry.key);
-                                } else {
-                                  temp.add(entry.key);
-                                }
-                              });
-                            },
-                            onRemove: () {
-                              setModalState(() {
-                                temp.remove(entry.key);
-                              });
-                            },
-                          );
-                        },
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        SizedBox(
-                          height: 40,
-                          width: double.infinity,
-                          child: MyButton(
-                            text: 'Áp dụng',
-                            buttonType: ButtonType.primary,
-                            onPressed: () {
-                              Navigator.pop(ctx);
-                              setState(() {
-                                _selectedStatuses
-                                  ..clear()
-                                  ..addAll(temp);
-                              });
-                              _fetchPage(reset: true);
-                            },
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        SizedBox(
-                          height: 40,
-                          width: double.infinity,
-                          child: MyButton(
-                            text: 'Xóa lọc',
-                            buttonType: ButtonType.secondary,
-                            onPressed: () {
-                              setModalState(() => temp.clear());
-                              Navigator.pop(ctx);
-                              setState(() {
-                                _selectedStatuses..clear();
-                              });
-                              _fetchPage(reset: true);
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+      Offset.zero & overlay.size,
+    );
+
+    final int? selected = await showMenu<int>(
+      context: context,
+      position: position,
+      color: Colors.white,
+      items: [
+        for (final entry in statusLabels.entries)
+          PopupMenuItem<int>(
+            value: entry.key,
+            height: 36,
+            padding: EdgeInsets.zero,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+              child: SizedBox(
+                height: 32,
+                child: Center(
+                  child: StatusWidget(
+                    status: entry.key,
+                    type: isGarage ? StatusType.quotation : StatusType.booking,
+                    isSelected: _selectedStatuses.contains(entry.key),
+                    height: 24,
+                  ),
                 ),
               ),
-            );
-          },
-        );
-      },
+            ),
+          ),
+      ],
     );
+
+    if (selected != null) {
+      setState(() {
+        if (_selectedStatuses.contains(selected)) {
+          _selectedStatuses.remove(selected);
+        } else {
+          _selectedStatuses.add(selected);
+        }
+      });
+      _fetchPage(reset: true);
+      // Refetch summary khi lọc để cập nhật thông tin tài chính
+      final isGarage = context.read<UserProvider>().isGarageUser;
+      if (isGarage) {
+        _fetchSummary();
+      }
+    }
   }
 
   @override
@@ -436,6 +410,7 @@ class _ScheduleScreenState extends State<ScheduleScreen>
                     onTap: _openStatusFilter,
                     borderRadius: BorderRadius.circular(12),
                     child: Container(
+                      key: _filterKey,
                       padding: const EdgeInsets.symmetric(
                         horizontal: 10,
                         vertical: 6,
@@ -463,7 +438,7 @@ class _ScheduleScreenState extends State<ScheduleScreen>
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: SizedBox(
                       height: 32,
@@ -471,11 +446,11 @@ class _ScheduleScreenState extends State<ScheduleScreen>
                         scrollDirection: Axis.horizontal,
                         reverse: false,
                         child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
                             for (final st in _selectedStatuses)
                               Padding(
-                                padding: const EdgeInsets.only(left: 6),
+                                padding:  EdgeInsets.only(left: st == _selectedStatuses.first ? 0 : 6),
                                 child: StatusWidget(
                                   status: st,
                                   type:
@@ -483,12 +458,17 @@ class _ScheduleScreenState extends State<ScheduleScreen>
                                           ? StatusType.quotation
                                           : StatusType.booking,
                                   isSelected: true,
-                                  height: 28,
+                                  height: 24,
                                   onRemove: () {
                                     setState(() {
                                       _selectedStatuses.remove(st);
                                     });
                                     _fetchPage(reset: true);
+                                    // Refetch summary khi xóa filter
+                                    final isGarage = context.read<UserProvider>().isGarageUser;
+                                    if (isGarage) {
+                                      _fetchSummary();
+                                    }
                                   },
                                 ),
                               ),
@@ -502,7 +482,14 @@ class _ScheduleScreenState extends State<ScheduleScreen>
             ),
             Expanded(
               child: RefreshIndicator(
-                onRefresh: () => _fetchPage(reset: true),
+                onRefresh: () async {
+                  await _fetchPage(reset: true);
+                  // Refetch summary khi refresh
+                  final isGarage = context.read<UserProvider>().isGarageUser;
+                  if (isGarage) {
+                    await _fetchSummary();
+                  }
+                },
                 child: ListView.builder(
                   controller: _scrollController,
                   physics: const AlwaysScrollableScrollPhysics(),
@@ -510,7 +497,9 @@ class _ScheduleScreenState extends State<ScheduleScreen>
                   itemCount:
                       _items.isEmpty
                           ? (_isLoading ? 1 : 1)
-                          : _items.length + (_hasMore ? 1 : 0) + (isGarage && (_totalUnpaid ?? 0) > 0 ? 1 : 0),
+                          : _items.length +
+                              (_hasMore ? 1 : 0) +
+                              (isGarage && (_totalUnpaid ?? 0) > 0 ? 1 : 0),
                   itemBuilder: (context, index) {
                     // Hiển thị banner unpaid ở đầu danh sách
                     if (isGarage && (_totalUnpaid ?? 0) > 0 && index == 0) {
@@ -519,24 +508,31 @@ class _ScheduleScreenState extends State<ScheduleScreen>
                         child: _buildUnpaidBanner(),
                       );
                     }
-                    
+
                     // Điều chỉnh index cho các item khác
-                    final dataIndex = isGarage && (_totalUnpaid ?? 0) > 0 ? index - 1 : index;
-                    
+                    final dataIndex =
+                        isGarage && (_totalUnpaid ?? 0) > 0 ? index - 1 : index;
+
                     if (_items.isEmpty) {
                       if (_isLoading) {
                         return Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          child: Skeleton.box(height: 120),
+                          padding: const EdgeInsets.only(top: 16),
+                          child: SizedBox(
+                            height: MediaQuery.of(context).size.height,
+                            child: SkeletonList(itemHeight: 150, itemCount: 3,),
+                          ),
                         );
                       }
                       return _buildEmptyState();
                     }
                     if (dataIndex >= _items.length) {
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        child: Skeleton.box(height: 72),
-                      );
+                       return Padding(
+                          padding: const EdgeInsets.only(top: 16),
+                          child: SizedBox(
+                            height: MediaQuery.of(context).size.height,
+                            child: SkeletonList(itemHeight: 150, itemCount: 3,),
+                          ),
+                        );
                     }
                     final item = _items[dataIndex];
                     return _buildOrderCard(item, isGarage);
@@ -567,6 +563,7 @@ class _ScheduleScreenState extends State<ScheduleScreen>
       if (success) {
         if (mounted) AppToastHelper.showSuccess(context, message: message);
         await _fetchPage(reset: true);
+        await _fetchSummary();
       } else {
         if (mounted) AppToastHelper.showError(context, message: message);
       }
@@ -590,6 +587,11 @@ class _ScheduleScreenState extends State<ScheduleScreen>
       if (success) {
         if (mounted) AppToastHelper.showSuccess(context, message: message);
         await _fetchPage(reset: true);
+        // Refetch summary khi hủy đơn hàng
+        final isGarage = context.read<UserProvider>().isGarageUser;
+        if (isGarage) {
+          await _fetchSummary();
+        }
       } else {
         if (mounted) AppToastHelper.showError(context, message: message);
       }
@@ -598,6 +600,60 @@ class _ScheduleScreenState extends State<ScheduleScreen>
         AppToastHelper.showError(context, message: 'Lỗi: ${e.toString()}');
       }
     }
+  }
+
+  void _onChat(BookingModel item) {
+    final quotation = item.quotation;
+    final request = item.requestService;
+    // Gọn: chỉ log kết quả cuối cùng và nguồn lấy
+
+    // requestId: ưu tiên từ quotation, fallback sang request
+    int requestId = quotation?.requestServiceId ?? 0;
+    if (requestId == 0) {
+      requestId = request?.id ?? 0;
+    }
+
+    // Gara id: ưu tiên userId; nếu = 0 thì fallback sang id
+    int garaUserId = (quotation?.inforGarage?.userId ?? 0) != 0
+        ? (quotation?.inforGarage?.userId ?? 0)
+        : (quotation?.inforGarage?.id ?? 0);
+    
+
+    // User id: ưu tiên userId; nếu = 0 thì fallback sang id
+    int userId = (request?.inforUser?.userId ?? 0) != 0
+        ? (request?.inforUser?.userId ?? 0)
+        : (request?.inforUser?.id ?? 0);
+    
+
+    // Bổ sung fallback theo vai trò đăng nhập
+    final provider = context.read<UserProvider>();
+    final int currentUserId = provider.userInfo?.userId ?? 0;
+    final bool isGarageUser = provider.isGarageUser;
+    if (isGarageUser && (garaUserId == 0) && currentUserId != 0) {
+      garaUserId = currentUserId;
+    }
+    if (!isGarageUser && (userId == 0) && currentUserId != 0) {
+      userId = currentUserId;
+    }
+
+    if (requestId == 0 || garaUserId == 0 || userId == 0) {
+      AppToastHelper.showError(
+        context,
+        message: 'Lỗi mạng! Vui lòng thử lại sau!',
+      );
+      DebugLogger.log('[Schedule] _onChat missing | isGarageUser='
+          '$isGarageUser currentUserId=$currentUserId requestId=$requestId '
+          'garaUserId=$garaUserId userId=$userId');
+      return;
+    }
+
+    final String roomId = 'room_req${requestId}_${garaUserId}_$userId';
+    DebugLogger.log('[Schedule] _onChat room: $roomId');
+    Navigator.pushNamed(
+      context,
+      '/chat-room',
+      arguments: roomId,
+    );
   }
 
   Widget _buildOrderCard(BookingModel item, bool isGarage) {
@@ -780,7 +836,7 @@ class _ScheduleScreenState extends State<ScheduleScreen>
         );
       }
       buttons.addAll([
-        _buildBtn('Nhắn tin', ButtonType.secondary, () {}),
+        _buildBtn('Nhắn tin', ButtonType.secondary, () => _onChat(item)),
         _buildBtn('Liên hệ', ButtonType.secondary, () {}),
       ]);
     } else {
@@ -789,7 +845,7 @@ class _ScheduleScreenState extends State<ScheduleScreen>
         // Chờ báo giá
         buttons.addAll([
           _buildBtn('Hủy đặt lịch', ButtonType.red, () => _onCancelOrder(item)),
-          _buildBtn('Nhắn tin', ButtonType.secondary, () {}),
+          _buildBtn('Nhắn tin', ButtonType.secondary, () => _onChat(item)),
           _buildBtn('Liên hệ', ButtonType.secondary, () {}),
         ]);
       } else if (bookingStatus == 2) {
@@ -805,7 +861,7 @@ class _ScheduleScreenState extends State<ScheduleScreen>
       } else {
         // Các trạng thái khác: mặc định hiển thị liên hệ/nhắn tin
         buttons.addAll([
-          _buildBtn('Nhắn tin', ButtonType.primary, () {}),
+          _buildBtn('Nhắn tin', ButtonType.primary, () => _onChat(item)),
           _buildBtn('Liên hệ', ButtonType.secondary, () {}),
         ]);
       }
@@ -1044,13 +1100,13 @@ class _ScheduleScreenState extends State<ScheduleScreen>
 
   Widget _buildUnpaidBanner() {
     final unpaidAmount = _totalUnpaid ?? 0;
-    DebugLogger.largeJson('_dueDate is null?', _dueDate == null);
+    // DebugLogger.largeJson('_dueDate is null?', _dueDate == null);
     if (_dueDate != null) {
-      DebugLogger.largeJson('_dueDate value', _dueDate!.toIso8601String());
+      // DebugLogger.largeJson('_dueDate value', _dueDate!.toIso8601String());
     }
     final dueDate = _dueDate ?? DateTime.now();
-    DebugLogger.largeJson('unpaidAmount', unpaidAmount);
-    DebugLogger.largeJson('dueDate (final)', dueDate.toIso8601String());
+    // DebugLogger.largeJson('unpaidAmount', unpaidAmount);
+    // DebugLogger.largeJson('dueDate (final)', dueDate.toIso8601String());
     final now = DateTime.now();
     final isOverdue = now.isAfter(dueDate);
 
@@ -1060,7 +1116,6 @@ class _ScheduleScreenState extends State<ScheduleScreen>
         color: DesignTokens.surfacePrimary,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: DesignTokens.borderSecondary),
-        
       ),
       child: Padding(
         padding: const EdgeInsets.all(12),

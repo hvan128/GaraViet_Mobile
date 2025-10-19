@@ -31,7 +31,7 @@ class MyHeader extends StatefulWidget {
     this.onRightPressed,
     this.showLeftButton = true,
     this.showRightButton = false,
-    this.height = 65,
+    this.height = 56,
     this.backgroundColor = Colors.transparent,
     this.customTitle,
     this.leftIconSize = 24,
@@ -49,10 +49,9 @@ class _HeaderState extends State<MyHeader> {
   Widget build(BuildContext context) {
     return Container(
       height: widget.height,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 20),
       decoration: BoxDecoration(
         color: widget.backgroundColor,
-        
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -63,21 +62,26 @@ class _HeaderState extends State<MyHeader> {
             children: [
               if (widget.showLeftButton) ...[
                 GestureDetector(
+                  behavior: HitTestBehavior.opaque,
                   onTap: widget.onLeftPressed ?? () => Navigator.pop(context),
-                  child: Container(
-                    width: widget.leftIconSize,
-                    height: widget.leftIconSize,
-                    padding: const EdgeInsets.all(4),
-                    child: widget.leftIcon ?? 
-                      SvgIcon(
-                        svgPath: widget.srcLeftIcon ?? "assets/icons_final/arrow-left.svg",
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+                    child: Center(
+                      child: SizedBox(
                         width: widget.leftIconSize,
                         height: widget.leftIconSize,
-                        color: widget.leftIconColor,
+                        child: widget.leftIcon ??
+                            SvgIcon(
+                              svgPath: widget.srcLeftIcon ?? "assets/icons_final/arrow-left.svg",
+                              width: widget.leftIconSize,
+                              height: widget.leftIconSize,
+                              color: widget.leftIconColor,
+                            ),
                       ),
+                    ),
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 8),
               ],
               // Title
               widget.customTitle ?? 
@@ -92,18 +96,40 @@ class _HeaderState extends State<MyHeader> {
           
           // Right side
           if (widget.showRightButton)
-            GestureDetector(
-              onTap: widget.onRightPressed,
-              child: Padding(
-                padding: const EdgeInsets.all(4),
-                child: widget.rightIcon ?? 
-                  SvgIcon(
-                    svgPath: widget.srcRightIcon ?? "assets/icons_final/close.svg",
-                    width: widget.rightIconSize,
-                    height: widget.rightIconSize,
-                    color: widget.rightIconColor,
+            Builder(
+              builder: (context) {
+                // Nếu có custom rightIcon và không có onRightPressed,
+                // render trực tiếp để widget con tự xử lý tap của nó
+                if (widget.rightIcon != null && widget.onRightPressed == null) {
+                  return Align(
+                    alignment: Alignment.centerRight,
+                    child: Padding(
+                      padding: const EdgeInsets.all(4),
+                      child: widget.rightIcon!,
+                    ),
+                  );
+                }
+
+                // Ngược lại, dùng GestureDetector để xử lý onRightPressed.
+                // Giữ minHeight 44 cho vùng chạm, không ép width/height của widget con
+                return GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: widget.onRightPressed,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(minHeight: 44),
+                    child: Padding(
+                      padding: const EdgeInsets.all(4),
+                      child: widget.rightIcon ??
+                          SvgIcon(
+                            svgPath: widget.srcRightIcon ?? "assets/icons_final/close.svg",
+                            width: widget.rightIconSize,
+                            height: widget.rightIconSize,
+                            color: widget.rightIconColor,
+                          ),
+                    ),
                   ),
-              ),
+                );
+              },
             ),
         ],
       ),

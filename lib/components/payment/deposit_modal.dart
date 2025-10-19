@@ -321,40 +321,6 @@ class _DepositModalState extends State<DepositModal> {
     }
   }
 
-  Future<void> _manualUpdateStatus() async {
-    if (_paymentData == null) return;
-
-    try {
-      final result = await PaymentService.manualUpdatePaymentStatus(
-        transactionId: _paymentData!.transactionId,
-      );
-
-      // Kiểm tra mounted trước khi hiển thị thông báo
-      if (!mounted) return;
-
-      if (result['success']) {
-        AppToastHelper.showSuccess(
-          context,
-          message: 'Đã cập nhật trạng thái thanh toán',
-        );
-        widget.onPaymentSuccess?.call();
-        Navigator.of(context).pop();
-      } else {
-        AppToastHelper.showError(
-          context,
-          message: result['message'] ?? 'Cập nhật thất bại',
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        AppToastHelper.showError(
-          context,
-          message: 'Lỗi khi cập nhật: $e',
-        );
-      }
-    }
-  }
-
   Future<void> _checkStatusAndClose() async {
     if (_paymentData == null) return;
     try {
@@ -649,29 +615,4 @@ class _DepositModalState extends State<DepositModal> {
     return result.toString();
   }
 
-  String _getStatusText(int status) {
-    switch (status) {
-      case PaymentModel.pending:
-        return 'Chờ thanh toán';
-      case PaymentModel.completed:
-        return 'Đã thanh toán';
-      case PaymentModel.expired:
-        return 'Hết hạn';
-      default:
-        return 'Không xác định';
-    }
-  }
-
-  String _getStatusColor(int status) {
-    switch (status) {
-      case PaymentModel.pending:
-        return 'secondary';
-      case PaymentModel.completed:
-        return 'success';
-      case PaymentModel.expired:
-        return 'error';
-      default:
-        return 'tertiary';
-    }
-  }
 }

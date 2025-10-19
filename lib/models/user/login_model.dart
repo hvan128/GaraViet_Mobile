@@ -3,12 +3,16 @@ class UserLoginRequest {
   final String password;
   final String deviceId;
   final bool rememberMe;
+  final String? fcmToken;
+  final String? deviceType; // android | ios | web
 
   UserLoginRequest({
     required this.phone,
     required this.password,
     required this.deviceId,
     required this.rememberMe,
+    this.fcmToken,
+    this.deviceType,
   });
 
   Map<String, dynamic> toJson() {
@@ -17,6 +21,8 @@ class UserLoginRequest {
       'password': password,
       'device_id': deviceId,
       'remember_me': rememberMe,
+      if (fcmToken != null && fcmToken!.isNotEmpty) 'fcm_token': fcmToken,
+      if (deviceType != null && deviceType!.isNotEmpty) 'device_type': deviceType,
     };
   }
 }

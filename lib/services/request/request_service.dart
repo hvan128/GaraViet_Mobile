@@ -29,22 +29,29 @@ class RequestServiceApi {
       queryParams['search'] = search;
     }
 
+    debugPrint('[RequestServiceApi.getAllRequests] queryParams=$queryParams');
     final response = await BaseApiService.get(
       '/manager-request/get-all-requests',
       queryParams: queryParams,
     );
-    debugPrint('[RequestServiceApi.getAllRequests] queryParams=$queryParams');
     debugPrint('[RequestServiceApi.getAllRequests] rawResponse=$response');
 
-    // Response shape: { data: { requests: [], pagination: {} } }
     final dynamic data = response['data'];
-    debugPrint('[RequestServiceApi.getAllRequests] data=$data');
+    try {
+      if (data is Map<String, dynamic>) {
+        final list = data['requests'];
+        if (list is List && list.isNotEmpty && list.first is Map<String, dynamic>) {
+          final Map<String, dynamic> first = list.first as Map<String, dynamic>;
+          debugPrint('[RequestServiceApi.getAllRequests] firstItem.keys=${first.keys.toList()}');
+        }
+      }
+    } catch (e) {
+      debugPrint('[RequestServiceApi.getAllRequests] debug parse error: $e');
+    }
     
     if (data is Map<String, dynamic>) {
       final requestResponse = RequestListResponse.fromJson(data);
-      debugPrint('[RequestServiceApi.getAllRequests] parsedItems=${requestResponse.requests.length}, pagination=${requestResponse.pagination.total}');
-      debugPrint('[RequestServiceApi.getAllRequests] requests=${requestResponse.requests.map((r) => 'id:${r.id}, status:${r.status}, code:${r.requestCode}').toList()}');
-      return requestResponse;
+     return requestResponse;
     }
 
     // Fallback: return empty response
@@ -89,21 +96,29 @@ class RequestServiceApi {
       queryParams['user_id'] = userId.toString();
     }
 
+    debugPrint('[RequestServiceApi.getAllRequestsForGarage] queryParams=$queryParams');
     final response = await BaseApiService.get(
       '/manager-request/get-all-requests-garage',
       queryParams: queryParams,
     );
-    debugPrint('[RequestServiceApi.getAllRequestsForGarage] queryParams=$queryParams');
     debugPrint('[RequestServiceApi.getAllRequestsForGarage] rawResponse=$response');
-
+   
     // Response shape: { data: { requests: [], pagination: {} } }
     final dynamic data = response['data'];
-    debugPrint('[RequestServiceApi.getAllRequestsForGarage] data=$data');
+    try {
+      if (data is Map<String, dynamic>) {
+        final list = data['requests'];
+        if (list is List && list.isNotEmpty && list.first is Map<String, dynamic>) {
+          final Map<String, dynamic> first = list.first as Map<String, dynamic>;
+          debugPrint('[RequestServiceApi.getAllRequestsForGarage] firstItem.keys=${first.keys.toList()}');
+        }
+      }
+    } catch (e) {
+      debugPrint('[RequestServiceApi.getAllRequestsForGarage] debug parse error: $e');
+    }
     
     if (data is Map<String, dynamic>) {
       final requestResponse = RequestListResponse.fromJson(data);
-      debugPrint('[RequestServiceApi.getAllRequestsForGarage] parsedItems=${requestResponse.requests.length}, pagination=${requestResponse.pagination.total}');
-      debugPrint('[RequestServiceApi.getAllRequestsForGarage] requests=${requestResponse.requests.map((r) => 'id:${r.id}, status:${r.status}, code:${r.requestCode}').toList()}');
       return requestResponse;
     }
 

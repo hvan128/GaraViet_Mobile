@@ -8,6 +8,7 @@ import 'package:gara/widgets/button.dart';
 import 'package:gara/navigation/navigation.dart';
 import 'package:gara/services/auth/auth_service.dart';
 import 'package:gara/widgets/app_toast.dart';
+import 'package:gara/services/messaging/push_notification_service.dart';
 import 'package:gara/models/user/login_model.dart';
 import 'package:gara/services/storage_service.dart';
 import 'package:gara/theme/index.dart';
@@ -39,6 +40,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final savedPhone = await Storage.getItem('saved_phone');
     final rememberMe = await Storage.getItem('remember_me');
 
+    if (!mounted) return;
     if (savedPhone != null && rememberMe == true) {
       setState(() {
         _phoneController.text = savedPhone;
@@ -70,6 +72,7 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
+    if (!mounted) return;
     setState(() {
       _isLoading = true;
     });
@@ -77,6 +80,7 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       // Get device ID
       final deviceId = await Storage.getDeviceID() ?? 'unknown_device';
+
 
       final request = UserLoginRequest(
         phone: _phoneController.text.trim(),
@@ -88,6 +92,7 @@ class _LoginScreenState extends State<LoginScreen> {
       final response = await AuthService.loginUser(request);
 
       if (response.success) {
+        if (!mounted) return;
         AppToastHelper.showSuccess(context, message: 'Đăng nhập thành công!');
 
         // Save phone if remember me is checked
@@ -99,14 +104,19 @@ class _LoginScreenState extends State<LoginScreen> {
           Storage.setItem('remember_me', false);
         }
 
+        // FCM token đã được đăng ký trong AuthService.loginUser()
+
         // Navigate to home screen or next step
         Navigate.pushNamed('/home');
       } else {
+        if (!mounted) return;
         AppToastHelper.showError(context, message: response.message ?? 'Đăng nhập thất bại');
       }
     } catch (e) {
+      if (!mounted) return;
       AppToastHelper.showError(context, message: 'Có lỗi xảy ra: ${e.toString()}');
     } finally {
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
       });

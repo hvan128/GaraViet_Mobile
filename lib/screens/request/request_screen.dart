@@ -6,13 +6,20 @@ import 'package:gara/widgets/svg_icon.dart';
 import 'package:gara/widgets/text_field.dart';
 import 'package:gara/services/request/request_service.dart';
 import 'package:gara/services/quotation/quotation_service.dart';
+import 'package:gara/services/messaging/messaging_event_bus.dart';
+// Messaging handled inside ChatRoomScreen; no direct imports needed here
 import 'package:gara/models/request/request_service_model.dart';
+import 'package:gara/models/car/car_info_model.dart';
+import 'package:gara/models/user/user_info_model.dart';
 import 'package:gara/widgets/text.dart';
 import 'package:gara/widgets/app_toast.dart';
 import 'package:gara/providers/user_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:gara/utils/status/status_library.dart';
 import 'package:gara/widgets/image_carousel_widget.dart';
+// import 'package:gara/utils/debug_logger.dart';
+import 'package:gara/services/messaging/messaging_service.dart';
+import 'package:gara/services/messaging/tab_focus_bus.dart';
 
 class RequestScreen extends StatefulWidget {
   const RequestScreen({super.key});
@@ -33,6 +40,10 @@ class _RequestScreenState extends State<RequestScreen> {
   int? _selectedStatus;
   String? _searchQuery;
 
+  // Tab focus tracking
+  bool _shouldRefreshOnFocus = false;
+
+
   // Getter for user type
   bool get isGarageUser {
     final userProvider = Provider.of<UserProvider>(context, listen: false);
@@ -49,6 +60,29 @@ class _RequestScreenState extends State<RequestScreen> {
         '/quotation-list',
         arguments: item,
       );
+    }
+  }
+
+  // Handle message button press
+  Future<void> onMessagePressed(RequestServiceModel item) async {
+    try {
+      final res = await MessagingServiceApi.createRoomFromRequest(
+        requestServiceId: item.id,
+      );
+      if (res.success && res.data != null && res.data!.roomId.isNotEmpty) {
+        if (!mounted) return;
+        Navigator.pushNamed(
+          context,
+          '/chat-room',
+          arguments: res.data!.roomId,
+        );
+      } else {
+        if (!mounted) return;
+        AppToastHelper.showError(context, message: 'Không thể mở phòng chat.');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      AppToastHelper.showError(context, message: 'Không thể mở phòng chat.');
     }
   }
 
@@ -71,12 +105,131 @@ class _RequestScreenState extends State<RequestScreen> {
   void initState() {
     super.initState();
     _fetch();
+    _attachFocusListener();
+  }
+
+  void _attachFocusListener() {
+    TabFocusBus.instance.currentIndex.addListener(_onFocusChange);
+    TabFocusBus.instance.focusTick.addListener(_onFocusChange);
+  }
+
+  void _onFocusChange() {
+    final isFocused = TabFocusBus.instance.currentIndex.value == 1; // Request tab index
+    if (isFocused && _shouldRefreshOnFocus) {
+      _shouldRefreshOnFocus = false;
+      _fetch(refresh: true);
+    }
+  }
+
+  @override
+  void dispose() {
+    TabFocusBus.instance.currentIndex.removeListener(_onFocusChange);
+    TabFocusBus.instance.focusTick.removeListener(_onFocusChange);
+    super.dispose();
+  }
+
+  // Public method để gọi từ bên ngoài (MainNavigationScreen)
+  void reloadFromExternal() {
+    _fetch(refresh: true);
+  }
+
+  // Method để thêm request mới vào list (khi user đang ở tab Request)
+  void addNewRequestToTop(RequestServiceModel newRequest) {
+    if (mounted) {
+      setState(() {
+        // Kiểm tra xem request đã tồn tại chưa (tránh duplicate)
+        final existingIndex = _items.indexWhere((item) => item.id == newRequest.id);
+        if (existingIndex == -1) {
+          // Thêm vào đầu list
+          _items.insert(0, newRequest);
+        }
+      });
+    }
+  }
+
+  // Method để parse Firebase notification data thành RequestServiceModel
+  RequestServiceModel? parseRequestFromNotification(Map<String, dynamic> data) {
+    try {
+      final requestId = int.tryParse(data['requestId']?.toString() ?? '0') ?? 0;
+      final requestCode = data['requestCode']?.toString() ?? '';
+      final description = data['description']?.toString() ?? '';
+      final address = data['address']?.toString() ?? '';
+      final radiusSearch = data['radiusSearch']?.toString() ?? '';
+      final createdAt = data['createdAt']?.toString() ?? '';
+      final userName = data['userName']?.toString() ?? '';
+      final userAvatar = data['userAvatar']?.toString() ?? '';
+      
+      // Parse carInfo JSON
+      CarInfo? carInfo;
+      try {
+        final carInfoStr = data['carInfo']?.toString() ?? '';
+        if (carInfoStr.isNotEmpty) {
+          // Parse JSON string manually
+          final carInfoMap = <String, dynamic>{};
+          final regex = RegExp(r'"([^"]+)":\s*"([^"]*)"');
+          final matches = regex.allMatches(carInfoStr);
+          for (final match in matches) {
+            carInfoMap[match.group(1)!] = match.group(2)!;
+          }
+          
+          carInfo = CarInfo(
+            id: int.tryParse(carInfoMap['id'] ?? '0') ?? 0,
+            userId: int.tryParse(carInfoMap['user_id'] ?? '0') ?? 0,
+            typeCar: carInfoMap['type_car'] ?? '',
+            yearModel: carInfoMap['year_model'] ?? '',
+            vehicleLicensePlate: carInfoMap['vehicle_license_plate'] ?? '',
+            description: carInfoMap['description'] ?? '',
+            status: int.tryParse(carInfoMap['status'] ?? '1') ?? 1,
+          );
+        }
+      } catch (e) {
+        print('[RequestScreen] Error parsing carInfo: $e');
+      }
+
+      // Parse createdBy - tạo UserInfoResponse với các giá trị mặc định
+      final inforUser = UserInfoResponse(
+        id: int.tryParse(data['userId']?.toString() ?? '0') ?? 0,
+        userId: int.tryParse(data['userId']?.toString() ?? '0') ?? 0,
+        name: userName,
+        phone: '', // Không có trong notification
+        avatarPath: userAvatar,
+        roleId: 1, // Default role
+        roleCode: 'USER',
+        roleName: 'Người dùng',
+        isActive: true,
+        isPhoneVerified: false,
+        deviceId: '',
+        sessionId: '',
+        createdAt: createdAt,
+        updatedAt: createdAt,
+      );
+
+      return RequestServiceModel(
+        id: requestId,
+        requestCode: requestCode,
+        inforUser: inforUser,
+        carInfo: carInfo,
+        status: 1, // Default status for new request
+        address: address,
+        description: description,
+        radiusSearch: radiusSearch,
+        listImageAttachment: [], // Empty for new requests
+        listQuotation: [], // Empty for new requests
+        createdAt: createdAt,
+        updatedAt: createdAt,
+        timeAgo: 'Vừa xong',
+      );
+    } catch (e) {
+      print('[RequestScreen] Error parsing request from notification: $e');
+      return null;
+    }
   }
 
   Future<void> _fetch({bool refresh = false}) async {
     if (refresh) {
       _currentPage = 1;
-      _items.clear();
+      // Khởi tạo danh sách mới để đảm bảo có thể mutable
+      _items = <RequestServiceModel>[];
     }
 
     setState(() {
@@ -85,9 +238,6 @@ class _RequestScreenState extends State<RequestScreen> {
     });
 
     try {
-      final userProvider = Provider.of<UserProvider>(context, listen: false);
-
-
       final response =
           isGarageUser
               ? await RequestServiceApi.getAllRequestsForGarage(
@@ -107,7 +257,8 @@ class _RequestScreenState extends State<RequestScreen> {
 
       setState(() {
         if (refresh || _currentPage == 1) {
-          _items = response.requests;
+          // Sao chép sang danh sách mới tránh giữ tham chiếu bất biến
+          _items = List<RequestServiceModel>.of(response.requests);
         } else {
           _items.addAll(response.requests);
         }
@@ -116,16 +267,22 @@ class _RequestScreenState extends State<RequestScreen> {
         _loadingMore = false;
       });
 
-      debugPrint(
-        '[RequestScreen] fetched page=$_currentPage, items=${_items.length}, total=${_pagination?.total}, isGarage=${isGarageUser}, user=${userProvider.userInfo?.name}',
-      );
+      // DebugLogger.largeJson('[RequestScreen] fetched', {
+      //   'page': _currentPage,
+      //   'itemsCount': _items.length,
+      //   'total': _pagination?.total,
+      //   'isGarage': isGarageUser,
+      //   'userName': userProvider.userInfo?.name,
+      // });
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _loading = false;
         _loadingMore = false;
       });
-      debugPrint('[RequestScreen] error: $e');
+      // DebugLogger.largeJson('[RequestScreen] error', {
+      //   'error': e.toString(),
+      // });
     }
   }
 
@@ -162,7 +319,6 @@ class _RequestScreenState extends State<RequestScreen> {
                     size: 24,
                     color: DesignTokens.textPrimary,
                   ),
-                  onRightPressed: () => Navigator.pop(context),
                 );
               },
             ),
@@ -240,7 +396,15 @@ class _RequestScreenState extends State<RequestScreen> {
   }
 
   Widget _buildRequestCard(RequestServiceModel item) {
-    return Container(
+    return InkWell(
+      onTap: () => Navigator.pushNamed(
+        context,
+        '/request-detail',
+        arguments: item,
+      ),
+      splashColor: Colors.transparent,
+      highlightColor: Colors.transparent,
+      child: Container(
       decoration: BoxDecoration(
         color: DesignTokens.surfaceSecondary,
         borderRadius: BorderRadius.circular(12),
@@ -344,13 +508,7 @@ class _RequestScreenState extends State<RequestScreen> {
                               ? MyButton(
                                 text: 'Nhắn tin',
                                 height: 30,
-                                onPressed: () {
-                                  Navigator.pushNamed(
-                                    context,
-                                    '/chat',
-                                    arguments: item,
-                                  );
-                                },
+                                onPressed: () => onMessagePressed(item),
                                 buttonType: ButtonType.secondary,
                                 textStyle: 'label',
                                 textSize: '12',
@@ -405,6 +563,7 @@ class _RequestScreenState extends State<RequestScreen> {
           ),
         ],
       ),
+      ),
     );
   }
 
@@ -416,6 +575,16 @@ class _RequestScreenState extends State<RequestScreen> {
       statusType: StatusType.request,
       onMorePressed: () {
         // TODO: Show more options
+      },
+      onImageTap: (index) {
+        Navigator.pushNamed(
+          context,
+          '/image-viewer',
+          arguments: {
+            'files': item.listImageAttachment,
+            'initialIndex': index,
+          },
+        );
       },
     );
   }
@@ -472,7 +641,7 @@ class _QuotationBottomSheetState extends State<_QuotationBottomSheet> {
     if (price <= 0) {
       AppToastHelper.showError(
         context,
-        message: 'Vui lòng nhập giá dự kiến hợp lệ',
+        message: 'Vui lòng nhập giá dự kiến',
       );
       return;
     }
@@ -480,7 +649,7 @@ class _QuotationBottomSheetState extends State<_QuotationBottomSheet> {
     if (description.isEmpty) {
       AppToastHelper.showWarning(
         context,
-        message: 'Vui lòng nhập mô tả',
+        message: 'Vui lòng nhập mô tả chi tiết',
       );
       return;
     }
@@ -500,19 +669,21 @@ class _QuotationBottomSheetState extends State<_QuotationBottomSheet> {
         Navigator.pop(context);
         AppToastHelper.showSuccess(
           context,
-          message: 'Tạo báo giá thành công',
+          message: 'Gửi báo giá thành công!',
         );
+        // Thông báo danh sách phòng chat có thể thay đổi để màn Tin nhắn cập nhật
+        MessagingEventBus().emitRoomsDirty();
         widget.onSuccess();
       } else {
         AppToastHelper.showError(
           context,
-          message: response.message,
+          message: 'Không thể gửi báo giá. Vui lòng thử lại sau.',
         );
       }
     } catch (e) {
       AppToastHelper.showError(
         context,
-        message: 'Lỗi tạo báo giá: $e',
+        message: 'Không thể gửi báo giá. Vui lòng thử lại sau.',
       );
     } finally {
       setState(() {

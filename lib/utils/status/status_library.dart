@@ -8,6 +8,8 @@ export 'quotation_status.dart';
 export 'request_status.dart';
 export 'status_widget.dart';
 export 'status_utils.dart';
+export 'message_status.dart';
+export 'booking_status.dart';
 
 // Ví dụ sử dụng:
 /*

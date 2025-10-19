@@ -11,8 +11,8 @@ class Skeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final base = DesignTokens.gray100; // nền nhạt
-    final highlight = DesignTokens.gray50; // highlight sáng
+    final base = DesignTokens.gray300; // nền đậm hơn
+    final highlight = DesignTokens.gray200; // highlight đậm hơn
 
     return _Shimmer(
       baseColor: base,

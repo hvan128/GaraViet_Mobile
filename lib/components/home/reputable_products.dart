@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:gara/theme/design_tokens.dart';
-import 'package:gara/theme/effects.dart';
 import 'package:gara/widgets/text.dart';
 import 'package:gara/models/reputable_product/reputable_product_model.dart';
 

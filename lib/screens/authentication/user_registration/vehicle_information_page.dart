@@ -50,7 +50,7 @@ class _VehicleInformationPageState extends State<VehicleInformationPage> {
     super.initState();
     // Load existing data from provider (không listen)
     final registrationData = Provider.of<RegistrationData>(context, listen: false);
-    debugPrint('[VehiclePage:initState] provider.vehicleType=${registrationData.vehicleType}, provider.vehicleYear=${registrationData.vehicleYear}, provider.licensePlate=${registrationData.licensePlate}');
+    // debugPrint('[VehiclePage:initState] provider.vehicleType=${registrationData.vehicleType}, provider.vehicleYear=${registrationData.vehicleYear}, provider.licensePlate=${registrationData.licensePlate}');
     if (registrationData.vehicleType != null) {
       _vehicleTypeController.text = registrationData.vehicleType!;
     }
@@ -60,7 +60,7 @@ class _VehicleInformationPageState extends State<VehicleInformationPage> {
     if (registrationData.licensePlate != null) {
       _licensePlateController.text = registrationData.licensePlate!;
     }
-    debugPrint('[VehiclePage:initState] controllers: type=${_vehicleTypeController.text}, year=${_vehicleYearController.text}, plate=${_licensePlateController.text}');
+    // debugPrint('[VehiclePage:initState] controllers: type=${_vehicleTypeController.text}, year=${_vehicleYearController.text}, plate=${_licensePlateController.text}');
   }
 
   @override
@@ -68,7 +68,7 @@ class _VehicleInformationPageState extends State<VehicleInformationPage> {
     super.didChangeDependencies();
     // Khi quay lại từ màn khác, đồng bộ lại dữ liệu từ Provider nếu khác
     final registrationData = Provider.of<RegistrationData>(context);
-    debugPrint('[VehiclePage:didChangeDependencies] provider(before sync) type=${registrationData.vehicleType}, year=${registrationData.vehicleYear}, plate=${registrationData.licensePlate} | controllers(before) type=${_vehicleTypeController.text}, year=${_vehicleYearController.text}, plate=${_licensePlateController.text}');
+    // debugPrint('[VehiclePage:didChangeDependencies] provider(before sync) type=${registrationData.vehicleType}, year=${registrationData.vehicleYear}, plate=${registrationData.licensePlate} | controllers(before) type=${_vehicleTypeController.text}, year=${_vehicleYearController.text}, plate=${_licensePlateController.text}');
     if (registrationData.vehicleType != null &&
         registrationData.vehicleType!.isNotEmpty &&
         registrationData.vehicleType != _vehicleTypeController.text) {
@@ -84,7 +84,7 @@ class _VehicleInformationPageState extends State<VehicleInformationPage> {
         registrationData.licensePlate != _licensePlateController.text) {
       _licensePlateController.text = registrationData.licensePlate!;
     }
-    debugPrint('[VehiclePage:didChangeDependencies] controllers(after) type=${_vehicleTypeController.text}, year=${_vehicleYearController.text}, plate=${_licensePlateController.text}');
+    // debugPrint('[VehiclePage:didChangeDependencies] controllers(after) type=${_vehicleTypeController.text}, year=${_vehicleYearController.text}, plate=${_licensePlateController.text}');
   }
 
   @override
@@ -172,7 +172,7 @@ class _VehicleInformationPageState extends State<VehicleInformationPage> {
     registrationData.setVehicleType(vehicleType.trim());
     registrationData.setVehicleYear(vehicleYear.trim());
     registrationData.setLicensePlate(normalizedPlate);
-    debugPrint('[VehiclePage:save] saved type=${vehicleType.trim()}, year=${vehicleYear.trim()}, plate=$normalizedPlate');
+    // debugPrint('[VehiclePage:save] saved type=${vehicleType.trim()}, year=${vehicleYear.trim()}, plate=$normalizedPlate');
 
     setState(() {
       _isLoading = false;
@@ -253,7 +253,7 @@ class _VehicleInformationPageState extends State<VehicleInformationPage> {
                                   _vehicleTypeError = _validateVehicleTypeValue(value);
                                 }
                               });
-                              debugPrint('[VehiclePage:onChange] type="$value"');
+                              // debugPrint('[VehiclePage:onChange] type="$value"');
                             },
                           ),
                           const SizedBox(height: 16),
@@ -291,7 +291,7 @@ class _VehicleInformationPageState extends State<VehicleInformationPage> {
                                   _licensePlateError = _validateLicensePlateValue(value);
                                 }
                               });
-                              debugPrint('[VehiclePage:onChange] plate="$value"');
+                              // debugPrint('[VehiclePage:onChange] plate="$value"');
                             },
                           ),
                           const SizedBox(height: 24),

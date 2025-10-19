@@ -1,9 +1,12 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:jwt_decode/jwt_decode.dart';
 import 'package:gara/services/storage_service.dart';
 import 'package:gara/services/api/auth_http_client.dart';
 import 'package:gara/config.dart';
 import 'package:gara/services/auth/token_cache.dart';
+import 'package:gara/utils/network_utils.dart';
+import 'package:gara/providers/user_provider.dart';
 
 class JwtTokenManager {
   static Timer? _refreshTimer;
@@ -17,6 +20,9 @@ class JwtTokenManager {
   static Future<void> initializeTokenRefresh() async {
     print('🔄 [JwtTokenManager] initializeTokenRefresh() called');
     print('🔄 [JwtTokenManager] TokenCache.hasToken(): ${TokenCache.hasToken()}');
+    
+    // Thêm listener cho network connectivity
+    NetworkUtils.addConnectionListener(_onNetworkRestored);
     
     if (TokenCache.hasToken()) {
       print('🔄 [JwtTokenManager] Token exists in cache, scheduling refresh');
@@ -32,6 +38,22 @@ class JwtTokenManager {
       } else {
         print('🔄 [JwtTokenManager] No refresh token found in storage');
       }
+    }
+  }
+
+  // Xử lý khi mạng được khôi phục
+  static void _onNetworkRestored() {
+    print('🔄 [JwtTokenManager] Network restored, attempting token refresh...');
+    // Nếu có refresh token nhưng không có access token, thử refresh
+    if (!TokenCache.hasToken()) {
+      refreshTokenIfNeeded();
+    }
+    
+    // Update UserProvider refresh token state
+    try {
+      UserProvider().updateRefreshTokenState();
+    } catch (e) {
+      print('🔄 [JwtTokenManager] Error updating UserProvider: $e');
     }
   }
 
@@ -175,13 +197,31 @@ class JwtTokenManager {
       } else {
         print('🔄 [JwtTokenManager] ERROR: Refresh token thất bại: ${response['message']}');
         print('🔄 [JwtTokenManager] Full error response: ${response.toString()}');
-        // Xóa token và yêu cầu đăng nhập lại
-        await clearTokens();
+        
+        // Chỉ xóa token nếu không phải lỗi mạng
+        if (response['isNetworkError'] == true) {
+          print('🔄 [JwtTokenManager] Lỗi mạng, giữ lại refresh token để thử lại sau');
+          return false;
+        } else {
+          // Lỗi khác (401, 403, etc.) - xóa token và yêu cầu đăng nhập lại
+          print('🔄 [JwtTokenManager] Lỗi không phải mạng, xóa token và yêu cầu đăng nhập lại');
+          await clearTokens();
+        }
       }
     } catch (e) {
       print('🔄 [JwtTokenManager] EXCEPTION: Lỗi refresh token: $e');
       print('🔄 [JwtTokenManager] Exception type: ${e.runtimeType}');
-      await clearTokens();
+      
+      // Chỉ xóa token nếu không phải lỗi mạng
+      if (e is SocketException || e is TimeoutException) {
+        // Lỗi mạng - giữ lại refresh token để thử lại sau
+        print('🔄 [JwtTokenManager] Lỗi mạng, giữ lại refresh token để thử lại sau');
+        return false;
+      } else {
+        // Lỗi khác (401, 403, etc.) - xóa token và yêu cầu đăng nhập lại
+        print('🔄 [JwtTokenManager] Lỗi không phải mạng, xóa token và yêu cầu đăng nhập lại');
+        await clearTokens();
+      }
     }
     
     print('🔄 [JwtTokenManager] _performRefresh() returning false');
@@ -261,5 +301,7 @@ class JwtTokenManager {
     TokenCache.clearAccessToken();
     Storage.removeAllToken();
     cancelRefreshTimer();
+    // Xóa network listener
+    NetworkUtils.removeConnectionListener(_onNetworkRestored);
   }
 }

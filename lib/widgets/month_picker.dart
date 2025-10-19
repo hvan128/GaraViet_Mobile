@@ -289,7 +289,9 @@ class _MyMonthPickerState extends State<MyMonthPicker> {
               height: containerHeight,
               padding: containerPadding,
               decoration: BoxDecoration(
-                color: DesignTokens.surfaceSecondary,
+                color: widget.enabled 
+                    ? DesignTokens.surfaceSecondary 
+                    : DesignTokens.surfaceTertiary,
                 borderRadius: BorderRadius.circular(widget.borderRadius),
                 border: Border.all(
                   color: widget.hasError
@@ -307,7 +309,7 @@ class _MyMonthPickerState extends State<MyMonthPicker> {
                     text: _formatMonthYear(display),
                     textStyle: 'label',
                     textSize: '12',
-                    textColor: 'brand',
+                    textColor: widget.enabled ? 'brand' : 'disable',
                   ),
                 ],
               ),
@@ -328,5 +330,3 @@ class _MyMonthPickerState extends State<MyMonthPicker> {
     );
   }
 }
-
-

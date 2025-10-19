@@ -16,6 +16,9 @@ import 'package:gara/widgets/svg_icon.dart';
 import 'package:gara/widgets/text.dart';
 import 'package:gara/providers/user_provider.dart';
 import 'package:gara/widgets/app_toast.dart';
+import 'package:gara/widgets/cached_image_widget.dart';
+import 'package:gara/widgets/garage_status_notification.dart';
+import 'package:gara/services/messaging/navigation_event_bus.dart';
 import 'package:provider/provider.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -127,6 +130,11 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+    
+    // Listen to user info reload events
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _setupUserInfoReloadListener();
+    });
   }
 
   @override
@@ -142,10 +150,32 @@ class _HomeScreenState extends State<HomeScreen> {
         final userDisplayName = userProvider.userDisplayName;
         final userAvatar = userInfo?.avatarPath;
         final isLoggedIn = userProvider.isLoggedIn;
-
+        final isGarage = userProvider.isGarageUser;
+        final isVerifiedGarage = userInfo?.isVerifiedGarage;
         if (isLoggedIn) {
-          // User is logged in - show profile header
+        debugPrint('UserProvider: isLoggedIn=$isLoggedIn, isGarage=$isGarage, isVerifiedGarage=$isVerifiedGarage, userDisplayName=$userDisplayName, userAvatar=$userAvatar');
+          
+          // Kiểm tra nếu là tài khoản gara và có trạng thái cần hiển thị thông báo
+          if (isGarage && isVerifiedGarage != null && (isVerifiedGarage == 0 || isVerifiedGarage == 2)) {
+            return GarageStatusNotification(
+              isVerifiedGarage: isVerifiedGarage,
+              garageName: userDisplayName,
+            );
+          }
 
+          // User is logged in - show profile header (cho user thường hoặc gara đã active)
+          // Fallback: Nếu không có userInfo, hiển thị loading
+          if (userInfo == null) {
+            return Container(
+              height: 56,
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: const Center(
+                child: CircularProgressIndicator(),
+              ),
+            );
+          }
+          
+          print('DEBUG: Hiển thị profile header bình thường');
           return Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.center,
@@ -158,28 +188,14 @@ class _HomeScreenState extends State<HomeScreen> {
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(color: DesignTokens.borderSecondary),
                     ),
-                    child: CircleAvatar(
+                    child: CachedAvatarWidget(
+                      imageUrl: userAvatar != null && userAvatar.isNotEmpty
+                          ? resolveImageUrl(userAvatar)
+                          : null,
                       radius: 20,
-                      backgroundColor: Colors.white.withAlpha(20),
-                      backgroundImage:
-                          (userAvatar != null && userAvatar.isNotEmpty)
-                              ? (resolveImageUrl(userAvatar) != null
-                                  ? NetworkImage(resolveImageUrl(userAvatar)!)
-                                  : null)
-                              : null,
-                      child:
-                          (userAvatar == null || userAvatar.isEmpty)
-                              ? Text(
-                                userDisplayName.isNotEmpty
-                                    ? userDisplayName[0].toUpperCase()
-                                    : 'U',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              )
-                              : null,
+                      fallbackText: userDisplayName.isNotEmpty
+                          ? userDisplayName[0].toUpperCase()
+                          : 'U',
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -210,10 +226,15 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               Row(
                 children: [
-                  SvgIcon(
-                    svgPath: 'assets/icons_final/notification.svg',
-                    width: 24,
-                    height: 24,
+                  GestureDetector(
+                    onTap: () {
+                      Navigate.pushNamed('/announcements');
+                    },
+                    child: SvgIcon(
+                      svgPath: 'assets/icons_final/notification.svg',
+                      width: 24,
+                      height: 24,
+                    ),
                   ),
 
                   const SizedBox(width: 8),
@@ -277,7 +298,11 @@ class _HomeScreenState extends State<HomeScreen> {
             final userAvatar = userInfo?.avatarPath;
 
             return Container(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+              decoration: BoxDecoration(
+                color: DesignTokens.surfacePrimary,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+              ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -290,72 +315,74 @@ class _HomeScreenState extends State<HomeScreen> {
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 12),
 
                   // User info
                   Row(
                     children: [
-                      CircleAvatar(
+                      CachedAvatarWidget(
+                        imageUrl: userAvatar != null && userAvatar.isNotEmpty
+                            ? resolveImageUrl(userAvatar)
+                            : null,
                         radius: 25,
-                        backgroundColor: Colors.blue[600],
-                        backgroundImage:
-                            (userAvatar != null && userAvatar.isNotEmpty)
-                                ? (resolveImageUrl(userAvatar) != null
-                                    ? NetworkImage(resolveImageUrl(userAvatar)!)
-                                    : null)
-                                : null,
-                        child:
-                            (userAvatar == null || userAvatar.isEmpty)
-                                ? Text(
-                                  userDisplayName.isNotEmpty
-                                      ? userDisplayName[0].toUpperCase()
-                                      : 'U',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                )
-                                : null,
+                        fallbackText: userDisplayName.isNotEmpty
+                            ? userDisplayName[0].toUpperCase()
+                            : 'U',
                       ),
                       const SizedBox(width: 16),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              userDisplayName,
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
+                            MyText(
+                              text: userDisplayName,
+                              textStyle: 'title',
+                              textSize: '16',
+                              textColor: 'primary',
                             ),
-                            Text(
-                              userInfo?.phone ?? '',
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 14,
-                              ),
+                            MyText(
+                              text: userInfo?.phone ?? '',
+                              textStyle: 'body',
+                              textSize: '12',
+                              textColor: 'secondary',
                             ),
                           ],
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 12),
 
-                  // Menu items
+                  // Menu items (use SVG icons + global text styles)
                   ListTile(
-                    leading: const Icon(Icons.person, color: Colors.blue),
-                    title: const Text('Thông tin tài khoản'),
+                    leading: SvgIcon(
+                      svgPath: 'assets/icons_final/personalcard.svg',
+                      width: 24,
+                      height: 24,
+                    ),
+                    title: const MyText(
+                      text: 'Thông tin tài khoản',
+                      textStyle: 'title',
+                      textSize: '14',
+                      textColor: 'primary',
+                    ),
                     onTap: () {
                       Navigator.pop(context);
                       Navigate.pushNamed('/user-info');
                     },
                   ),
                   ListTile(
-                    leading: const Icon(Icons.settings, color: Colors.grey),
-                    title: const Text('Cài đặt'),
+                    leading: SvgIcon(
+                      svgPath: 'assets/icons_final/setting.svg',
+                      width: 24,
+                      height: 24,
+                    ),
+                    title: const MyText(
+                      text: 'Cài đặt',
+                      textStyle: 'title',
+                      textSize: '14',
+                      textColor: 'primary',
+                    ),
                     onTap: () {
                       Navigator.pop(context);
                       AppToastHelper.showInfo(
@@ -366,8 +393,17 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const Divider(),
                   ListTile(
-                    leading: const Icon(Icons.logout, color: Colors.red),
-                    title: const Text('Đăng xuất'),
+                    leading: SvgIcon(
+                      svgPath: 'assets/icons_final/logout.svg',
+                      width: 24,
+                      height: 24,
+                    ),
+                    title: const MyText(
+                      text: 'Đăng xuất',
+                      textStyle: 'title',
+                      textSize: '14',
+                      textColor: 'primary',
+                    ),
                     onTap: () {
                       Navigator.pop(context);
                       _showLogoutDialog();
@@ -383,28 +419,18 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _showLogoutDialog() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Đăng xuất'),
-          content: Text('Bạn có chắc chắn muốn đăng xuất không?'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: Text('Hủy'),
-            ),
-            TextButton(
-              onPressed: () async {
-                Navigator.of(context).pop();
-                await _logout();
-              },
-              child: Text('Đăng xuất'),
-            ),
-          ],
-        );
+    AppDialogHelper.confirm(
+      context,
+      title: 'Đăng xuất',
+      message: 'Bạn có chắc chắn muốn đăng xuất không?',
+      confirmText: 'Đăng xuất',
+      cancelText: 'Hủy',
+      iconBgColor: Colors.transparent,
+      confirmButtonType: ButtonType.primary,
+      cancelButtonType: ButtonType.secondary,
+      showIconHeader: true,
+      onConfirm: () async {
+        await _logout();
       },
     );
   }
@@ -437,6 +463,47 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  void _setupUserInfoReloadListener() {
+    NavigationEventBus().onReloadUserInfo.listen((event) async {
+      if (event.reason == 'announcement:activatedGarage') {
+        final userProvider = Provider.of<UserProvider>(context, listen: false);
+        await userProvider.forceRefreshUserInfo();
+        
+        // Show status notification if needed
+        if (mounted) {
+          _showGarageActivationNotification(userProvider);
+        }
+      }
+    });
+  }
+
+  void _showGarageActivationNotification(UserProvider userProvider) {
+    final userInfo = userProvider.userInfo;
+    if (userInfo == null || !userProvider.isGarageUser) return;
+    
+    final isVerifiedGarage = userInfo.isVerifiedGarage;
+    
+    if (isVerifiedGarage == 1) {
+      // Garage đã được activate
+      AppToastHelper.showSuccess(
+        context,
+        message: 'Tài khoản gara của bạn đã được kích hoạt thành công!',
+      );
+    } else if (isVerifiedGarage == 2) {
+      // Garage bị từ chối
+      AppToastHelper.showError(
+        context,
+        message: 'Tài khoản gara của bạn đã bị từ chối. Vui lòng liên hệ admin để biết thêm chi tiết.',
+      );
+    }
+  }
+
+  Future<void> _onRefresh() async {
+    // Force refresh user info
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    await userProvider.forceRefreshUserInfo();
+  }
+
   @override
   Widget build(BuildContext context) {
     final isLoggedIn =
@@ -446,8 +513,10 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: DesignTokens.surfaceBrand,
       body: SafeArea(
-        child: CustomScrollView(
-          slivers: [
+        child: RefreshIndicator(
+          onRefresh: _onRefresh,
+          child: CustomScrollView(
+            slivers: [
             SliverAppBar(
               pinned: false,
               expandedHeight: !isLoggedIn || !isGarage ? 270 : 214,
@@ -509,7 +578,8 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             SliverToBoxAdapter(child: _buildBody()),
-          ],
+            ],
+          ),
         ),
       ),
     );

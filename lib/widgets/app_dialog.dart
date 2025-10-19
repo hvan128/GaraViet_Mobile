@@ -16,6 +16,8 @@ class AppDialog extends StatelessWidget {
   final ButtonType? confirmButtonType;
   final ButtonType? cancelButtonType;
   final bool showIconHeader;
+  final Widget? icon;
+  final Color? iconBgColor;
 
   const AppDialog({
     super.key,
@@ -29,6 +31,8 @@ class AppDialog extends StatelessWidget {
     this.confirmButtonType = ButtonType.primary,
     this.cancelButtonType = ButtonType.secondary,
     this.showIconHeader = false,
+    this.icon,
+    this.iconBgColor,
   });
 
   Color _iconBgColor(BuildContext context) {
@@ -90,10 +94,10 @@ class AppDialog extends StatelessWidget {
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
-                      color: _iconBgColor(context),
+                      color: iconBgColor ?? _iconBgColor(context),
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(_iconData(), color: _iconColor(context)),
+                    child: icon ?? Icon(_iconData(), color: _iconColor(context)),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -169,6 +173,8 @@ class AppDialogHelper {
     AppDialogType type = AppDialogType.info,
     String confirmText = 'OK',
     ButtonType? confirmButtonType = ButtonType.primary,
+    Widget? icon,
+    Color? iconBgColor,
     bool showIconHeader = false,
     VoidCallback? onConfirm,
   }) {
@@ -180,6 +186,8 @@ class AppDialogHelper {
         type: type,
         confirmText: confirmText,
         confirmButtonType: confirmButtonType,
+        icon: icon,
+        iconBgColor: iconBgColor,
         showIconHeader: showIconHeader,
         onConfirm: onConfirm,
       ),
@@ -195,6 +203,8 @@ class AppDialogHelper {
     AppDialogType type = AppDialogType.warning,
     ButtonType? confirmButtonType = ButtonType.primary,
     ButtonType? cancelButtonType = ButtonType.secondary,
+    Widget? icon,
+    Color? iconBgColor,
     bool showIconHeader = false,
     VoidCallback? onConfirm,
   }) {
@@ -208,6 +218,8 @@ class AppDialogHelper {
         cancelText: cancelText,
         confirmButtonType: confirmButtonType,
         cancelButtonType: cancelButtonType,
+        icon: icon,
+        iconBgColor: iconBgColor,
         showIconHeader: showIconHeader,
         onConfirm: onConfirm,
       ),

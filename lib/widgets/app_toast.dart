@@ -37,7 +37,7 @@ class _AppToastState extends State<AppToast>
     );
 
     _slideAnimation = Tween<double>(
-      begin: -1.0,
+      begin: 1.0,
       end: 0.0,
     ).animate(CurvedAnimation(
       parent: _animationController,
@@ -63,7 +63,11 @@ class _AppToastState extends State<AppToast>
   }
 
   void _hideToast() async {
+    if (!mounted) return;
+    
     await _animationController.reverse();
+    
+    // Đảm bảo animation đã hoàn thành và widget vẫn mounted
     if (mounted) {
       widget.onDismiss?.call();
     }
@@ -132,6 +136,11 @@ class _AppToastState extends State<AppToast>
     return AnimatedBuilder(
       animation: _animationController,
       builder: (context, child) {
+        // Nếu animation đã hoàn thành và opacity = 0, không render gì cả
+        if (_fadeAnimation.value == 0.0 && _animationController.isCompleted) {
+          return const SizedBox.shrink();
+        }
+        
         return Transform.translate(
           offset: Offset(0, _slideAnimation.value * 100),
           child: Opacity(
@@ -201,6 +210,17 @@ class AppToastHelper {
     }
   }
 
+  static void _forceRemoveCurrentToast() {
+    try {
+      if (_currentToast != null) {
+        _currentToast!.remove();
+        _currentToast = null;
+      }
+    } catch (_) {
+      _currentToast = null;
+    }
+  }
+
   static void show(
     BuildContext context, {
     required String message,
@@ -212,24 +232,35 @@ class AppToastHelper {
 
     _currentToast = OverlayEntry(
       builder: (context) => Positioned(
-        top: MediaQuery.of(context).padding.top + 16,
+        bottom: MediaQuery.of(context).padding.bottom + 16,
         left: 0,
         right: 0,
-        child: Material(
-          color: Colors.transparent,
+        child: IgnorePointer(
+          ignoring: false,
           child: AppToast(
             message: message,
             type: type,
             duration: duration,
             onDismiss: () {
-              _safeRemoveCurrentToast();
+              _forceRemoveCurrentToast();
             },
           ),
         ),
       ),
     );
-
-    Overlay.of(context).insert(_currentToast!);
+    // Sử dụng maybeOf để tránh ném lỗi khi Overlay chưa sẵn sàng
+    final overlayState = Overlay.maybeOf(context, rootOverlay: true);
+    if (overlayState != null) {
+      overlayState.insert(_currentToast!);
+    } else {
+      // Fallback: chờ frame kế tiếp hoặc dùng navigatorKey nếu có
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final navOverlay = Navigate().navigationKey.currentState?.overlay;
+        if (navOverlay != null) {
+          navOverlay.insert(_currentToast!);
+        }
+      });
+    }
   }
 
   // Hiển thị toast không cần truyền context, dùng global navigatorKey
@@ -238,15 +269,28 @@ class AppToastHelper {
     AppToastType type = AppToastType.info,
     Duration duration = const Duration(seconds: 3),
   }) {
-    final navigator = Navigate().navigationKey.currentState;
-    final context = navigator?.overlay?.context;
-    if (context == null) return;
-    show(
-      context,
-      message: message,
-      type: type,
-      duration: duration,
+    final overlay = Navigate().navigationKey.currentState?.overlay;
+    if (overlay == null) return;
+    _safeRemoveCurrentToast();
+    _currentToast = OverlayEntry(
+      builder: (context) => Positioned(
+        bottom: MediaQuery.of(overlay.context).padding.bottom + 16,
+        left: 0,
+        right: 0,
+        child: IgnorePointer(
+          ignoring: false,
+          child: AppToast(
+            message: message,
+            type: type,
+            duration: duration,
+            onDismiss: () {
+              _forceRemoveCurrentToast();
+            },
+          ),
+        ),
+      ),
     );
+    overlay.insert(_currentToast!);
   }
 
   static void showGlobalError(String message, {Duration duration = const Duration(seconds: 4)}) {
@@ -318,6 +362,11 @@ class AppToastHelper {
   }
 
   static void hide() {
-    _safeRemoveCurrentToast();
+    _forceRemoveCurrentToast();
+  }
+
+  /// Phương thức để cleanup khi app bị dispose hoặc restart
+  static void dispose() {
+    _forceRemoveCurrentToast();
   }
 }

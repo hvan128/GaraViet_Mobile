@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:gara/theme/design_tokens.dart';
 import 'package:gara/widgets/text.dart';
 import 'quotation_status.dart';
 import 'request_status.dart';
 import 'booking_status.dart';
+import 'message_status.dart';
 
 class StatusWidget extends StatelessWidget {
   final dynamic status;
@@ -43,6 +45,16 @@ class StatusWidget extends StatelessWidget {
         color: colors.background,
         borderRadius: BorderRadius.circular(borderRadius ?? 16),
         border: Border.all(color: colors.border, width: isSelected ? 2 : 1),
+        boxShadow: isSelected
+            ? [
+                BoxShadow(
+                  color: colors.border.withOpacity(0.4),
+                  blurRadius: 4,
+                  spreadRadius: 0,
+                  offset: const Offset(0, 3),
+                ),
+              ]
+            : null,
       ),
       child: Center(
         child: Row(
@@ -62,22 +74,18 @@ class StatusWidget extends StatelessWidget {
     final child = Stack(
       clipBehavior: Clip.none,
       children: [
-        // Add padding to reserve space for the close badge so it won't be clipped by parent viewports
-        Padding(
-          padding: const EdgeInsets.only(top: 6, right: 6),
-          child: base,
-        ),
+        base,
         if (isSelected && onRemove != null)
           Positioned(
-            top: 0,
-            right: 0,
+            top: -5,
+            right: -5,
             child: GestureDetector(
               onTap: onRemove,
               child: Container(
-                width: 20,
-                height: 20,
+                width: 16,
+                height: 16,
                 decoration: const BoxDecoration(
-                  color: Color(0xFFE74C3C),
+                  color: DesignTokens.alertError,
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
@@ -118,13 +126,21 @@ class StatusWidget extends StatelessWidget {
         displayName: requestStatus.displayName,
         color: requestStatus.color,
       );
-    } else {
+    } else if (type == StatusType.booking) {
       final bookingStatus = status is int
           ? BookingStatus.fromValue(status)
           : status as BookingStatus;
       return StatusInfo(
         displayName: bookingStatus.displayName,
         color: bookingStatus.color,
+      );
+    } else {
+      final messageStatus = status is int
+          ? MessageStatus.fromValue(status)
+          : status as MessageStatus;
+      return StatusInfo(
+        displayName: messageStatus.displayName,
+        color: messageStatus.color,
       );
     }
   }
@@ -164,6 +180,7 @@ enum StatusType {
   quotation,
   request,
   booking,
+  message,
 }
 
 class _WidgetColors {

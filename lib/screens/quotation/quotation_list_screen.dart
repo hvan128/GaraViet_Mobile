@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:gara/theme/design_tokens.dart';
 import 'package:gara/theme/index.dart';
+import 'package:gara/utils/debug_logger.dart';
 import 'package:gara/utils/url.dart';
 import 'package:gara/widgets/button.dart';
 import 'package:gara/widgets/svg_icon.dart';
@@ -42,6 +43,21 @@ class _QuotationListScreenState extends State<QuotationListScreen> {
         statusBarBrightness: Brightness.dark,
       ),
     );
+  }
+
+  String _buildRoomId(QuotationModel quotation) {
+    DebugLogger.log('quotation.inforGarage: ${quotation.inforGarage?.toJson().toString()}');
+    DebugLogger.log('widget.requestItem?.inforUser: ${widget.requestItem?.inforUser?.toJson().toString()}');
+    final int requestId = quotation.requestServiceId;
+    // Gara id: ưu tiên userId; nếu = 0 thì fallback sang id
+    final int garaUserId = (quotation.inforGarage?.userId ?? 0) != 0
+        ? (quotation.inforGarage?.userId ?? 0)
+        : (quotation.inforGarage?.id ?? 0);
+    // User id: ưu tiên userId; nếu = 0 thì fallback sang id
+    final int userId = (widget.requestItem?.inforUser?.userId ?? 0) != 0
+        ? (widget.requestItem?.inforUser?.userId ?? 0)
+        : (widget.requestItem?.inforUser?.id ?? 0);
+    return 'room_req${requestId}_${garaUserId}_$userId';
   }
 
   @override
@@ -327,7 +343,7 @@ class _QuotationListScreenState extends State<QuotationListScreen> {
               width: double.infinity,
               decoration: BoxDecoration(color: DesignTokens.gray100),
               child: Image.network(
-                resolveImageUrl(item.listImageAttachment.first.path)!,
+                resolveImageUrl(item.listImageAttachment.first.path) ?? '',
                 fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) {
                   return _buildImagePlaceholder();
@@ -629,7 +645,12 @@ class _QuotationListScreenState extends State<QuotationListScreen> {
                           text: 'Nhắn tin',
                           height: 30,
                           onPressed: () {
-                            // TODO: Navigate to chat
+                            final String roomId = _buildRoomId(quotation);
+                            Navigator.pushNamed(
+                              context,
+                              '/chat-room',
+                              arguments: roomId,
+                            );
                           },
                           buttonType: ButtonType.secondary,
                           textStyle: 'label',
@@ -651,7 +672,12 @@ class _QuotationListScreenState extends State<QuotationListScreen> {
                           text: 'Nhắn tin',
                           height: 30,
                           onPressed: () {
-                            // TODO: Navigate to chat
+                            final String roomId = _buildRoomId(quotation);
+                            Navigator.pushNamed(
+                              context,
+                              '/chat-room',
+                              arguments: roomId,
+                            );
                           },
                           buttonType: ButtonType.secondary,
                           textStyle: 'label',

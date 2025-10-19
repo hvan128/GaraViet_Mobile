@@ -39,12 +39,19 @@ class QuotationModel {
         .toString()
         .replaceAll(RegExp(r'\s+'), ' ')
         .trim();
+    final int parsedId = json['id'] ?? json['quotation_id'] ?? 0;
     return QuotationModel(
-      id: json['id'] ?? 0,
+      id: parsedId,
       requestServiceId: json['request_service_id'] ?? 0,
-      inforGarage: json['infor_garage'] is Map<String, dynamic>
+      inforGarage: (json['infor_garage'] is Map<String, dynamic>)
           ? UserInfoResponse.fromJson(json['infor_garage'] as Map<String, dynamic>)
-          : null,
+          : (json['inforGarage'] is Map<String, dynamic>
+              ? UserInfoResponse.fromJson(json['inforGarage'] as Map<String, dynamic>)
+              : (json['created_by'] is Map<String, dynamic>
+                  ? UserInfoResponse.fromJson(json['created_by'] as Map<String, dynamic>)
+                  : (json['createdBy'] is Map<String, dynamic>
+                      ? UserInfoResponse.fromJson(json['createdBy'] as Map<String, dynamic>)
+                      : null))),
       codeQuotation: json['code_quotation'],
       price: json['price'] ?? 0,
       remainPrice: json['remain_price'] ?? 0,
@@ -197,6 +204,26 @@ class QuotationListResponse {
       data: (json['data'] as List<dynamic>?)
           ?.map((item) => QuotationModel.fromJson(item))
           .toList() ?? [],
+    );
+  }
+}
+
+class UpdateQuotationResponse {
+  final bool success;
+  final String message;
+  final QuotationModel? data;
+
+  UpdateQuotationResponse({
+    required this.success,
+    required this.message,
+    this.data,
+  });
+
+  factory UpdateQuotationResponse.fromJson(Map<String, dynamic> json) {
+    return UpdateQuotationResponse(
+      success: json['success'] ?? false,
+      message: json['message'] ?? '',
+      data: json['data'] != null ? QuotationModel.fromJson(json['data']) : null,
     );
   }
 }
