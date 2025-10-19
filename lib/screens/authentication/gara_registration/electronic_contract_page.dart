@@ -18,6 +18,7 @@ import 'dart:convert';
 import 'package:signature/signature.dart';
 import 'package:dotted_border/dotted_border.dart';
 import 'package:gara/services/auth/auth_service.dart';
+import 'package:gara/providers/user_provider.dart';
 import 'package:gara/navigation/navigation.dart';
 
 class ElectronicContractPage extends StatefulWidget {
@@ -295,6 +296,13 @@ class _ElectronicContractPageState extends State<ElectronicContractPage> {
 
       if (mounted) {
         if (resp['success'] == true) {
+          // Cập nhật isVerifiedGarage = 0 (chờ xác thực) sau khi ký hợp đồng thành công
+          final userProvider = Provider.of<UserProvider>(context, listen: false);
+          if (userProvider.userInfo != null) {
+            final updatedUserInfo = userProvider.userInfo!.copyWith(isVerifiedGarage: 0);
+            userProvider.updateUserInfo(updatedUserInfo);
+          }
+          
           AppToastHelper.showSuccess(
             context,
             message: resp['message'] ?? 'Ký hợp đồng thành công',
@@ -324,39 +332,6 @@ class _ElectronicContractPageState extends State<ElectronicContractPage> {
         _isLoading = false;
       });
     }
-  }
-
-  void _selectIssueDate() async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime(1900),
-      lastDate: DateTime.now(),
-    );
-
-    if (picked != null) {
-      setState(() {
-        _issueDateController.text = _formatDate(picked);
-      });
-
-      final registrationData = Provider.of<RegistrationData>(
-        context,
-        listen: false,
-      );
-      registrationData.setIssueDate(picked);
-    }
-  }
-
-  void _autoSign() {
-    setState(() {
-      _signatureController.text = 'Ký tự động';
-    });
-
-    final registrationData = Provider.of<RegistrationData>(
-      context,
-      listen: false,
-    );
-    registrationData.setSignature('Ký tự động');
   }
 
   bool get _hasSignature =>
@@ -675,7 +650,7 @@ class _ElectronicContractPageState extends State<ElectronicContractPage> {
                                             children: [
                                               SvgIcon(
                                                 svgPath:
-                                                    'assets/icons_final/pen.svg',
+                                                    'assets/icons_final/edit-2.svg',
                                                 width: 20,
                                                 height: 20,
                                                 color:
@@ -719,7 +694,7 @@ class _ElectronicContractPageState extends State<ElectronicContractPage> {
                                                 children: [
                                                   SvgIcon(
                                                     svgPath:
-                                                        'assets/icons_final/pen.svg',
+                                                        'assets/icons_final/edit-2.svg',
                                                     width: 20,
                                                     height: 20,
                                                     color:

@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:gara/models/file/file_info_model.dart';
+import 'package:gara/screens/announcement/announcement_list_screen.dart';
 import 'package:gara/screens/authentication/common/login_screen.dart';
 import 'package:gara/screens/authentication/common/registration_wrapper_screen.dart';
 import 'package:gara/screens/authentication/user_registration/user_registration_flow_screen.dart';
 import 'package:gara/screens/authentication/gara_registration/gara_registration_flow_screen.dart';
 import 'package:gara/screens/main/main_navigation_screen.dart';
 import 'package:gara/screens/create_request/create_request_screen.dart';
+import 'package:gara/screens/request/request_detail_screen.dart';
 import 'package:gara/screens/user/user_info_screen.dart';
 import 'package:gara/examples/user_info_demo.dart';
 import 'package:gara/screens/user/edit_user_info_screen.dart';
@@ -15,12 +18,30 @@ import 'package:gara/models/request/request_service_model.dart';
 import 'package:gara/models/quotation/quotation_model.dart';
 import 'package:gara/screens/transaction/transaction_detail_screen.dart';
 import 'package:gara/screens/my_car/add_car_screen.dart';
+import 'package:gara/screens/messaging/messages_screen.dart';
+import 'package:gara/screens/messaging/chat_room_screen.dart';
+import 'package:gara/widgets/fullscreen_image_viewer.dart';
+import 'package:gara/screens/authentication/gara_registration/electronic_contract_page.dart';
 
 Map<String, WidgetBuilder> routes = {
   //* Initial Screen
   '/': (context) => const MainNavigationScreen(),
   //* Main Navigation Screen (alias)
   '/home': (context) => const MainNavigationScreen(),
+  //* Request Detail Screen
+  '/request-detail':
+      (context) => RequestDetailScreen(
+        item: ModalRoute.of(context)?.settings.arguments as RequestServiceModel,
+      ),
+  //* Fullscreen Image Viewer
+  '/image-viewer': (context) {
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args is Map) {
+      final files = (args['files'] as List).cast<FileInfo>();
+      return FullscreenImageViewer(files: files, initialIndex: (args['initialIndex'] ?? 0) as int);
+    }
+    return const MainNavigationScreen();
+  },
   //* Login Screen
   '/login': (context) => const LoginScreen(),
   //* Registration Wrapper Screen (New PageView structure)
@@ -53,6 +74,8 @@ Map<String, WidgetBuilder> routes = {
     // fallback: return to home if no request data
     return const QuotationListScreen();
   },
+  //* Announcement List Screen
+  '/announcements': (context) => const AnnouncementListScreen(),
   //* Booking Screen
   '/booking': (context) {
     final args = ModalRoute.of(context)?.settings.arguments;
@@ -69,5 +92,19 @@ Map<String, WidgetBuilder> routes = {
   },
   //* Add Car Screen
   '/add-car': (context) => const AddCarScreen(),
-  
+  //* Messages Screen
+  '/messages': (context) => const MessagesScreen(),
+  //* Chat Room Screen
+  '/chat-room': (context) {
+    return const ChatRoomScreen();
+  },
+  //* Electronic Contract Screen
+  '/electronic-contract': (context) => ElectronicContractPage(
+    onNext: () {
+      // Navigate back to home after successful contract signing
+      Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+    },
+    currentStep: 1,
+    totalSteps: 1,
+  ),
 };

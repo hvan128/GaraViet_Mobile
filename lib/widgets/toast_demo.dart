@@ -91,6 +91,28 @@ class ToastDemo extends StatelessWidget {
               },
             ),
             
+            const SizedBox(height: 16),
+            
+            MyButton(
+              text: 'Toast Global Success',
+              buttonType: ButtonType.secondary,
+              onPressed: () {
+                AppToastHelper.showGlobalSuccess(
+                  'Toast global thành công!',
+                );
+              },
+            ),
+            
+            const SizedBox(height: 16),
+            
+            MyButton(
+              text: 'Ẩn Toast',
+              buttonType: ButtonType.secondary,
+              onPressed: () {
+                AppToastHelper.hide();
+              },
+            ),
+            
             const SizedBox(height: 40),
             
             const Text(
@@ -104,7 +126,9 @@ class ToastDemo extends StatelessWidget {
               '• AppToastHelper.showWarning() - Thông báo cảnh báo\n'
               '• AppToastHelper.showInfo() - Thông báo thông tin\n'
               '• AppToastHelper.show() - Toast tùy chỉnh\n'
-              '• AppToastHelper.hide() - Ẩn toast hiện tại',
+              '• AppToastHelper.showGlobalSuccess() - Toast global\n'
+              '• AppToastHelper.hide() - Ẩn toast hiện tại\n'
+              '• AppToastHelper.dispose() - Cleanup khi app dispose',
               style: TextStyle(fontSize: 14),
             ),
           ],

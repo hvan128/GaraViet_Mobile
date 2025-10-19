@@ -10,6 +10,7 @@ import 'package:provider/provider.dart';
 import 'package:gara/widgets/svg_icon.dart';
 import 'package:gara/widgets/text.dart';
 import 'package:gara/widgets/header.dart';
+import 'package:gara/widgets/cached_image_widget.dart';
 import 'package:gara/utils/url.dart';
 import 'package:gara/widgets/skeleton.dart';
 
@@ -76,13 +77,13 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
         // Nếu chưa có user info, refresh từ provider
         await userProvider.refreshUserInfo();
         final refreshedUserInfo = userProvider.userInfo;
-        print('userInfo (refreshed): ${refreshedUserInfo?.toJson()}');
+        // print('userInfo (refreshed): ${refreshedUserInfo?.toJson()}');
         setState(() {
           _userInfo = refreshedUserInfo;
           _isLoading = false;
         });
       } else {
-        print('userInfo: ${userInfo.toJson()}');
+        // print('userInfo: ${userInfo.toJson()}');
         setState(() {
           _userInfo = userInfo;
           _isLoading = false;
@@ -186,7 +187,11 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
             backgroundColor: DesignTokens.surfaceBrand,
             title: 'Hồ sơ',
             showRightButton: true,
-            srcRightIcon: 'assets/icons_final/pen.svg',
+            rightIcon: SvgIcon(
+              svgPath: 'assets/icons_final/edit-2.svg',
+              size: 24,
+              color: DesignTokens.textInvert,
+            ),
             rightIconColor: DesignTokens.textInvert,
             leftIconColor: DesignTokens.textInvert,
             customTitle: MyText(
@@ -413,24 +418,14 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
                 shape: BoxShape.circle,
                 border: Border.all(color: Colors.white, width: 1),
               ),
-              child: CircleAvatar(
-                backgroundColor: DesignTokens.surfaceBrand,
-                backgroundImage:
-                    (_userInfo?.avatarPath != null && _userInfo!.avatarPath!.isNotEmpty)
-                        ? (resolveImageUrl(_userInfo!.avatarPath!) != null
-                            ? NetworkImage(resolveImageUrl(_userInfo!.avatarPath!)!)
-                            : null)
-                        : null,
-                child:
-                    (_userInfo?.avatarPath == null || _userInfo!.avatarPath!.isEmpty)
-                        ? MyText(
-                          text:
-                              _userInfo!.name.isNotEmpty
-                                  ? _userInfo!.name[0].toUpperCase()
-                                  : 'U',
-                          textColor: 'invert',
-                        )
-                        : null,
+              child: CachedAvatarWidget(
+                imageUrl: (_userInfo?.avatarPath != null && _userInfo!.avatarPath!.isNotEmpty)
+                    ? resolveImageUrl(_userInfo!.avatarPath!)
+                    : null,
+                radius: 50,
+                fallbackText: _userInfo!.name.isNotEmpty
+                    ? _userInfo!.name[0].toUpperCase()
+                    : 'U',
               ),
             ),
           ),
@@ -540,18 +535,18 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
         _userInfo?.listFileCertificate?.map((e) => e.path).toList() ??
         const <String>[];
     
-    debugPrint('[UserInfoScreen] _buildServicesSection called');
-    debugPrint('[UserInfoScreen] listFileAvatar: ${_userInfo?.listFileAvatar}');
-    debugPrint('[UserInfoScreen] listFileCertificate: ${_userInfo?.listFileCertificate}');
-    debugPrint('[UserInfoScreen] images.length: ${images.length}');
-    debugPrint('[UserInfoScreen] certificateImages.length: ${certificateImages.length}');
+    // debugPrint('[UserInfoScreen] _buildServicesSection called');
+    // debugPrint('[UserInfoScreen] listFileAvatar: ${_userInfo?.listFileAvatar}');
+    // debugPrint('[UserInfoScreen] listFileCertificate: ${_userInfo?.listFileCertificate}');
+    // debugPrint('[UserInfoScreen] images.length: ${images.length}');
+    // debugPrint('[UserInfoScreen] certificateImages.length: ${certificateImages.length}');
     
     for (int i = 0; i < images.length; i++) {
-      debugPrint('[UserInfoScreen] Service image $i: ${images[i]}');
+      // debugPrint('[UserInfoScreen] Service image $i: ${images[i]}');
     }
     
     for (int i = 0; i < certificateImages.length; i++) {
-      debugPrint('[UserInfoScreen] Certificate image $i: ${certificateImages[i]}');
+      // debugPrint('[UserInfoScreen] Certificate image $i: ${certificateImages[i]}');
     }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -622,7 +617,7 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
 
   Widget _certificateItem(String? imageUrl) {
     final resolvedUrl = imageUrl != null ? resolveImageUrl(imageUrl) : null;
-    debugPrint('[UserInfoScreen] _certificateItem: imageUrl=$imageUrl, resolvedUrl=$resolvedUrl');
+    // debugPrint('[UserInfoScreen] _certificateItem: imageUrl=$imageUrl, resolvedUrl=$resolvedUrl');
     
     return ClipRRect(
       borderRadius: BorderRadius.circular(12),
@@ -634,35 +629,17 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: DesignTokens.borderSecondary),
         ),
-        child:
-            resolvedUrl != null
-                ? Image.network(
-                    resolvedUrl, 
-                    fit: BoxFit.cover,
-                    loadingBuilder: (context, child, loadingProgress) {
-                      if (loadingProgress == null) {
-                        debugPrint('[UserInfoScreen] Certificate image loaded: $resolvedUrl');
-                        return child;
-                      }
-                      debugPrint('[UserInfoScreen] Certificate image loading: $resolvedUrl');
-                      return Center(child: Skeleton.box(height: 80));
-                    },
-                    errorBuilder: (context, error, stackTrace) {
-                      debugPrint('[UserInfoScreen] Certificate image error: $resolvedUrl, error: $error');
-                      return Center(
-                        child: SvgIcon(
-                          svgPath: 'assets/icons_final/document-text.svg',
-                          size: 20,
-                        ),
-                      );
-                    },
-                  )
-                : Center(
-                  child: SvgIcon(
-                    svgPath: 'assets/icons_final/document-text.svg',
-                    size: 20,
-                  ),
-                ),
+        child: CachedImageWidget(
+          imageUrl: resolvedUrl,
+          fit: BoxFit.cover,
+          placeholder: Center(child: Skeleton.box(height: 80)),
+          errorWidget: Center(
+            child: SvgIcon(
+              svgPath: 'assets/icons_final/document-text.svg',
+              size: 20,
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -677,19 +654,20 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: DesignTokens.borderSecondary),
         ),
-        child:
-            imageUrl != null
-                ? Image.network(resolveImageUrl(imageUrl)!, fit: BoxFit.cover)
-                : Center(
-                  child: SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: SvgIcon(
-                      svgPath: 'assets/icons_final/car.svg',
-                      size: 20,
-                    ),
-                  ),
-                ),
+        child: CachedImageWidget(
+          imageUrl: imageUrl != null ? resolveImageUrl(imageUrl) : null,
+          fit: BoxFit.cover,
+          errorWidget: Center(
+            child: SizedBox(
+              width: 20,
+              height: 20,
+              child: SvgIcon(
+                svgPath: 'assets/icons_final/car.svg',
+                size: 20,
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

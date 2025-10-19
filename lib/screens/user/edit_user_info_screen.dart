@@ -71,20 +71,20 @@ class _EditUserInfoScreenState extends State<EditUserInfoScreen> {
     _currentServiceFiles = widget.userInfo.listFileAvatar ?? [];
     _currentCertificateFiles = widget.userInfo.listFileCertificate ?? [];
     
-    debugPrint('[EditUserInfoScreen] Current service files: ${_currentServiceFiles.length}');
-    debugPrint('[EditUserInfoScreen] Current certificate files: ${_currentCertificateFiles.length}');
-    debugPrint('[EditUserInfoScreen] listFileAvatar: ${widget.userInfo.listFileAvatar}');
-    debugPrint('[EditUserInfoScreen] listFileCertificate: ${widget.userInfo.listFileCertificate}');
+    // debugPrint('[EditUserInfoScreen] Current service files: ${_currentServiceFiles.length}');
+    // debugPrint('[EditUserInfoScreen] Current certificate files: ${_currentCertificateFiles.length}');
+    // debugPrint('[EditUserInfoScreen] listFileAvatar: ${widget.userInfo.listFileAvatar}');
+    // debugPrint('[EditUserInfoScreen] listFileCertificate: ${widget.userInfo.listFileCertificate}');
     
     // Debug chi tiết từng file
     for (int i = 0; i < _currentServiceFiles.length; i++) {
       final file = _currentServiceFiles[i];
-      debugPrint('[EditUserInfoScreen] Service file $i: id=${file.id}, name=${file.name}, path=${file.path}');
+      // debugPrint('[EditUserInfoScreen] Service file $i: id=${file.id}, name=${file.name}, path=${file.path}');
     }
     
     for (int i = 0; i < _currentCertificateFiles.length; i++) {
       final file = _currentCertificateFiles[i];
-      debugPrint('[EditUserInfoScreen] Certificate file $i: id=${file.id}, name=${file.name}, path=${file.path}');
+      // debugPrint('[EditUserInfoScreen] Certificate file $i: id=${file.id}, name=${file.name}, path=${file.path}');
     }
   }
 
@@ -517,7 +517,7 @@ class _EditUserInfoScreenState extends State<EditUserInfoScreen> {
         ),
       );
 
-      debugPrint('[EditUserInfoScreen] Updating user info, isGarage: $isGarageUser');
+      // debugPrint('[EditUserInfoScreen] Updating user info, isGarage: $isGarageUser');
       
       if (isGarageUser) {
         // Gara: Gọi 3 API
@@ -556,7 +556,7 @@ class _EditUserInfoScreenState extends State<EditUserInfoScreen> {
         );
       }
       
-      debugPrint('[EditUserInfoScreen] Error updating user info: $e');
+      // debugPrint('[EditUserInfoScreen] Error updating user info: $e');
     }
   }
 
@@ -621,7 +621,7 @@ class _EditUserInfoScreenState extends State<EditUserInfoScreen> {
         'name': _nameCtrl.text,
       };
       await UserService.updateUserInfo(updateData);
-      debugPrint('[EditUserInfoScreen] User info updated');
+      // debugPrint('[EditUserInfoScreen] User info updated');
     }
   }
 
@@ -670,7 +670,7 @@ class _EditUserInfoScreenState extends State<EditUserInfoScreen> {
         'active_from': _fromCtrl.text,
       };
       await UserService.updateGarageInfo(garageData);
-      debugPrint('[EditUserInfoScreen] Garage info updated');
+      // debugPrint('[EditUserInfoScreen] Garage info updated');
     }
 
     // 2. Cập nhật chứng chỉ (chỉ khi có thay đổi)
@@ -680,7 +680,7 @@ class _EditUserInfoScreenState extends State<EditUserInfoScreen> {
         currentFiles: currentFiles,
         newFiles: _certificateImages.isNotEmpty ? _certificateImages : null,
       );
-      debugPrint('[EditUserInfoScreen] Garage certificates updated');
+      // debugPrint('[EditUserInfoScreen] Garage certificates updated');
     }
 
     // 3. Cập nhật file đăng ký (chỉ khi có thay đổi)
@@ -690,7 +690,7 @@ class _EditUserInfoScreenState extends State<EditUserInfoScreen> {
         currentFiles: currentFiles,
         newFiles: _serviceImages.isNotEmpty ? _serviceImages : null,
       );
-      debugPrint('[EditUserInfoScreen] Garage register files updated');
+      // debugPrint('[EditUserInfoScreen] Garage register files updated');
     }
   }
 
@@ -770,16 +770,16 @@ class _EditUserInfoScreenState extends State<EditUserInfoScreen> {
 
   // Hiển thị ảnh chứng chỉ (cũ + mới)
   Widget _buildCertificateImagesDisplay() {
-    debugPrint('[EditUserInfoScreen] _buildCertificateImagesDisplay called');
-    debugPrint('[EditUserInfoScreen] _currentCertificateFiles.length: ${_currentCertificateFiles.length}');
-    debugPrint('[EditUserInfoScreen] _certificateImages.length: ${_certificateImages.length}');
+    // debugPrint('[EditUserInfoScreen] _buildCertificateImagesDisplay called');
+    // debugPrint('[EditUserInfoScreen] _currentCertificateFiles.length: ${_currentCertificateFiles.length}');
+    // debugPrint('[EditUserInfoScreen] _certificateImages.length: ${_certificateImages.length}');
     
     final allImages = <Widget>[];
     
     // Thêm ảnh cũ từ server
     for (int i = 0; i < _currentCertificateFiles.length; i++) {
       final fileInfo = _currentCertificateFiles[i];
-      debugPrint('[EditUserInfoScreen] Adding existing certificate file $i: ${fileInfo.path}');
+      // debugPrint('[EditUserInfoScreen] Adding existing certificate file $i: ${fileInfo.path}');
       allImages.add(
         _buildExistingFileThumb(
           fileInfo,
@@ -794,7 +794,7 @@ class _EditUserInfoScreenState extends State<EditUserInfoScreen> {
     
     // Thêm ảnh mới từ picker
     for (int i = 0; i < _certificateImages.length; i++) {
-      debugPrint('[EditUserInfoScreen] Adding new certificate file $i: ${_certificateImages[i].path}');
+      // debugPrint('[EditUserInfoScreen] Adding new certificate file $i: ${_certificateImages[i].path}');
       allImages.add(
         _fileThumb(
           _certificateImages[i],
@@ -805,10 +805,10 @@ class _EditUserInfoScreenState extends State<EditUserInfoScreen> {
       );
     }
     
-    debugPrint('[EditUserInfoScreen] Total certificate images to display: ${allImages.length}');
+    // debugPrint('[EditUserInfoScreen] Total certificate images to display: ${allImages.length}');
     
     if (allImages.isEmpty) {
-      debugPrint('[EditUserInfoScreen] No certificate images to display, returning SizedBox.shrink()');
+      // debugPrint('[EditUserInfoScreen] No certificate images to display, returning SizedBox.shrink()');
       return const SizedBox.shrink();
     }
     
@@ -826,7 +826,7 @@ class _EditUserInfoScreenState extends State<EditUserInfoScreen> {
   // Hiển thị ảnh cũ từ server
   Widget _buildExistingFileThumb(FileInfo fileInfo, VoidCallback onRemove) {
     final imageUrl = resolveImageUrl(fileInfo.path) ?? '';
-    debugPrint('[EditUserInfoScreen] _buildExistingFileThumb: path=${fileInfo.path}, resolvedUrl=$imageUrl');
+    // debugPrint('[EditUserInfoScreen] _buildExistingFileThumb: path=${fileInfo.path}, resolvedUrl=$imageUrl');
     
     return Stack(
       clipBehavior: Clip.none,
@@ -840,10 +840,10 @@ class _EditUserInfoScreenState extends State<EditUserInfoScreen> {
             fit: BoxFit.cover,
             loadingBuilder: (context, child, loadingProgress) {
               if (loadingProgress == null) {
-                debugPrint('[EditUserInfoScreen] Image loaded successfully: $imageUrl');
+                // debugPrint('[EditUserInfoScreen] Image loaded successfully: $imageUrl');
                 return child;
               }
-              debugPrint('[EditUserInfoScreen] Image loading: $imageUrl, progress: ${loadingProgress.cumulativeBytesLoaded}/${loadingProgress.expectedTotalBytes}');
+              // debugPrint('[EditUserInfoScreen] Image loading: $imageUrl, progress: ${loadingProgress.cumulativeBytesLoaded}/${loadingProgress.expectedTotalBytes}');
               return Container(
                 width: 80,
                 height: 80,
@@ -855,7 +855,7 @@ class _EditUserInfoScreenState extends State<EditUserInfoScreen> {
               );
             },
             errorBuilder: (context, error, stackTrace) {
-              debugPrint('[EditUserInfoScreen] Image load error: $imageUrl, error: $error');
+              // debugPrint('[EditUserInfoScreen] Image load error: $imageUrl, error: $error');
               return Container(
                 width: 80,
                 height: 80,

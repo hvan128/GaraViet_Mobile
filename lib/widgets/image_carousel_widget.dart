@@ -16,6 +16,7 @@ class ImageCarouselWidget extends StatefulWidget {
   final bool showPageIndicators;
   final bool autoPlay;
   final Duration autoPlayInterval;
+  final void Function(int index)? onImageTap;
 
   const ImageCarouselWidget({
     super.key,
@@ -28,6 +29,7 @@ class ImageCarouselWidget extends StatefulWidget {
     this.showPageIndicators = true,
     this.autoPlay = true,
     this.autoPlayInterval = const Duration(seconds: 3),
+    this.onImageTap,
   });
 
   @override
@@ -59,8 +61,13 @@ class _ImageCarouselWidgetState extends State<ImageCarouselWidget> {
   }
 
   Widget _buildImageItem(FileInfo file) {
+    final imageUrl = resolveImageUrl(file.path);
+    if (imageUrl == null) {
+      return _buildImagePlaceholder();
+    }
+    
     return Image.network(
-      resolveImageUrl(file.path)!,
+      imageUrl,
       fit: BoxFit.cover,
       width: double.infinity,
       errorBuilder: (context, error, stackTrace) {
@@ -90,7 +97,15 @@ class _ImageCarouselWidgetState extends State<ImageCarouselWidget> {
               child: CarouselSlider.builder(
                 itemCount: imageFiles.length,
                 itemBuilder: (context, index, realIndex) {
-                  return _buildImageItem(imageFiles[index]);
+                  final child = _buildImageItem(imageFiles[index]);
+                  if (widget.onImageTap != null) {
+                    return GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () => widget.onImageTap!(index),
+                      child: child,
+                    );
+                  }
+                  return child;
                 },
                 options: CarouselOptions(
                   height: widget.height,

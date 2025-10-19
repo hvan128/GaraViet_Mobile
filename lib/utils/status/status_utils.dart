@@ -3,6 +3,7 @@ import 'quotation_status.dart';
 import 'request_status.dart';
 import 'status_widget.dart';
 import 'booking_status.dart';
+import 'message_status.dart';
 
 class StatusUtils {
   // Quotation Status Utilities
@@ -81,11 +82,16 @@ class StatusUtils {
           ? RequestStatus.fromValue(status)
           : status as RequestStatus;
       return requestStatus.displayName;
-    } else {
+    } else if (type == StatusType.booking) {
       final bookingStatus = status is int
           ? BookingStatus.fromValue(status)
           : status as BookingStatus;
       return bookingStatus.displayName;
+    } else {
+      final messageStatus = status is int
+          ? MessageStatus.fromValue(status)
+          : status as MessageStatus;
+      return messageStatus.displayName;
     }
   }
 
@@ -108,7 +114,7 @@ class StatusUtils {
         'text': requestStatus.color.text,
         'border': requestStatus.color.border,
       };
-    } else {
+    } else if (type == StatusType.booking) {
       final bookingStatus = status is int
           ? BookingStatus.fromValue(status)
           : status as BookingStatus;
@@ -116,6 +122,15 @@ class StatusUtils {
         'bg': bookingStatus.color.background,
         'text': bookingStatus.color.text,
         'border': bookingStatus.color.border,
+      };
+    } else {
+      final messageStatus = status is int
+          ? MessageStatus.fromValue(status)
+          : status as MessageStatus;
+      return {
+        'bg': messageStatus.color.background,
+        'text': messageStatus.color.text,
+        'border': messageStatus.color.border,
       };
     }
   }

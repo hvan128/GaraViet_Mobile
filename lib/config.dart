@@ -1,6 +1,6 @@
 class Config {
   // static const String baseUrl = 'https://14.224.137.80:5009/api/v1';
-  static const String baseUrl = 'https://157.66.219.148:5006/api/v1';
+  static const String baseUrl = 'http://157.66.219.148:5006/api/v1';
 
   //* Auth API *//
   static const String createRoleUrl = '$baseUrl/auth/create-role';
@@ -145,4 +145,22 @@ class Config {
       '$baseUrl/booking/cancel-order';
   static const String bookingCalculateGarageOrdersPriceUrl =
       '$baseUrl/booking/calculate-garage-orders-price';
+
+  //* Messaging API *//
+  static const String messagingCreateRoomFromRequestUrl =
+      '$baseUrl/messaging/create-room-from-request';
+  static const String messagingGetAllRoomUrl = '$baseUrl/messaging/get-all-room';
+  static const String messagingDeleteRoomUrl = '$baseUrl/messaging/room';
+  static const String messagingDeleteMessageUrl = '$baseUrl/messaging/room';
+  static const String messagingMarkMessageReadUrl = '$baseUrl/messaging/room';
+  static const String messagingGetRoomMessagesUrl = '$baseUrl/messaging/room';
+  static const String messagingSendMessageUrl = '$baseUrl/messaging/room';
+  static const String messagingGetRoomsUrl = '$baseUrl/messaging/rooms';
+  static const String messagingGetUnreadCountUrl = '$baseUrl/messaging/unread-count';
+  
+  //* Notification API *//
+  static const String notificationListUrl = '$baseUrl/notification/list';
+  
+  //* Firebase API *//
+  static const String firebaseRegisterTokenUrl = '$baseUrl/firebase/register-token';
 }

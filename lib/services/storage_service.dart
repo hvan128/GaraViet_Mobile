@@ -139,4 +139,48 @@ class Storage {
       // ignore: empty_catches
     } catch (err) {}
   }
+
+  // User Info Storage Methods
+  static const String _userInfoKey = 'user_info';
+
+  /// Lưu thông tin user vào storage
+  static Future<void> setUserInfo(Map<String, dynamic> userInfo) async {
+    try {
+      print('💾 [Storage] setUserInfo() called');
+      await setItem(_userInfoKey, userInfo);
+      print('💾 [Storage] User info saved to storage');
+    } catch (e) {
+      print('💾 [Storage] Error saving user info: $e');
+    }
+  }
+
+  /// Lấy thông tin user từ storage
+  static Future<Map<String, dynamic>?> getUserInfo() async {
+    try {
+      print('💾 [Storage] getUserInfo() called');
+      final userInfo = await getItem(_userInfoKey);
+      if (userInfo != null) {
+        print('💾 [Storage] User info found in storage');
+        return userInfo as Map<String, dynamic>;
+      } else {
+        print('💾 [Storage] No user info found in storage');
+        return null;
+      }
+    } catch (e) {
+      print('💾 [Storage] Error getting user info: $e');
+      return null;
+    }
+  }
+
+  /// Xóa thông tin user khỏi storage
+  static Future<void> removeUserInfo() async {
+    try {
+      print('💾 [Storage] removeUserInfo() called');
+      final store = await _store;
+      await store.remove(_userInfoKey);
+      print('💾 [Storage] User info removed from storage');
+    } catch (e) {
+      print('💾 [Storage] Error removing user info: $e');
+    }
+  }
 }

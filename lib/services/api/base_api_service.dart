@@ -2,7 +2,9 @@ import 'package:gara/config.dart';
 import 'package:gara/services/api/auth_http_client.dart';
 import 'package:gara/services/auth/auth_helper.dart';
 import 'package:gara/services/error_handler.dart';
+import 'package:gara/utils/network_utils.dart';
 import 'dart:developer' as developer;
+import 'dart:async';
 import 'package:gara/widgets/app_toast.dart';
 
 class BaseApiService {
@@ -13,6 +15,7 @@ class BaseApiService {
     bool includeAuth = true,
   }) async {
     try {
+      
       final url = '${Config.baseUrl}$endpoint';
       final response = await AuthHttpClient.get(
         url,
@@ -36,6 +39,11 @@ class BaseApiService {
         return response; // Response đã chứa thông tin lỗi auth
       }
       
+      // Không hiển thị toast lỗi nếu là lỗi mạng
+      if (response['isNetworkError'] == true) {
+        return response;
+      }
+      
       return response;
     } catch (e) {
       // Log chi tiết lỗi API
@@ -45,13 +53,18 @@ class BaseApiService {
         error: e,
         stackTrace: StackTrace.current,
       );
-      AppToastHelper.showGlobalError(ErrorHandler.getErrorMessage(e));
+      // Không hiển thị toast lỗi nếu là lỗi mạng
+      if (NetworkUtils.isNetworkError(e)) {
+        // Chỉ log, không hiển thị toast
+      } else {
+        AppToastHelper.showGlobalError(ErrorHandler.getErrorMessage(e));
+      }
       
       return {
         'success': false,
         'message': ErrorHandler.getErrorMessage(e),
         'data': null,
-        'error': e,
+        'error': e.toString(),
         'errorDetails': ErrorHandler.getErrorDetails(e),
         'endpoint': endpoint,
         'method': 'API',
@@ -66,6 +79,7 @@ class BaseApiService {
     bool includeAuth = true,
   }) async {
     try {
+      
       final url = '${Config.baseUrl}$endpoint';
       final response = await AuthHttpClient.post(
         url,
@@ -98,13 +112,18 @@ class BaseApiService {
         error: e,
         stackTrace: StackTrace.current,
       );
-      AppToastHelper.showGlobalError(ErrorHandler.getErrorMessage(e));
+      // Không hiển thị toast lỗi nếu là lỗi mạng
+      if (NetworkUtils.isNetworkError(e)) {
+        // Chỉ log, không hiển thị toast
+      } else {
+        AppToastHelper.showGlobalError(ErrorHandler.getErrorMessage(e));
+      }
       
       return {
         'success': false,
         'message': ErrorHandler.getErrorMessage(e),
         'data': null,
-        'error': e,
+        'error': e.toString(),
         'errorDetails': ErrorHandler.getErrorDetails(e),
         'endpoint': endpoint,
         'method': 'API',
@@ -142,6 +161,11 @@ class BaseApiService {
         return response; // Response đã chứa thông tin lỗi auth
       }
       
+      // Không hiển thị toast lỗi nếu là lỗi mạng
+      if (response['isNetworkError'] == true) {
+        return response;
+      }
+      
       return response;
     } catch (e) {
       // Log chi tiết lỗi API
@@ -151,13 +175,18 @@ class BaseApiService {
         error: e,
         stackTrace: StackTrace.current,
       );
-      AppToastHelper.showGlobalError(ErrorHandler.getErrorMessage(e));
+      // Không hiển thị toast lỗi nếu là lỗi mạng
+      if (NetworkUtils.isNetworkError(e)) {
+        // Chỉ log, không hiển thị toast
+      } else {
+        AppToastHelper.showGlobalError(ErrorHandler.getErrorMessage(e));
+      }
       
       return {
         'success': false,
         'message': ErrorHandler.getErrorMessage(e),
         'data': null,
-        'error': e,
+        'error': e.toString(),
         'errorDetails': ErrorHandler.getErrorDetails(e),
         'endpoint': endpoint,
         'method': 'API',
@@ -197,6 +226,11 @@ class BaseApiService {
         return response; // Response đã chứa thông tin lỗi auth
       }
       
+      // Không hiển thị toast lỗi nếu là lỗi mạng
+      if (response['isNetworkError'] == true) {
+        return response;
+      }
+      
       return response;
     } catch (e) {
       // Log chi tiết lỗi API
@@ -206,13 +240,18 @@ class BaseApiService {
         error: e,
         stackTrace: StackTrace.current,
       );
-      AppToastHelper.showGlobalError(ErrorHandler.getErrorMessage(e));
+      // Không hiển thị toast lỗi nếu là lỗi mạng
+      if (NetworkUtils.isNetworkError(e)) {
+        // Chỉ log, không hiển thị toast
+      } else {
+        AppToastHelper.showGlobalError(ErrorHandler.getErrorMessage(e));
+      }
       
       return {
         'success': false,
         'message': ErrorHandler.getErrorMessage(e),
         'data': null,
-        'error': e,
+        'error': e.toString(),
         'errorDetails': ErrorHandler.getErrorDetails(e),
         'endpoint': endpoint,
         'method': 'API',
@@ -250,6 +289,11 @@ class BaseApiService {
         return response; // Response đã chứa thông tin lỗi auth
       }
       
+      // Không hiển thị toast lỗi nếu là lỗi mạng
+      if (response['isNetworkError'] == true) {
+        return response;
+      }
+      
       return response;
     } catch (e) {
       // Log chi tiết lỗi API
@@ -259,13 +303,18 @@ class BaseApiService {
         error: e,
         stackTrace: StackTrace.current,
       );
-      AppToastHelper.showGlobalError(ErrorHandler.getErrorMessage(e));
+      // Không hiển thị toast lỗi nếu là lỗi mạng
+      if (NetworkUtils.isNetworkError(e)) {
+        // Chỉ log, không hiển thị toast
+      } else {
+        AppToastHelper.showGlobalError(ErrorHandler.getErrorMessage(e));
+      }
       
       return {
         'success': false,
         'message': ErrorHandler.getErrorMessage(e),
         'data': null,
-        'error': e,
+        'error': e.toString(),
         'errorDetails': ErrorHandler.getErrorDetails(e),
         'endpoint': endpoint,
         'method': 'API',
@@ -298,6 +347,11 @@ class BaseApiService {
       if (includeAuth && AuthHelper.checkAuthError(response)) {
         // AuthHelper đã tự động navigate đến login
         return response; // Response đã chứa thông tin lỗi auth
+      }
+      
+      // Không hiển thị toast lỗi nếu là lỗi mạng
+      if (response['isNetworkError'] == true) {
+        return response;
       }
       
       return response;

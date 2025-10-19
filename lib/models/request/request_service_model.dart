@@ -44,7 +44,13 @@ class RequestServiceModel {
       requestCode: _normalize((json['request_code'] ?? json['requestCode'])?.toString()),
       inforUser: (json['infor_user'] is Map<String, dynamic>)
           ? UserInfoResponse.fromJson(json['infor_user'] as Map<String, dynamic>)
-          : null,
+          : (json['inforUser'] is Map<String, dynamic>
+              ? UserInfoResponse.fromJson(json['inforUser'] as Map<String, dynamic>)
+              : (json['created_by'] is Map<String, dynamic>
+                  ? UserInfoResponse.fromJson(json['created_by'] as Map<String, dynamic>)
+                  : (json['createdBy'] is Map<String, dynamic>
+                      ? UserInfoResponse.fromJson(json['createdBy'] as Map<String, dynamic>)
+                      : null))),
       carInfo: json['car_infor'] != null ? CarInfo.fromJson(json['car_infor']) : null,
       status: _toInt(json['status']),
       address: _normalize((json['address'] ?? '').toString()),

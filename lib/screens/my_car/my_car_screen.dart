@@ -11,6 +11,9 @@ import 'package:gara/utils/format.dart';
 import 'package:gara/services/user/user_service.dart';
 import 'package:gara/models/car/car_info_model.dart';
 import 'package:gara/widgets/text.dart';
+import 'package:gara/services/booking/booking_service.dart';
+import 'package:gara/models/booking/booking_model.dart';
+import 'package:gara/utils/status/status_widget.dart';
 
 class MyCarScreen extends StatefulWidget {
   const MyCarScreen({super.key});
@@ -25,6 +28,13 @@ class _MyCarScreenState extends State<MyCarScreen> {
   List<DropdownItem> _carItems = [];
   String? _selectedCarId;
   CarInfo? _carDetail;
+  // Lịch sử đặt lịch theo xe
+  final List<BookingModel> _historyItems = [];
+  BookingPagination? _historyPagination;
+  int _historyPage = 1;
+  final int _historyPerPage = 10;
+  bool _historyLoading = false;
+  bool _historyHasMore = true;
 
   @override
   void initState() {
@@ -79,12 +89,50 @@ class _MyCarScreenState extends State<MyCarScreen> {
       _loadingDetail = true;
     });
     final detail = await UserService.getCarById(carId);
-    DebugLogger.largeJson('[MyCarScreen] detail', detail);
+    // DebugLogger.largeJson('[MyCarScreen] detail', detail);
     if (!mounted) return;
     setState(() {
       _carDetail = detail;
       _loadingDetail = false;
     });
+    // Sau khi có chi tiết xe, tải lịch sử theo xe
+    await _fetchHistory(reset: true);
+  }
+
+  Future<void> _fetchHistory({bool reset = false}) async {
+    if (_selectedCarId == null || _selectedCarId == 'none') return;
+    if (_historyLoading) return;
+    setState(() {
+      _historyLoading = true;
+    });
+    if (reset) {
+      _historyPage = 1;
+      _historyHasMore = true;
+    }
+
+    try {
+      final res = await BookingServiceApi.getUserBookedServices(
+        page: _historyPage,
+        perPage: _historyPerPage,
+        carId: _selectedCarId,
+      );
+      setState(() {
+        _historyPagination = res.pagination;
+        if (reset) _historyItems.clear();
+        _historyItems.addAll(res.data);
+        _historyHasMore =
+            _historyItems.length < (_historyPagination?.totalItems ?? _historyItems.length);
+        _historyPage += 1;
+      });
+    } catch (e) {
+      DebugLogger.largeJson('[MyCar] fetch history error', e.toString());
+    } finally {
+      if (mounted) {
+        setState(() {
+          _historyLoading = false;
+        });
+      }
+    }
   }
 
   @override
@@ -96,83 +144,90 @@ class _MyCarScreenState extends State<MyCarScreen> {
     return Scaffold(
       backgroundColor: DesignTokens.surfacePrimary,
       body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: _onRefresh,
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                MyHeader(
-                  title: 'Xe của bạn',
-                  rightIcon: SvgIcon(
-                    svgPath: 'assets/icons_final/more.svg',
-                    size: 24,
-                    color: DesignTokens.textPrimary,
-                  ),
-                  showRightButton: true,
-                  showLeftButton: false,
-                  onRightPressed: _openMoreMenu,
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      MyDropdown(
-                        items: _carItems,
-                        selectedValue: _selectedCarId,
-                        showIcon: true,
-                        title: 'Chọn xe',
-                        hintText: 'Chọn xe của bạn',
-                        onChanged: (val) {
-                          if (val == null || val == _selectedCarId) return;
-                          setState(() {
-                            _selectedCarId = val;
-                          });
-                          if (val != 'none') {
-                            _loadCarDetail(val);
-                          }
-                        },
-                      ),
-                      const SizedBox(height: 12),
-                      if (_loading || _loadingDetail) ...[
-                        const Center(
-                          child: Padding(
-                            padding: EdgeInsets.all(24),
-                            child: CircularProgressIndicator(),
-                          ),
-                        ),
-                      ] else if (_carDetail == null) ...[
-                        Padding(
-                          padding: EdgeInsets.all(16),
-                          child: MyText(
-                            text: 'Không có dữ liệu xe',
-                            textStyle: 'body',
-                            textSize: '16',
-                            textColor: 'primary',
-                            textAlign: TextAlign.start,
-                          ),
-                        ),
-                      ] else ...[
-                        _buildCarSummary(),
-                        const SizedBox(height: 16),
-                        _buildHistorySection(),
-                        const SizedBox(height: 24),
-                        MyButton(
-                          text: 'Tạo yêu cầu',
-                          onPressed: () {
-                            Navigator.pushNamed(context, '/create-request');
+        child: Column(
+          children: [
+            MyHeader(
+              title: 'Xe của bạn',
+              rightIcon: SvgIcon(
+                svgPath: 'assets/icons_final/more.svg',
+                size: 24,
+                color: DesignTokens.textPrimary,
+              ),
+              showRightButton: true,
+              showLeftButton: false,
+              onRightPressed: _openMoreMenu,
+            ),
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: _onRefresh,
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        MyDropdown(
+                          items: _carItems,
+                          selectedValue: _selectedCarId,
+                          showIcon: true,
+                          title: 'Chọn xe',
+                          hintText: 'Chọn xe của bạn',
+                          onChanged: (val) {
+                            if (val == null || val == _selectedCarId) return;
+                            setState(() {
+                              _selectedCarId = val;
+                            });
+                            if (val != 'none') {
+                              _loadCarDetail(val);
+                            }
                           },
                         ),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 12),
+                        if (_loading || _loadingDetail) ...[
+                          const Center(
+                            child: Padding(
+                              padding: EdgeInsets.all(24),
+                              child: CircularProgressIndicator(),
+                            ),
+                          ),
+                        ] else if (_carDetail == null) ...[
+                          Padding(
+                            padding: EdgeInsets.all(16),
+                            child: MyText(
+                              text: 'Không có dữ liệu xe',
+                              textStyle: 'body',
+                              textSize: '16',
+                              textColor: 'primary',
+                              textAlign: TextAlign.start,
+                            ),
+                          ),
+                        ] else ...[
+                          _buildCarSummary(),
+                          const SizedBox(height: 16),
+                          _buildHistorySection(),
+                          const SizedBox(height: 120), // chừa chỗ cho sticky button
+                        ],
                       ],
-                    ],
+                    ),
                   ),
                 ),
-              ],
+              ),
             ),
+          ],
+        ),
+      ),
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Container(
+          color: DesignTokens.surfacePrimary,
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 32 + 64),
+          child: MyButton(
+            text: 'Tạo yêu cầu',
+            onPressed: () {
+              Navigator.pushNamed(context, '/create-request');
+            },
           ),
         ),
       ),
@@ -378,24 +433,194 @@ class _MyCarScreenState extends State<MyCarScreen> {
   Widget _buildHistorySection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: const [
-        MyText(
+      children: [
+        const MyText(
           text: 'Lịch sử thực hiện',
           textStyle: 'title',
           textSize: '16',
           textColor: 'primary',
           textAlign: TextAlign.start,
         ),
-        SizedBox(height: 12),
-        MyText(
-          text: 'Không có lịch sử thực hiện',
-          textStyle: 'body',
-          textSize: '14',
-          textColor: 'tertiary',
-          textAlign: TextAlign.start,
-        ),
-        // TODO: bind real history list when API available
+        const SizedBox(height: 12),
+        if (_historyLoading && _historyItems.isEmpty) ...[
+          const Center(
+            child: Padding(
+              padding: EdgeInsets.symmetric(vertical: 16),
+              child: CircularProgressIndicator(),
+            ),
+          ),
+        ] else if (_historyItems.isEmpty) ...[
+          const MyText(
+            text: 'Không có lịch sử thực hiện',
+            textStyle: 'body',
+            textSize: '14',
+            textColor: 'tertiary',
+            textAlign: TextAlign.start,
+          ),
+        ] else ...[
+          for (int i = 0; i < _historyItems.length; i++) ...[
+            _buildHistoryCard(_historyItems[i]),
+            if (i != _historyItems.length - 1) const SizedBox(height: 12),
+          ],
+          const SizedBox(height: 12),
+          if (_historyHasMore)
+            SizedBox(
+              height: 40,
+              width: double.infinity,
+              child: MyButton(
+                text: _historyLoading ? 'Đang tải...' : 'Tải thêm',
+                buttonType: ButtonType.secondary,
+                onPressed: _historyLoading ? null : () => _fetchHistory(),
+              ),
+            ),
+        ],
       ],
     );
+  }
+
+  Widget _buildHistoryCard(BookingModel item) {
+    final garageName = item.quotation?.inforGarage?.nameGarage ?? '';
+    final address = item.quotation?.inforGarage?.address ?? '';
+    final timeText = item.time != null ? _formatDateTime(item.time!) : '';
+    final description = item.requestService?.description ?? '';
+    final remain = item.quotation?.remainPrice ?? 0;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: DesignTokens.surfaceSecondary,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: DesignTokens.borderSecondary),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      MyText(
+                        text: garageName,
+                        textStyle: 'head',
+                        textSize: '16',
+                        textColor: 'brand',
+                      ),
+                      MyText(
+                        text: item.requestService?.requestCode ?? '',
+                        textStyle: 'body',
+                        textSize: '12',
+                        textColor: 'tertiary',
+                      ),
+                    ],
+                  ),
+                ),
+                StatusWidget(status: item.status, type: StatusType.booking),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const MyText(
+                  text: 'Địa chỉ: ',
+                  textStyle: 'body',
+                  textSize: '14',
+                  textColor: 'tertiary',
+                ),
+                Expanded(
+                  child: MyText(
+                    text: address,
+                    textStyle: 'body',
+                    textSize: '14',
+                    textColor: 'primary',
+                  ),
+                ),
+                const SizedBox(width: 8),
+                SvgIcon(
+                  svgPath: 'assets/icons_final/map.svg',
+                  size: 20,
+                  color: DesignTokens.textBrand,
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                const MyText(
+                  text: 'Thời gian: ',
+                  textStyle: 'body',
+                  textSize: '14',
+                  textColor: 'tertiary',
+                ),
+                MyText(
+                  text: timeText,
+                  textStyle: 'body',
+                  textSize: '14',
+                  textColor: 'primary',
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                const MyText(
+                  text: 'Dịch vụ: ',
+                  textStyle: 'body',
+                  textSize: '14',
+                  textColor: 'tertiary',
+                ),
+                Expanded(
+                  child: MyText(
+                    text: description,
+                    textStyle: 'body',
+                    textSize: '14',
+                    textColor: 'primary',
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            const Divider(color: DesignTokens.borderBrandSecondary, height: 1),
+            const SizedBox(height: 8),
+            if (item.quotation != null) ...[
+              Row(
+                children: [
+                  const MyText(
+                    text: 'Còn phải thanh toán: ',
+                    textStyle: 'body',
+                    textSize: '14',
+                    textColor: 'tertiary',
+                  ),
+                  MyText(
+                    text: _formatMoney(remain),
+                    textStyle: 'title',
+                    textSize: '16',
+                    textColor: 'brand',
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _formatMoney(int v) {
+    final s = v.toString();
+    final buf = StringBuffer();
+    for (int i = 0; i < s.length; i++) {
+      if (i > 0 && (s.length - i) % 3 == 0) buf.write('.');
+      buf.write(s[i]);
+    }
+    return '$bufđ';
+  }
+
+  String _formatDateTime(DateTime dt) {
+    final two = (int n) => n.toString().padLeft(2, '0');
+    return '${two(dt.hour)}:${two(dt.minute)} ${two(dt.day)}/${two(dt.month)}/${dt.year}';
   }
 }

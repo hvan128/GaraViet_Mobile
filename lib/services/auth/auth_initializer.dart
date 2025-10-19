@@ -28,6 +28,11 @@ class AuthInitializer {
         
         // Khởi tạo UserProvider với thông tin user
         print('🚀 [AuthInitializer] Initializing UserProvider...');
+        
+        // Thử load user info từ storage trước (để hiển thị ngay lập tức)
+        await UserProvider().loadUserInfoFromStorage();
+        
+        // Sau đó thử load từ API để cập nhật thông tin mới nhất
         await UserProvider().initializeUserInfo();
         
         print('🚀 [AuthInitializer] Authentication system initialized with existing refresh token');

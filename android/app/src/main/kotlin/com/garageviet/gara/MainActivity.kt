@@ -1,4 +1,4 @@
-package com.example.gara
+package com.garageviet.gara
 
 import io.flutter.embedding.android.FlutterActivity
 

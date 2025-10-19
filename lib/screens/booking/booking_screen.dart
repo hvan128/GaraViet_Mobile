@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:gara/theme/design_tokens.dart';
 import 'package:gara/theme/index.dart';
 import 'package:gara/widgets/button.dart';
 import 'package:gara/services/api/base_api_service.dart';
-import 'dart:convert';
 import 'package:gara/services/api/auth_http_client.dart';
 import 'package:gara/config.dart';
 import 'package:gara/navigation/navigation.dart';
@@ -549,10 +547,10 @@ class _BookingScreenState extends State<BookingScreen> {
         setState(() {
           if (isSelected) {
             _selectedVoucher = null; // Bỏ chọn
-            print('Voucher deselected');
+            // print('Voucher deselected');
           } else {
             _selectedVoucher = voucher; // Chọn voucher này
-            print('Voucher selected: ${voucher['id']}');
+            // print('Voucher selected: ${voucher['id']}');
           }
         });
       },
@@ -594,9 +592,9 @@ class _BookingScreenState extends State<BookingScreen> {
     final voucherDiscount = _calculateVoucherDiscount(totalAmount);
     final finalAmount = totalAmount - voucherDiscount;
 
-    print(
-      'Payment Summary - Total: $totalAmount, Voucher Discount: $voucherDiscount, Deposit: $depositAmount, Final: $finalAmount',
-    );
+    // print(
+    //   'Payment Summary - Total: $totalAmount, Voucher Discount: $voucherDiscount, Deposit: $depositAmount, Final: $finalAmount',
+    // );
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -811,16 +809,16 @@ class _BookingScreenState extends State<BookingScreen> {
         'voucher_value': voucherDiscount,
         'deposit_value': depositAmount,
       };
-      debugPrint('[CreateBooking] Request body: ' + jsonEncode(requestBody));
+      // debugPrint('[CreateBooking] Request body: ' + jsonEncode(requestBody));
 
       final res = await AuthHttpClient.post(
         Config.bookingCreateUrl,
         body: requestBody,
       );
       try {
-        debugPrint('[CreateBooking] Raw response: ' + jsonEncode(res));
+        // debugPrint('[CreateBooking] Raw response: ' + jsonEncode(res));
       } catch (_) {
-        debugPrint('[CreateBooking] Raw response (non-JSON encodable)');
+        // debugPrint('[CreateBooking] Raw response (non-JSON encodable)');
       }
 
       if (res['success'] == true) {
@@ -837,7 +835,7 @@ class _BookingScreenState extends State<BookingScreen> {
           },
         });
       } else {
-        print(res['message']);
+        // print(res['message']);
       }
     } catch (e) {
       if (mounted) {
@@ -895,13 +893,13 @@ class _BookingScreenState extends State<BookingScreen> {
             ? _selectedVoucher!['minorder'] as int
             : int.tryParse('${_selectedVoucher!['minorder']}') ?? 0;
 
-    print('Voucher selected: ${_selectedVoucher}');
-    print('Total amount: $totalAmount, Min order: $minOrder');
-    print('Type: $type, Discount value: $discountValue');
+    // print('Voucher selected: ${_selectedVoucher}');
+    // print('Total amount: $totalAmount, Min order: $minOrder');
+    // print('Type: $type, Discount value: $discountValue');
 
     // Kiểm tra điều kiện đơn hàng tối thiểu
     if (totalAmount < minOrder) {
-      print('Order amount too low for voucher');
+      // print('Order amount too low for voucher');
       return 0;
     }
 
@@ -914,7 +912,7 @@ class _BookingScreenState extends State<BookingScreen> {
       discount = discountValue;
     }
 
-    print('Calculated discount: $discount');
+    // print('Calculated discount: $discount');
     return discount;
   }
 

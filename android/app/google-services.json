@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "699087115967",
+    "project_id": "gara-test-2a811",
+    "storage_bucket": "gara-test-2a811.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:699087115967:android:84ec11709e4b3b1c86980a",
+        "android_client_info": {
+          "package_name": "com.garageviet.gara"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDqKD_XBKNdHkcLeza70Cr0l7SfyZJfpwE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

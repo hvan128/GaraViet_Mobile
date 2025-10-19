@@ -31,6 +31,7 @@ class BookingServiceApi {
     String? statusCsv,
     DateTime? fromDate,
     DateTime? toDate,
+    String? carId,
   }) async {
     final res = await BaseApiService.get(
       Config.bookingUserBookedServicesUrl.replaceFirst(Config.baseUrl, ''),
@@ -40,6 +41,7 @@ class BookingServiceApi {
         if (statusCsv != null && statusCsv.isNotEmpty) 'status': statusCsv,
         if (fromDate != null) 'from_date': fromDate.toIso8601String(),
         if (toDate != null) 'to_date': toDate.toIso8601String(),
+        if (carId != null && carId.isNotEmpty) 'car_id': carId,
       },
     );
     DebugLogger.largeJson('res', res);

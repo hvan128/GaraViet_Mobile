@@ -12,9 +12,6 @@ class MyTextField extends StatefulWidget {
   final String? value; // Chỉ dùng khi KHÔNG truyền controller
   final void Function(String)? onChange;
   final TextEditingController? controller;
-  final bool? hasEndIconCurrency;
-  final String? currencyLabel;
-  final String? currencyFlag;
   final Widget? suffixIcon;
   final Widget? prefixIcon;
   final TextInputType? keyboardType;
@@ -41,9 +38,6 @@ class MyTextField extends StatefulWidget {
     this.value,
     this.onChange,
     this.controller,
-    this.hasEndIconCurrency = false,
-    this.currencyLabel,
-    this.currencyFlag,
     this.suffixIcon,
     this.prefixIcon,
     this.keyboardType,
@@ -81,7 +75,9 @@ class _MyTextFieldState extends State<MyTextField> {
   void didUpdateWidget(MyTextField oldWidget) {
     super.didUpdateWidget(oldWidget);
     // Chỉ đồng bộ value -> controller khi dùng controller nội bộ
-    if (widget.controller == null && oldWidget.value != widget.value && widget.value != null) {
+    if (widget.controller == null &&
+        oldWidget.value != widget.value &&
+        widget.value != null) {
       _controller.text = widget.value!;
     }
   }
@@ -91,7 +87,9 @@ class _MyTextFieldState extends State<MyTextField> {
     // Debug: theo dõi giá trị controller mỗi lần build
     try {
       // ignore: avoid_print
-      debugPrint('[MyTextField:build] label=${widget.label} text="${(widget.controller ?? _controller).text}" hasError=${widget.hasError}');
+      debugPrint(
+        '[MyTextField:build] label=${widget.label} text="${(widget.controller ?? _controller).text}" hasError=${widget.hasError}',
+      );
     } catch (_) {}
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -106,15 +104,22 @@ class _MyTextFieldState extends State<MyTextField> {
           const SizedBox(height: 6),
         ],
         Container(
-          height: widget.height ?? (widget.maxLines != null && (widget.maxLines ?? 1) > 1 ? null : 44),
-          padding: widget.padding ?? const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          height:
+              widget.height ??
+              (widget.maxLines != null && (widget.maxLines ?? 1) > 1
+                  ? null
+                  : 44),
+          padding:
+              widget.padding ??
+              const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
           decoration: BoxDecoration(
             color: widget.backgroundColor ?? DesignTokens.surfacePrimary,
             borderRadius: BorderRadius.circular(widget.borderRadius!),
             border: Border.all(
-              color: widget.hasError 
-                  ? DesignTokens.alerts['error']!
-                  : widget.borderColor ?? DesignTokens.borderPrimary,
+              color:
+                  widget.hasError
+                      ? DesignTokens.alerts['error']!
+                      : widget.borderColor ?? DesignTokens.borderPrimary,
               width: widget.hasError ? 2 : 1,
             ),
           ),
@@ -136,50 +141,37 @@ class _MyTextFieldState extends State<MyTextField> {
                 widget.onChange!(value);
               }
             },
-            style: MyTypography.getStyle('label', '14')?.copyWith(
-              color: widget.textColor ?? DesignTokens.textPrimary,
-            ) ?? TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: widget.textColor ?? DesignTokens.textPrimary,
-            ),
+            style:
+                MyTypography.getStyle('label', '14')?.copyWith(
+                  color: widget.textColor ?? DesignTokens.textPrimary,
+                ) ??
+                TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: widget.textColor ?? DesignTokens.textPrimary,
+                ),
             obscureText: widget.obscureText,
             decoration: InputDecoration(
               isDense: true,
-              prefixIcon: widget.prefixIcon,
+              // Dùng prefix thay cho prefixIcon để tránh padding ngang mặc định
+              prefixIcon: Padding(
+                padding: const EdgeInsets.all(0.0),
+                child: widget.prefixIcon,
+              ),
+              prefixIconConstraints: const BoxConstraints(
+                minWidth: 0,
+                minHeight: 0,
+              ),
+              // Dùng suffix thay cho suffixIcon để tránh padding ngang mặc định
+              suffixIcon: widget.suffixIcon,
               suffixIconConstraints: const BoxConstraints(
                 minWidth: 0,
                 minHeight: 0,
               ),
-              suffixIcon:
-                widget.suffixIcon ??
-                (widget.hasEndIconCurrency!
-                    ? Row(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        MyText(
-                          text: widget.currencyLabel!,
-                          textStyle: 'label',
-                          textSize: '14',
-                          textColor: 'tertiary',
-                        ),
-                        SizedBox(width: 4),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(100),
-                          child: Image.asset(
-                            widget.currencyFlag!,
-                            width: 20,
-                            height: 20,
-                            fit: BoxFit.cover,
-                          ),
-                        ),
-                      ],
-                    )
-                    : const SizedBox()),
-              contentPadding: widget.maxLines != null && (widget.maxLines ?? 1) > 1
-                  ? const EdgeInsets.only(top: 8, bottom: 8, right: 0)
-                  : const EdgeInsets.only(bottom: 2, right: 0),
+              contentPadding: EdgeInsets.only(
+                left: widget.prefixIcon != null ? 8 : 0,
+                right: widget.suffixIcon != null ? 8 : 0,
+              ),
               border: InputBorder.none,
               enabledBorder: InputBorder.none,
               disabledBorder: InputBorder.none,
@@ -187,13 +179,16 @@ class _MyTextFieldState extends State<MyTextField> {
               fillColor: Colors.transparent,
               filled: false,
               hintText: widget.hintText,
-              hintStyle: MyTypography.getStyle('label', '14')?.copyWith(
-                color: DesignTokens.textPlaceholder,
-              ) ?? TextStyle(
-                color: DesignTokens.textPlaceholder,
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
+              hintStyle:
+                  MyTypography.getStyle(
+                    'label',
+                    '14',
+                  )?.copyWith(color: DesignTokens.textPlaceholder) ??
+                  TextStyle(
+                    color: DesignTokens.textPlaceholder,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
             ),
           ),
         ),

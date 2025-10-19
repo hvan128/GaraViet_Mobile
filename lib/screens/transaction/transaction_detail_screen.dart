@@ -63,12 +63,12 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
         return;
       }
 
-      debugPrint(
-        '[BookingDetail] Request: GET ' +
-            Config.bookingDetailUrl +
-            ' booking_id=' +
-            bookingId.toString(),
-      );
+      // debugPrint(
+      //   '[BookingDetail] Request: GET ' +
+      //       Config.bookingDetailUrl +
+      //       ' booking_id=' +
+      //       bookingId.toString(),
+      // );
       Map<String, dynamic> res = {};
       const int maxAttempts = 6; // thử tối đa 6 lần với backoff
       int delayMs = 300; // backoff bắt đầu 300ms
@@ -78,14 +78,14 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
           queryParams: {'booking_id': bookingId.toString()},
         );
 
-        DebugLogger.largeJson(
-          '[BookingDetail] Attempt ' +
-              attempt.toString() +
-              '/' +
-              maxAttempts.toString() +
-              ' Raw response',
-          res,
-        );
+        // DebugLogger.largeJson(
+        //   '[BookingDetail] Attempt ' +
+        //       attempt.toString() +
+        //       '/' +
+        //       maxAttempts.toString() +
+        //       ' Raw response',
+        //   res,
+        // );
 
         // Nếu thành công hoặc không phải 404 thì dừng retry
         if (res['success'] == true || (res['statusCode'] as int? ?? 0) != 404) {

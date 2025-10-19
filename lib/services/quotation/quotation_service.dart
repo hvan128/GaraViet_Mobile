@@ -37,6 +37,43 @@ class QuotationServiceApi {
     }
   }
 
+  /// Cập nhật báo giá hiện có
+  static Future<UpdateQuotationResponse> updateQuotation({
+    required int quotationId,
+    required int price,
+    required String description,
+    required int status,
+  }) async {
+    try {
+      final body = {
+        'quotation_id': quotationId,
+        'price': price,
+        'description': description,
+        'status': status,
+      };
+
+      debugPrint('[QuotationServiceApi.updateQuotation] body=$body');
+
+      final response = await BaseApiService.put(
+        '/manager-quotation/update-quotation',
+        body: body,
+      );
+
+      debugPrint('[QuotationServiceApi.updateQuotation] rawResponse=$response');
+
+      final updateResponse = UpdateQuotationResponse.fromJson(response);
+      debugPrint('[QuotationServiceApi.updateQuotation] success=${updateResponse.success}, message=${updateResponse.message}');
+      return updateResponse;
+    } catch (e) {
+      debugPrint('[QuotationServiceApi.updateQuotation] error=$e');
+      return UpdateQuotationResponse(
+        success: false,
+        message: 'Error updating quotation: $e',
+        data: null,
+      );
+    }
+  }
+
   /// Lấy danh sách báo giá theo ID yêu cầu dịch vụ
   static Future<QuotationListResponse> getQuotationsByRequestId({
     required int requestServiceId,
