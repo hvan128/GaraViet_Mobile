@@ -1,15 +1,16 @@
 {
   "project_info": {
     "project_number": "699087115967",
+    "firebase_url": "https://gara-test-2a811-default-rtdb.asia-southeast1.firebasedatabase.app",
     "project_id": "gara-test-2a811",
     "storage_bucket": "gara-test-2a811.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:699087115967:android:84ec11709e4b3b1c86980a",
+        "mobilesdk_app_id": "1:699087115967:android:5e2b1cfd923abc1586980a",
         "android_client_info": {
-          "package_name": "com.garageviet.gara"
+          "package_name": "com.garageviet.dev"
         }
       },
       "oauth_client": [],

@@ -75,22 +75,13 @@ class _MyTextFieldState extends State<MyTextField> {
   void didUpdateWidget(MyTextField oldWidget) {
     super.didUpdateWidget(oldWidget);
     // Chỉ đồng bộ value -> controller khi dùng controller nội bộ
-    if (widget.controller == null &&
-        oldWidget.value != widget.value &&
-        widget.value != null) {
+    if (widget.controller == null && oldWidget.value != widget.value && widget.value != null) {
       _controller.text = widget.value!;
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Debug: theo dõi giá trị controller mỗi lần build
-    try {
-      // ignore: avoid_print
-      debugPrint(
-        '[MyTextField:build] label=${widget.label} text="${(widget.controller ?? _controller).text}" hasError=${widget.hasError}',
-      );
-    } catch (_) {}
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -104,22 +95,13 @@ class _MyTextFieldState extends State<MyTextField> {
           const SizedBox(height: 6),
         ],
         Container(
-          height:
-              widget.height ??
-              (widget.maxLines != null && (widget.maxLines ?? 1) > 1
-                  ? null
-                  : 44),
-          padding:
-              widget.padding ??
-              const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          height: widget.height ?? (widget.maxLines != null && (widget.maxLines ?? 1) > 1 ? null : 44),
+          padding: widget.padding ?? const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
           decoration: BoxDecoration(
             color: widget.backgroundColor ?? DesignTokens.surfacePrimary,
             borderRadius: BorderRadius.circular(widget.borderRadius!),
             border: Border.all(
-              color:
-                  widget.hasError
-                      ? DesignTokens.alerts['error']!
-                      : widget.borderColor ?? DesignTokens.borderPrimary,
+              color: widget.hasError ? DesignTokens.alerts['error']! : widget.borderColor ?? DesignTokens.borderPrimary,
               width: widget.hasError ? 2 : 1,
             ),
           ),
@@ -141,8 +123,7 @@ class _MyTextFieldState extends State<MyTextField> {
                 widget.onChange!(value);
               }
             },
-            style:
-                MyTypography.getStyle('label', '14')?.copyWith(
+            style: MyTypography.getStyle('label', '14')?.copyWith(
                   color: widget.textColor ?? DesignTokens.textPrimary,
                 ) ??
                 TextStyle(
@@ -179,8 +160,7 @@ class _MyTextFieldState extends State<MyTextField> {
               fillColor: Colors.transparent,
               filled: false,
               hintText: widget.hintText,
-              hintStyle:
-                  MyTypography.getStyle(
+              hintStyle: MyTypography.getStyle(
                     'label',
                     '14',
                   )?.copyWith(color: DesignTokens.textPlaceholder) ??

@@ -42,14 +42,14 @@ class MyButton extends StatelessWidget {
     this.borderColor,
     this.colorStartIcon,
     this.colorEndIcon,
-  })  : assert(
-          (startIcon != null && sizeStartIcon != null) || startIcon == null,
-          "Require sizeStartIcon if startIcon is provided",
-        ),
-        assert(
-          (endIcon != null && sizeEndIcon != null) || endIcon == null,
-          "Require sizeEndIcon if endIcon is provided",
-        );
+  }) : assert(
+         (startIcon != null && sizeStartIcon != null) || startIcon == null,
+         "Require sizeStartIcon if startIcon is provided",
+       ),
+       assert(
+         (endIcon != null && sizeEndIcon != null) || endIcon == null,
+         "Require sizeEndIcon if endIcon is provided",
+       );
 
   @override
   Widget build(BuildContext context) {
@@ -118,7 +118,7 @@ class MyButton extends StatelessWidget {
           borderColorStyle = DesignTokens.surfaceBrand;
           break;
         case ButtonType.red:
-          borderColorStyle = null;  
+          borderColorStyle = null;
           break;
         case ButtonType.disable:
           borderColorStyle = DesignTokens.surfaceTertiary;
@@ -132,22 +132,16 @@ class MyButton extends StatelessWidget {
       }
     }
 
-    
-
     return SizedBox(
-      width: width ?? double.infinity,
+      width: width, // null => wraps content; only expands when width provided
       height: height ?? 48,
       child: GestureDetector(
         onTap: buttonType == ButtonType.disable ? null : onPressed,
         child: Container(
           decoration: BoxDecoration(
-            color: buttonType == ButtonType.disable 
-                ? DesignTokens.surfaceTertiary 
-                : bgColor,
+            color: buttonType == ButtonType.disable ? DesignTokens.surfaceTertiary : bgColor,
             borderRadius: BorderRadius.circular(100),
-            border: borderColorStyle != null 
-                ? Border.all(color: borderColorStyle, width: 1.0)
-                : null,
+            border: borderColorStyle != null ? Border.all(color: borderColorStyle, width: 1.0) : null,
           ),
           child: Center(
             child: Row(
@@ -162,8 +156,7 @@ class MyButton extends StatelessWidget {
                     height: sizeStartIcon!.height,
                     color: colorStartIcon,
                   ),
-                if (startIcon != null && sizeStartIcon != null)
-                  SizedBox(width: 4),
+                if (startIcon != null && sizeStartIcon != null) SizedBox(width: 4),
                 MyText(
                   text: text,
                   textStyle: textStyle ?? 'label',
@@ -171,8 +164,7 @@ class MyButton extends StatelessWidget {
                   textColor: textColor,
                   color: color ?? textColorStyle!,
                 ),
-                if (endIcon != null)
-                  SizedBox(width: 4),
+                if (endIcon != null) SizedBox(width: 4),
                 if (endIcon != null)
                   SvgIcon(
                     svgPath: endIcon!,
@@ -229,14 +221,14 @@ class MyButtonFeature extends StatelessWidget {
     this.isFocused = false,
     this.colorStartIcon,
     this.colorEndIcon,
-  })  : assert(
-          (startIcon != null && sizeStartIcon != null) || startIcon == null,
-          "Require sizeStartIcon if startIcon is provided",
-        ),
-        assert(
-          (endIcon != null && sizeEndIcon != null) || endIcon == null,
-          "Require sizeEndIcon if endIcon is provided",
-        );
+  }) : assert(
+         (startIcon != null && sizeStartIcon != null) || startIcon == null,
+         "Require sizeStartIcon if startIcon is provided",
+       ),
+       assert(
+         (endIcon != null && sizeEndIcon != null) || endIcon == null,
+         "Require sizeEndIcon if endIcon is provided",
+       );
 
   @override
   Widget build(BuildContext context) {
@@ -279,64 +271,56 @@ class MyButtonFeature extends StatelessWidget {
         onTap: buttonType == ButtonType.disable ? null : onPressed,
         child: Container(
           padding: EdgeInsets.symmetric(vertical: 4, horizontal: 12),
-        foregroundDecoration: BoxDecoration(
-          border: Border.all(
-            style: isFocused ? BorderStyle.solid : BorderStyle.none,
-            width: 2,
-            strokeAlign: BorderSide.strokeAlignOutside,
-            color: bgColor!,
-          ),
-          borderRadius: BorderRadius.circular(100),
-        ),
-        decoration: BoxDecoration(
-          color: disabled ? MyColors.gray['100']! : bgColor,
-          borderRadius: BorderRadius.circular(100),
-          border: Border.all(
-            style: isFocused ? BorderStyle.solid : BorderStyle.none,
-            width: 2,
-            strokeAlign: BorderSide.strokeAlignInside,
-            color: MyColors.white['c900']!,
-          ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (startIcon != null) ...[
-              SvgIcon(
-                svgPath: startIcon!,
-                width: sizeStartIcon!.width,
-                height: sizeStartIcon!.height,
-                color: colorStartIcon,
-              ),
-              SizedBox(
-                width: 4,
-              )
-            ],
-            MyText(
-              text: text,
-              textStyle: textStyle ?? 'head',
-              textSize: textSize ?? '16',
-              textColor: textColor,
-              color: color ?? textColorStyle!,
-              lineHeight: lineHeight ?? 1.38,
+          foregroundDecoration: BoxDecoration(
+            border: Border.all(
+              style: isFocused ? BorderStyle.solid : BorderStyle.none,
+              width: 2,
+              strokeAlign: BorderSide.strokeAlignOutside,
+              color: bgColor!,
             ),
-            if (endIcon != null) ...[
-              SizedBox(
-                width: 4,
+            borderRadius: BorderRadius.circular(100),
+          ),
+          decoration: BoxDecoration(
+            color: disabled ? MyColors.gray['100']! : bgColor,
+            borderRadius: BorderRadius.circular(100),
+            border: Border.all(
+              style: isFocused ? BorderStyle.solid : BorderStyle.none,
+              width: 2,
+              strokeAlign: BorderSide.strokeAlignInside,
+              color: MyColors.white['c900']!,
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (startIcon != null) ...[
+                SvgIcon(
+                  svgPath: startIcon!,
+                  width: sizeStartIcon!.width,
+                  height: sizeStartIcon!.height,
+                  color: colorStartIcon,
+                ),
+                SizedBox(width: 4),
+              ],
+              MyText(
+                text: text,
+                textStyle: textStyle ?? 'head',
+                textSize: textSize ?? '16',
+                textColor: textColor,
+                color: color ?? textColorStyle!,
+                lineHeight: lineHeight ?? 1.38,
               ),
-              SvgIcon(
-                svgPath: endIcon!,
-                width: sizeEndIcon!.width,
-                height: sizeEndIcon!.height,
-                color: colorEndIcon,
-              )
+              if (endIcon != null) ...[
+                SizedBox(width: 4),
+                SvgIcon(svgPath: endIcon!, width: sizeEndIcon!.width, height: sizeEndIcon!.height, color: colorEndIcon),
+              ],
             ],
-          ],
+          ),
         ),
       ),
-    ));
+    );
   }
 }
 

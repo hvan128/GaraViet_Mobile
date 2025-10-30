@@ -34,20 +34,18 @@ class AuthHttpClient {
 
   // Lấy headers với authentication token
   static Future<Map<String, String>> _getHeaders({bool includeAuth = true}) async {
-    final headers = <String, String>{
-      'Content-Type': 'application/json',
-    };
-    
+    final headers = <String, String>{'Content-Type': 'application/json'};
+
     if (includeAuth) {
       // Lazy refresh - check token trước khi gửi request
       await JwtTokenManager.ensureValidToken();
-      
+
       final token = TokenCache.getAccessToken();
       if (token != null) {
         headers['Authorization'] = 'Bearer $token';
       }
     }
-    
+
     return headers;
   }
 
@@ -58,16 +56,12 @@ class AuthHttpClient {
   ) async {
     // Thực hiện request lần đầu
     var response = await requestFunction();
-    
+
     // Nếu là lỗi 401/403 và có authentication
     // Nhưng không refresh nếu là lỗi mạng
     final int? statusCode = response['statusCode'] as int?;
     final bool isNetworkError = response['isNetworkError'] == true;
-    if (!response['success'] &&
-        includeAuth &&
-        !isNetworkError &&
-        (statusCode == 401 || statusCode == 403)) {
-      
+    if (!response['success'] && includeAuth && !isNetworkError && (statusCode == 401 || statusCode == 403)) {
       // Với 403: không thử refresh, navigate thẳng về login
       if (statusCode == 403) {
         _navigateToLogin();
@@ -82,7 +76,7 @@ class AuthHttpClient {
 
       print('Gặp lỗi 401, thử refresh token...');
       final refreshSuccess = await JwtTokenManager.refreshTokenIfNeeded();
-      
+
       if (refreshSuccess) {
         // Thử lại request với token mới
         response = await requestFunction();
@@ -126,18 +120,16 @@ class AuthHttpClient {
         }
       }
     }
-    
+
     // Nếu là lỗi mạng và có refresh token, không navigate đến login
-    if (!response['success'] && 
-        response['isNetworkError'] == true && 
-        includeAuth) {
+    if (!response['success'] && response['isNetworkError'] == true && includeAuth) {
       final refreshToken = await Storage.getRefreshToken();
       if (refreshToken != null) {
         print('Lỗi mạng nhưng vẫn có refresh token, không navigate đến login');
         return response; // Trả về response lỗi mạng mà không navigate
       }
     }
-    
+
     return response;
   }
 
@@ -156,9 +148,7 @@ class AuthHttpClient {
         }
 
         final uri = Uri.parse(url);
-        final uriWithParams = queryParams != null 
-            ? uri.replace(queryParameters: queryParams)
-            : uri;
+        final uriWithParams = queryParams != null ? uri.replace(queryParameters: queryParams) : uri;
 
         final response = await _client.get(uriWithParams, headers: requestHeaders);
         return _handleResponse(response);
@@ -198,7 +188,7 @@ class AuthHttpClient {
           headers: requestHeaders,
           body: body != null ? jsonEncode(body) : null,
         );
-        
+
         return _handleResponse(response);
       } catch (e) {
         // Xử lý lỗi mạng
@@ -236,17 +226,11 @@ class AuthHttpClient {
         // Convert form data to URL encoded string
         String body = '';
         if (formData != null && formData.isNotEmpty) {
-          body = formData.entries
-              .map((e) => '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value)}')
-              .join('&');
+          body = formData.entries.map((e) => '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value)}').join('&');
         }
 
-        final response = await _client.post(
-          Uri.parse(url),
-          headers: requestHeaders,
-          body: body,
-        );
-        
+        final response = await _client.post(Uri.parse(url), headers: requestHeaders, body: body);
+
         return _handleResponse(response);
       } catch (e) {
         // Xử lý lỗi mạng
@@ -270,7 +254,7 @@ class AuthHttpClient {
     String url, {
     Map<String, String>? headers,
     Map<String, String>? formData,
-      List<http.MultipartFile>? files,
+    List<http.MultipartFile>? files,
     bool includeAuth = true,
   }) async {
     return await _makeRequestWithRetry(() async {
@@ -285,7 +269,7 @@ class AuthHttpClient {
         // Create multipart request
         final request = http.MultipartRequest('POST', Uri.parse(url));
         request.headers.addAll(requestHeaders);
-        
+
         // Add form fields
         if (formData != null && formData.isNotEmpty) {
           request.fields.addAll(formData);
@@ -298,7 +282,7 @@ class AuthHttpClient {
 
         final streamedResponse = await _client.send(request);
         final response = await http.Response.fromStream(streamedResponse);
-        
+
         return _handleResponse(response);
       } catch (e) {
         // Xử lý lỗi mạng
@@ -336,7 +320,7 @@ class AuthHttpClient {
           headers: requestHeaders,
           body: body != null ? jsonEncode(body) : null,
         );
-        
+
         return _handleResponse(response);
       } catch (e) {
         // Xử lý lỗi mạng
@@ -358,6 +342,7 @@ class AuthHttpClient {
   // DELETE request
   static Future<Map<String, dynamic>> delete(
     String url, {
+    Map<String, dynamic>? body,
     Map<String, String>? headers,
     bool includeAuth = true,
   }) async {
@@ -371,8 +356,9 @@ class AuthHttpClient {
         final response = await _client.delete(
           Uri.parse(url),
           headers: requestHeaders,
+          body: body != null ? jsonEncode(body) : null,
         );
-        
+
         return _handleResponse(response);
       } catch (e) {
         // Xử lý lỗi mạng
@@ -395,7 +381,7 @@ class AuthHttpClient {
   static Map<String, dynamic> _handleResponse(dynamic response) {
     try {
       final responseBody = response.body as String;
-      
+
       // Kiểm tra nếu response là HTML (thường là error page)
       if (responseBody.startsWith('<!doctype html>') || responseBody.startsWith('<html')) {
         return {
@@ -405,7 +391,7 @@ class AuthHttpClient {
           'statusCode': response.statusCode,
         };
       }
-      
+
       // Kiểm tra nếu response không phải JSON
       if (!responseBody.trim().startsWith('{') && !responseBody.trim().startsWith('[')) {
         return {
@@ -415,23 +401,30 @@ class AuthHttpClient {
           'statusCode': response.statusCode,
         };
       }
-      
+
       final responseData = jsonDecode(responseBody) as Map<String, dynamic>;
-      
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        return {
-          'success': true,
-          'message': responseData['message'],
-          'data': responseData['data'] ?? responseData,
-          'statusCode': response.statusCode,
-        };
+
+      // Kiểm tra xem backend đã trả về cấu trúc chuẩn chưa
+      if (responseData.containsKey('success') && responseData.containsKey('message')) {
+        // Backend đã trả về cấu trúc chuẩn, không cần wrap
+        return {...responseData, 'statusCode': response.statusCode};
       } else {
-        return {
-          'success': false,
-          'message': responseData['message'] ?? 'Request failed',
-          'data': responseData,
-          'statusCode': response.statusCode,
-        };
+        // Backend chưa có cấu trúc chuẩn, wrap như cũ
+        if (response.statusCode >= 200 && response.statusCode < 300) {
+          return {
+            'success': true,
+            'message': responseData['message'],
+            'data': responseData['data'] ?? responseData,
+            'statusCode': response.statusCode,
+          };
+        } else {
+          return {
+            'success': false,
+            'message': responseData['message'] ?? 'Request failed',
+            'data': responseData,
+            'statusCode': response.statusCode,
+          };
+        }
       }
     } catch (e) {
       return {
@@ -450,10 +443,10 @@ class AuthHttpClient {
       JwtTokenManager.clearTokens();
       // Đồng thời clear UserProvider để tránh hiển thị dữ liệu người dùng cũ
       UserProvider().clearUserInfo();
-      
+
       // Hiển thị thông báo trước khi navigate
       _showLogoutNotification();
-      
+
       // Navigate đến login screen
       Navigate.pushNamedAndRemoveAll('/login');
     } catch (e) {
@@ -467,10 +460,7 @@ class AuthHttpClient {
       // Lấy context từ navigation key
       final context = Navigate().navigationKey.currentContext;
       if (context != null) {
-        AppToastHelper.showInfo(
-          context,
-          message: 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
-        );
+        AppToastHelper.showInfo(context, message: 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
       }
     } catch (e) {
       print('Lỗi khi hiển thị thông báo: $e');

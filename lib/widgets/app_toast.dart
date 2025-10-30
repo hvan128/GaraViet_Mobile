@@ -22,8 +22,7 @@ class AppToast extends StatefulWidget {
   State<AppToast> createState() => _AppToastState();
 }
 
-class _AppToastState extends State<AppToast>
-    with SingleTickerProviderStateMixin {
+class _AppToastState extends State<AppToast> with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _slideAnimation;
   late Animation<double> _fadeAnimation;
@@ -31,26 +30,17 @@ class _AppToastState extends State<AppToast>
   @override
   void initState() {
     super.initState();
-    _animationController = AnimationController(
-      duration: const Duration(milliseconds: 300),
-      vsync: this,
-    );
+    _animationController = AnimationController(duration: const Duration(milliseconds: 300), vsync: this);
 
     _slideAnimation = Tween<double>(
       begin: 1.0,
       end: 0.0,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeOutBack,
-    ));
+    ).animate(CurvedAnimation(parent: _animationController, curve: Curves.easeOutBack));
 
     _fadeAnimation = Tween<double>(
       begin: 0.0,
       end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeOut,
-    ));
+    ).animate(CurvedAnimation(parent: _animationController, curve: Curves.easeOut));
 
     _animationController.forward();
 
@@ -64,9 +54,9 @@ class _AppToastState extends State<AppToast>
 
   void _hideToast() async {
     if (!mounted) return;
-    
+
     await _animationController.reverse();
-    
+
     // Đảm bảo animation đã hoàn thành và widget vẫn mounted
     if (mounted) {
       widget.onDismiss?.call();
@@ -140,7 +130,7 @@ class _AppToastState extends State<AppToast>
         if (_fadeAnimation.value == 0.0 && _animationController.isCompleted) {
           return const SizedBox.shrink();
         }
-        
+
         return Transform.translate(
           offset: Offset(0, _slideAnimation.value * 100),
           child: Opacity(
@@ -152,38 +142,16 @@ class _AppToastState extends State<AppToast>
                 color: _backgroundColor(),
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: _borderColor(), width: 1),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
+                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8, offset: const Offset(0, 2))],
               ),
               child: Row(
                 children: [
-                  Icon(
-                    _iconData(),
-                    color: _iconColor(),
-                    size: 20,
-                  ),
+                  Icon(_iconData(), color: _iconColor(), size: 20),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: MyText(
-                      text: widget.message,
-                      textStyle: 'body',
-                      textSize: '14',
-                      textColor: 'primary',
-                    ),
+                    child: MyText(text: widget.message, textStyle: 'body', textSize: '14', textColor: 'primary'),
                   ),
-                  GestureDetector(
-                    onTap: _hideToast,
-                    child: Icon(
-                      Icons.close_rounded,
-                      color: _iconColor(),
-                      size: 18,
-                    ),
-                  ),
+                  GestureDetector(onTap: _hideToast, child: Icon(Icons.close_rounded, color: _iconColor(), size: 18)),
                 ],
               ),
             ),
@@ -231,22 +199,23 @@ class AppToastHelper {
     _safeRemoveCurrentToast();
 
     _currentToast = OverlayEntry(
-      builder: (context) => Positioned(
-        bottom: MediaQuery.of(context).padding.bottom + 16,
-        left: 0,
-        right: 0,
-        child: IgnorePointer(
-          ignoring: false,
-          child: AppToast(
-            message: message,
-            type: type,
-            duration: duration,
-            onDismiss: () {
-              _forceRemoveCurrentToast();
-            },
+      builder:
+          (context) => Positioned(
+            bottom: MediaQuery.of(context).padding.bottom + 16,
+            left: 0,
+            right: 0,
+            child: IgnorePointer(
+              ignoring: false,
+              child: AppToast(
+                message: message,
+                type: type,
+                duration: duration,
+                onDismiss: () {
+                  _forceRemoveCurrentToast();
+                },
+              ),
+            ),
           ),
-        ),
-      ),
     );
     // Sử dụng maybeOf để tránh ném lỗi khi Overlay chưa sẵn sàng
     final overlayState = Overlay.maybeOf(context, rootOverlay: true);
@@ -273,22 +242,23 @@ class AppToastHelper {
     if (overlay == null) return;
     _safeRemoveCurrentToast();
     _currentToast = OverlayEntry(
-      builder: (context) => Positioned(
-        bottom: MediaQuery.of(overlay.context).padding.bottom + 16,
-        left: 0,
-        right: 0,
-        child: IgnorePointer(
-          ignoring: false,
-          child: AppToast(
-            message: message,
-            type: type,
-            duration: duration,
-            onDismiss: () {
-              _forceRemoveCurrentToast();
-            },
+      builder:
+          (context) => Positioned(
+            bottom: MediaQuery.of(overlay.context).padding.bottom + 16,
+            left: 0,
+            right: 0,
+            child: IgnorePointer(
+              ignoring: false,
+              child: AppToast(
+                message: message,
+                type: type,
+                duration: duration,
+                onDismiss: () {
+                  _forceRemoveCurrentToast();
+                },
+              ),
+            ),
           ),
-        ),
-      ),
     );
     overlay.insert(_currentToast!);
   }
@@ -314,12 +284,7 @@ class AppToastHelper {
     required String message,
     Duration duration = const Duration(seconds: 3),
   }) {
-    show(
-      context,
-      message: message,
-      type: AppToastType.success,
-      duration: duration,
-    );
+    show(context, message: message, type: AppToastType.success, duration: duration);
   }
 
   static void showError(
@@ -327,12 +292,7 @@ class AppToastHelper {
     required String message,
     Duration duration = const Duration(seconds: 4),
   }) {
-    show(
-      context,
-      message: message,
-      type: AppToastType.error,
-      duration: duration,
-    );
+    show(context, message: message, type: AppToastType.error, duration: duration);
   }
 
   static void showWarning(
@@ -340,12 +300,7 @@ class AppToastHelper {
     required String message,
     Duration duration = const Duration(seconds: 3),
   }) {
-    show(
-      context,
-      message: message,
-      type: AppToastType.warning,
-      duration: duration,
-    );
+    show(context, message: message, type: AppToastType.warning, duration: duration);
   }
 
   static void showInfo(
@@ -353,12 +308,7 @@ class AppToastHelper {
     required String message,
     Duration duration = const Duration(seconds: 3),
   }) {
-    show(
-      context,
-      message: message,
-      type: AppToastType.info,
-      duration: duration,
-    );
+    show(context, message: message, type: AppToastType.info, duration: duration);
   }
 
   static void hide() {

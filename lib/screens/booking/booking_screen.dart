@@ -70,16 +70,11 @@ class _BookingScreenState extends State<BookingScreen> {
     });
     try {
       final totalAmount = widget.quotation.price;
-      final response = await BaseApiService.get(
-        '/admin/vouchers/active?minorder=$totalAmount',
-        includeAuth: false,
-      );
+      final response = await BaseApiService.get('/admin/vouchers/active?minorder=$totalAmount', includeAuth: false);
       final data = response['data'];
       if (data is List) {
         setState(() {
-          _activeVouchers = data.whereType<Map<String, dynamic>>().toList(
-            growable: false,
-          );
+          _activeVouchers = data.whereType<Map<String, dynamic>>().toList(growable: false);
         });
       } else {
         setState(() {
@@ -118,12 +113,7 @@ class _BookingScreenState extends State<BookingScreen> {
                       Expanded(
                         child: Container(
                           height: 56,
-                          padding: const EdgeInsets.only(
-                            left: 20,
-                            right: 20,
-                            top: 4,
-                            bottom: 4,
-                          ),
+                          padding: const EdgeInsets.only(left: 20, right: 20, top: 4, bottom: 4),
                           child: _buildHeader(),
                         ),
                       ),
@@ -147,19 +137,11 @@ class _BookingScreenState extends State<BookingScreen> {
                                   height: 140,
                                 ),
                               ),
-                              Expanded(
-                                child: Container(color: DesignTokens.surfacePrimary),
-                              ),
-                              Container(
-                                height: 10,
-                                color: DesignTokens.surfacePrimary,
-                              ),
+                              Expanded(child: Container(color: DesignTokens.surfacePrimary)),
+                              Container(height: 10, color: DesignTokens.surfacePrimary),
                             ],
                           ),
-                          Padding(
-                            padding: const EdgeInsets.only(top: 64),
-                            child: _buildQuotationInfoCard(),
-                          ),
+                          Padding(padding: const EdgeInsets.only(top: 64), child: _buildQuotationInfoCard()),
                         ],
                       ),
                     ),
@@ -171,16 +153,8 @@ class _BookingScreenState extends State<BookingScreen> {
             // Fixed payment summary and button at bottom
             Container(
               padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: DesignTokens.surfacePrimary,
-              ),
-              child: Column(
-                children: [
-                  _buildPaymentSummary(),
-                  const SizedBox(height: 16),
-                  _buildBookNowButton(),
-                ],
-              ),
+              decoration: BoxDecoration(color: DesignTokens.surfacePrimary),
+              child: Column(children: [_buildPaymentSummary(), const SizedBox(height: 16), _buildBookNowButton()]),
             ),
           ],
         ),
@@ -196,19 +170,10 @@ class _BookingScreenState extends State<BookingScreen> {
           children: [
             GestureDetector(
               onTap: () => Navigator.pop(context),
-              child: SvgIcon(
-                svgPath: 'assets/icons_final/arrow-left.svg',
-                size: 24,
-                color: DesignTokens.textInvert,
-              ),
+              child: SvgIcon(svgPath: 'assets/icons_final/arrow-left.svg', size: 24, color: DesignTokens.textInvert),
             ),
             const SizedBox(width: 8),
-            MyText(
-              text: 'Lên lịch',
-              textStyle: 'head',
-              textSize: '16',
-              textColor: 'invert',
-            ),
+            MyText(text: 'Lên lịch', textStyle: 'head', textSize: '16', textColor: 'invert'),
           ],
         ),
       ],
@@ -247,27 +212,16 @@ class _BookingScreenState extends State<BookingScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 MyText(
-                  text:
-                      quotation.inforGarage?.nameGarage ??
-                      'Gara #${quotation.inforGarage?.id ?? ''}',
+                  text: quotation.inforGarage?.nameGarage ?? 'Gara #${quotation.inforGarage?.id ?? ''}',
                   textStyle: 'title',
                   textSize: '18',
                   textColor: 'primary',
                 ),
                 Row(
                   children: [
-                    SvgIcon(
-                      svgPath: 'assets/icons_final/location.svg',
-                      size: 16,
-                      color: DesignTokens.textPlaceholder,
-                    ),
+                    SvgIcon(svgPath: 'assets/icons_final/location.svg', size: 16, color: DesignTokens.textPlaceholder),
                     const SizedBox(width: 4),
-                    MyText(
-                      text: '8.3 km',
-                      textStyle: 'body',
-                      textSize: '12',
-                      textColor: 'tertiary',
-                    ),
+                    MyText(text: '8.3 km', textStyle: 'body', textSize: '12', textColor: 'tertiary'),
                   ],
                 ),
               ],
@@ -277,18 +231,8 @@ class _BookingScreenState extends State<BookingScreen> {
             // Service details
             Row(
               children: [
-                MyText(
-                  text: 'Đơn hàng: ',
-                  textStyle: 'body',
-                  textSize: '14',
-                  textColor: 'tertiary',
-                ),
-                MyText(
-                  text: 'Độ cốp điện VF8, hãng icar',
-                  textStyle: 'body',
-                  textSize: '14',
-                  textColor: 'secondary',
-                ),
+                MyText(text: 'Đơn hàng: ', textStyle: 'body', textSize: '14', textColor: 'tertiary'),
+                MyText(text: 'Độ cốp điện VF8, hãng icar', textStyle: 'body', textSize: '14', textColor: 'secondary'),
               ],
             ),
 
@@ -296,25 +240,9 @@ class _BookingScreenState extends State<BookingScreen> {
             if (quotation.warranty != null) ...[
               Row(
                 children: [
-                  MyText(
-                    text: 'Bảo hành: ',
-                    textStyle: 'body',
-                    textSize: '14',
-                    textColor: 'secondary',
-                  ),
-
-                  MyText(
-                    text: '${quotation.warranty}',
-                    textStyle: 'title',
-                    textSize: '14',
-                    textColor: 'brand',
-                  ),
-                  MyText(
-                    text: ' tháng',
-                    textStyle: 'body',
-                    textSize: '14',
-                    textColor: 'secondary',
-                  ),
+                  MyText(text: 'Bảo hành: ', textStyle: 'body', textSize: '14', textColor: 'secondary'),
+                  MyText(text: '${quotation.warranty}', textStyle: 'title', textSize: '14', textColor: 'brand'),
+                  MyText(text: ' tháng', textStyle: 'body', textSize: '14', textColor: 'secondary'),
                 ],
               ),
             ],
@@ -323,12 +251,7 @@ class _BookingScreenState extends State<BookingScreen> {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                MyText(
-                  text: 'Mô tả: ',
-                  textStyle: 'body',
-                  textSize: '14',
-                  textColor: 'tertiary',
-                ),
+                MyText(text: 'Mô tả: ', textStyle: 'body', textSize: '14', textColor: 'tertiary'),
                 Expanded(
                   child: MyText(
                     text: quotation.description,
@@ -351,24 +274,14 @@ class _BookingScreenState extends State<BookingScreen> {
               crossAxisAlignment: CrossAxisAlignment.baseline,
               textBaseline: TextBaseline.alphabetic,
               children: [
-                MyText(
-                  text: 'Giá: ',
-                  textStyle: 'body',
-                  textSize: '14',
-                  textColor: 'tertiary',
-                ),
+                MyText(text: 'Giá: ', textStyle: 'body', textSize: '14', textColor: 'tertiary'),
                 MyText(
                   text: _formatPriceWithDots(quotation.price),
                   textStyle: 'title',
                   textSize: '18',
                   textColor: 'brand',
                 ),
-                MyText(
-                  text: 'đ',
-                  textStyle: 'body',
-                  textSize: '14',
-                  textColor: 'secondary',
-                ),
+                MyText(text: 'đ', textStyle: 'body', textSize: '14', textColor: 'secondary'),
               ],
             ),
           ],
@@ -391,10 +304,8 @@ class _BookingScreenState extends State<BookingScreen> {
 
           // Deposit and Voucher Section
           _buildDepositVoucherSection(),
-        
 
           const SizedBox(height: 20),
-
         ],
       ),
     );
@@ -403,7 +314,6 @@ class _BookingScreenState extends State<BookingScreen> {
   Widget _buildDateTimeSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      
       children: [
         Row(
           children: [
@@ -487,24 +397,14 @@ class _BookingScreenState extends State<BookingScreen> {
       children: [
         Row(
           children: [
-            MyText(
-              text: 'Đặt cọc ngay ',
-              textStyle: 'title',
-              textSize: '16',
-              textColor: 'primary',
-            ),
+            MyText(text: 'Đặt cọc ngay ', textStyle: 'title', textSize: '16', textColor: 'primary'),
             MyText(
               text: '${_formatPriceWithDots(depositAmount)}đ',
               textStyle: 'head',
               textSize: '16',
               textColor: 'brand',
             ),
-            MyText(
-              text: ' để nhận voucher',
-              textStyle: 'title',
-              textSize: '16',
-              textColor: 'primary',
-            ),
+            MyText(text: ' để nhận voucher', textStyle: 'title', textSize: '16', textColor: 'primary'),
           ],
         ),
         const SizedBox(height: 8),
@@ -535,12 +435,8 @@ class _BookingScreenState extends State<BookingScreen> {
   }
 
   // New: Build voucher option directly from MyText (with number highlight)
-  Widget _buildVoucherOptionWidget(
-    Widget widget,
-    Map<String, dynamic> voucher,
-  ) {
-    final bool isSelected =
-        _selectedVoucher != null && _selectedVoucher!['id'] == voucher['id'];
+  Widget _buildVoucherOptionWidget(Widget widget, Map<String, dynamic> voucher) {
+    final bool isSelected = _selectedVoucher != null && _selectedVoucher!['id'] == voucher['id'];
 
     return GestureDetector(
       onTap: () {
@@ -560,21 +456,14 @@ class _BookingScreenState extends State<BookingScreen> {
           color: DesignTokens.primaryBlue4,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color:
-                isSelected
-                    ? DesignTokens.borderBrandPrimary
-                    : DesignTokens.borderSecondary,
+            color: isSelected ? DesignTokens.borderBrandPrimary : DesignTokens.borderSecondary,
             width: isSelected ? 2 : 1,
           ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            SvgIcon(
-              svgPath: 'assets/icons_final/discount-shape.svg',
-              size: 20,
-              color: DesignTokens.textBrand,
-            ),
+            SvgIcon(svgPath: 'assets/icons_final/discount-shape.svg', size: 20, color: DesignTokens.textBrand),
             const SizedBox(width: 4),
             widget,
           ],
@@ -586,9 +475,7 @@ class _BookingScreenState extends State<BookingScreen> {
   Widget _buildPaymentSummary() {
     final totalAmount = widget.quotation.price;
     final depositAmount =
-        _selectedVoucher != null
-            ? (totalAmount * 0.03).round()
-            : 0; // 3% deposit chỉ khi chọn voucher
+        _selectedVoucher != null ? (totalAmount * 0.03).round() : 0; // 3% deposit chỉ khi chọn voucher
     final voucherDiscount = _calculateVoucherDiscount(totalAmount);
     final finalAmount = totalAmount - voucherDiscount;
 
@@ -605,28 +492,15 @@ class _BookingScreenState extends State<BookingScreen> {
       ),
       child: Column(
         children: [
-          _buildPaymentRow(
-            'Voucher',
-            '${voucherDiscount > 0 ? '- ' : ''}${_formatPriceWithDots(voucherDiscount)} đ',
-          ),
+          _buildPaymentRow('Voucher', '${voucherDiscount > 0 ? '- ' : ''}${_formatPriceWithDots(voucherDiscount)} đ'),
           const SizedBox(height: 8),
-          _buildPaymentRow(
-            'Tiền cọc',
-            '${depositAmount > 0 ? '- ' : ''}${_formatPriceWithDots(depositAmount)} đ',
-          ),
+          _buildPaymentRow('Tiền cọc', '${depositAmount > 0 ? '- ' : ''}${_formatPriceWithDots(depositAmount)} đ'),
           const SizedBox(height: 8),
-          _buildPaymentRow(
-            'Tiền cần thanh toán',
-            '${_formatPriceWithDots(finalAmount)} đ',
-          ),
+          _buildPaymentRow('Tiền cần thanh toán', '${_formatPriceWithDots(finalAmount)} đ'),
           const SizedBox(height: 8),
           Container(height: 1, color: DesignTokens.borderSecondary),
           const SizedBox(height: 8),
-          _buildPaymentRow(
-            'Tổng tiền phải thanh toán',
-            '${_formatPriceWithDots(finalAmount)} đ',
-            isTotal: true,
-          ),
+          _buildPaymentRow('Tổng tiền phải thanh toán', '${_formatPriceWithDots(finalAmount)} đ', isTotal: true),
         ],
       ),
     );
@@ -656,28 +530,30 @@ class _BookingScreenState extends State<BookingScreen> {
     return SizedBox(
       width: double.infinity,
       child: MyButton(
-        text: 'Đặt lịch ngay',
-        onPressed: () {
-          // Validate date & time
-          final bool missingDate = _selectedDate == null;
-          final bool missingTime = _selectedTime == null;
+        text: _isCreatingBooking ? 'Đang xử lý...' : 'Đặt lịch ngay',
+        onPressed: _isCreatingBooking
+            ? null
+            : () {
+                // Validate date & time
+                final bool missingDate = _selectedDate == null;
+                final bool missingTime = _selectedTime == null;
 
-          if (missingDate || missingTime) {
-            setState(() {
-              _dateError = missingDate;
-              _timeError = missingTime;
-            });
-            return;
-          }
+                if (missingDate || missingTime) {
+                  setState(() {
+                    _dateError = missingDate;
+                    _timeError = missingTime;
+                  });
+                  return;
+                }
 
-          if (_selectedVoucher != null) {
-            // Nếu có voucher được chọn, mở modal đặt cọc
-            _showDepositModal();
-          } else {
-            // Nếu không có voucher, đặt lịch bình thường
-            _handleBooking();
-          }
-        },
+                if (_selectedVoucher != null) {
+                  // Nếu có voucher được chọn, mở modal đặt cọc
+                  _showDepositModal();
+                } else {
+                  // Nếu không có voucher, đặt lịch bình thường
+                  _handleBooking();
+                }
+              },
         buttonType: ButtonType.primary,
         height: 48,
         textStyle: 'head',
@@ -689,7 +565,7 @@ class _BookingScreenState extends State<BookingScreen> {
 
   void _showDepositModal() {
     final depositAmount = (widget.quotation.price * 0.03).round(); // 3% deposit
-    
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -698,13 +574,10 @@ class _BookingScreenState extends State<BookingScreen> {
         quotationId: widget.quotation.id,
         depositAmount: depositAmount,
         onPaymentSuccess: () async {
-          await _createBooking();
+          await _createBooking(showLoading: false);
         },
         onPaymentFailed: () {
-          AppToastHelper.showError(
-            context,
-            message: 'Thanh toán thất bại hoặc hết hạn. Vui lòng thử lại.',
-          );
+          AppToastHelper.showError(context, message: 'Thanh toán thất bại hoặc hết hạn. Vui lòng thử lại.');
         },
       ),
     );
@@ -720,10 +593,7 @@ class _BookingScreenState extends State<BookingScreen> {
           return Container(
             decoration: const BoxDecoration(
               color: DesignTokens.surfacePrimary,
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(12),
-                topRight: Radius.circular(12),
-              ),
+              borderRadius: BorderRadius.only(topLeft: Radius.circular(12), topRight: Radius.circular(12)),
             ),
             padding: const EdgeInsets.all(20),
             child: Column(
@@ -782,10 +652,14 @@ class _BookingScreenState extends State<BookingScreen> {
     _createBooking();
   }
 
-  Future<void> _createBooking() async {
+  Future<void> _createBooking({bool showLoading = true}) async {
     if (_selectedDate == null || _selectedTime == null) return;
     if (_isCreatingBooking) return; // chặn gọi trùng
-    _isCreatingBooking = true;
+    if (showLoading && mounted) {
+      setState(() {
+        _isCreatingBooking = true;
+      });
+    }
 
     final DateTime bookingTime = DateTime(
       _selectedDate!.year,
@@ -811,10 +685,7 @@ class _BookingScreenState extends State<BookingScreen> {
       };
       // debugPrint('[CreateBooking] Request body: ' + jsonEncode(requestBody));
 
-      final res = await AuthHttpClient.post(
-        Config.bookingCreateUrl,
-        body: requestBody,
-      );
+      final res = await AuthHttpClient.post(Config.bookingCreateUrl, body: requestBody);
       try {
         // debugPrint('[CreateBooking] Raw response: ' + jsonEncode(res));
       } catch (_) {
@@ -822,30 +693,34 @@ class _BookingScreenState extends State<BookingScreen> {
       }
 
       if (res['success'] == true) {
-        
-
-        // Điều hướng tới màn chi tiết giao dịch
-        Navigate.pushNamed('/transaction-detail', arguments: {
-          'booking': res['data'],
-          'summary': {
-            'total': totalAmount,
-            'voucher': voucherDiscount,
-            'deposit': depositAmount,
-            'remain': remainPrice,
+        // Điều hướng tới màn chi tiết giao dịch và xóa stack về Home
+        Navigate.pushNamedAndRemoveUntil(
+          '/transaction-detail',
+          '/home',
+          arguments: {
+            'booking': res['data'],
+            'summary': {
+              'total': totalAmount,
+              'voucher': voucherDiscount,
+              'deposit': depositAmount,
+              'remain': remainPrice,
+            },
           },
-        });
+        );
       } else {
         // print(res['message']);
       }
     } catch (e) {
       if (mounted) {
-        AppToastHelper.showError(
-          context,
-          message: 'Lỗi tạo lịch hẹn: $e',
-        );
+        AppToastHelper.showError(context, message: 'Lỗi tạo lịch hẹn: $e');
+      }
+    } finally {
+      if (showLoading && mounted) {
+        setState(() {
+          _isCreatingBooking = false;
+        });
       }
     }
-    _isCreatingBooking = false;
   }
 
   String _formatPrice(int price) {
@@ -854,8 +729,7 @@ class _BookingScreenState extends State<BookingScreen> {
     if (rounded >= 1000000) {
       final double millions = rounded / 1000000;
       final bool isInt = (millions % 1) == 0;
-      final String value =
-          isInt ? millions.toInt().toString() : millions.toStringAsFixed(1);
+      final String value = isInt ? millions.toInt().toString() : millions.toStringAsFixed(1);
       return '$value triệu';
     }
     final int k = rounded ~/ 1000;
@@ -880,18 +754,15 @@ class _BookingScreenState extends State<BookingScreen> {
   int _calculateVoucherDiscount(int totalAmount) {
     if (_selectedVoucher == null) return 0;
 
-    final int type =
-        (_selectedVoucher!['type'] ?? 1) is int
-            ? _selectedVoucher!['type'] as int
-            : int.tryParse('${_selectedVoucher!['type']}') ?? 1;
-    final int discountValue =
-        (_selectedVoucher!['discount_value'] ?? 0) is int
-            ? _selectedVoucher!['discount_value'] as int
-            : int.tryParse('${_selectedVoucher!['discount_value']}') ?? 0;
-    final int minOrder =
-        (_selectedVoucher!['minorder'] ?? 0) is int
-            ? _selectedVoucher!['minorder'] as int
-            : int.tryParse('${_selectedVoucher!['minorder']}') ?? 0;
+    final int type = (_selectedVoucher!['type'] ?? 1) is int
+        ? _selectedVoucher!['type'] as int
+        : int.tryParse('${_selectedVoucher!['type']}') ?? 1;
+    final int discountValue = (_selectedVoucher!['discount_value'] ?? 0) is int
+        ? _selectedVoucher!['discount_value'] as int
+        : int.tryParse('${_selectedVoucher!['discount_value']}') ?? 0;
+    final int minOrder = (_selectedVoucher!['minorder'] ?? 0) is int
+        ? _selectedVoucher!['minorder'] as int
+        : int.tryParse('${_selectedVoucher!['minorder']}') ?? 0;
 
     // print('Voucher selected: ${_selectedVoucher}');
     // print('Total amount: $totalAmount, Min order: $minOrder');
@@ -917,77 +788,31 @@ class _BookingScreenState extends State<BookingScreen> {
   }
 
   Widget _formatVoucherText(Map<String, dynamic> voucher) {
-    final int type =
-        (voucher['type'] ?? 1) is int
-            ? voucher['type'] as int
-            : int.tryParse('${voucher['type']}') ?? 1;
-    final int discountValue =
-        (voucher['discount_value'] ?? 0) is int
-            ? voucher['discount_value'] as int
-            : int.tryParse('${voucher['discount_value']}') ?? 0;
+    final int type = (voucher['type'] ?? 1) is int ? voucher['type'] as int : int.tryParse('${voucher['type']}') ?? 1;
+    final int discountValue = (voucher['discount_value'] ?? 0) is int
+        ? voucher['discount_value'] as int
+        : int.tryParse('${voucher['discount_value']}') ?? 0;
     final int minOrder =
-        (voucher['minorder'] ?? 0) is int
-            ? voucher['minorder'] as int
-            : int.tryParse('${voucher['minorder']}') ?? 0;
+        (voucher['minorder'] ?? 0) is int ? voucher['minorder'] as int : int.tryParse('${voucher['minorder']}') ?? 0;
 
     if (type == 2) {
       // percent
       return Row(
         children: [
-          MyText(
-            text: 'Giảm ',
-            textStyle: 'body',
-            textSize: '12',
-            textColor: 'primary',
-          ),
-          MyText(
-            text: '$discountValue%',
-            textStyle: 'title',
-            textSize: '12',
-            textColor: 'brand',
-          ),
-          MyText(
-            text: ' cho đơn từ ',
-            textStyle: 'body',
-            textSize: '12',
-            textColor: 'primary',
-          ),
-          MyText(
-            text: _formatPrice(minOrder),
-            textStyle: 'title',
-            textSize: '12',
-            textColor: 'brand',
-          ),
+          MyText(text: 'Giảm ', textStyle: 'body', textSize: '12', textColor: 'primary'),
+          MyText(text: '$discountValue%', textStyle: 'title', textSize: '12', textColor: 'brand'),
+          MyText(text: ' cho đơn từ ', textStyle: 'body', textSize: '12', textColor: 'primary'),
+          MyText(text: _formatPrice(minOrder), textStyle: 'title', textSize: '12', textColor: 'brand'),
         ],
       );
     }
     // money amount
     return Row(
       children: [
-        MyText(
-          text: 'Giảm ',
-          textStyle: 'body',
-          textSize: '12',
-          textColor: 'primary',
-        ),
-        MyText(
-          text: _formatPrice(discountValue),
-          textStyle: 'title',
-          textSize: '12',
-          textColor: 'brand',
-        ),
-        MyText(
-          text: ' cho đơn từ ',
-          textStyle: 'body',
-          textSize: '12',
-          textColor: 'primary',
-        ),
-        MyText(
-          text: _formatPrice(minOrder),
-          textStyle: 'title',
-          textSize: '12',
-          textColor: 'brand',
-        ),
+        MyText(text: 'Giảm ', textStyle: 'body', textSize: '12', textColor: 'primary'),
+        MyText(text: _formatPrice(discountValue), textStyle: 'title', textSize: '12', textColor: 'brand'),
+        MyText(text: ' cho đơn từ ', textStyle: 'body', textSize: '12', textColor: 'primary'),
+        MyText(text: _formatPrice(minOrder), textStyle: 'title', textSize: '12', textColor: 'brand'),
       ],
     );
   }

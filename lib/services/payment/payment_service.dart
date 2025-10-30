@@ -17,7 +17,7 @@ class PaymentService {
           'quotation_id': quotationId,
           'deposit': deposit,
           'expires_minutes': expiresMinutes,
-        }, 
+        },
       );
 
       DebugLogger.largeJson('[PaymentService.createQrPayment] response', response);
@@ -39,6 +39,84 @@ class PaymentService {
       return {
         'success': false,
         'message': 'Lỗi khi tạo mã QR: $e',
+        'data': null,
+      };
+    }
+  }
+
+  // Tạo mã QR thanh toán phí nền tảng
+  static Future<Map<String, dynamic>> createPlatformFeeQr({
+    required int month,
+    required int year,
+    int expiresMinutes = 30,
+  }) async {
+    try {
+      final response = await AuthHttpClient.post(
+        Config.paymentCreatePlatformFeeQrUrl,
+        body: {
+          'month': month,
+          'year': year,
+          'expires_minutes': expiresMinutes,
+        },
+      );
+
+      DebugLogger.largeJson('[PaymentService.createPlatformFeeQr] response', response['data']['transaction_id']);
+
+      if (response['success'] && response['data'] != null) {
+        return {
+          'success': true,
+          'data': PaymentModel.fromJson(response['data']),
+          'message': response['message'],
+        };
+      } else {
+        return {
+          'success': false,
+          'message': response['message'] ?? 'Tạo mã QR phí nền tảng thất bại',
+          'data': null,
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Lỗi khi tạo QR phí nền tảng: $e',
+        'data': null,
+      };
+    }
+  }
+
+  // Long polling kiểm tra thanh toán phí nền tảng
+  static Future<Map<String, dynamic>> pollPlatformFeePayment({
+    required String transactionId,
+    int timeout = 30,
+    int pollInterval = 2,
+  }) async {
+    try {
+      final response = await AuthHttpClient.get(
+        Config.paymentPollingPlatformFeeUrl,
+        queryParams: {
+          'transaction_id': transactionId,
+          'timeout': timeout.toString(),
+          'poll_interval': pollInterval.toString(),
+        },
+      );
+
+      if (response['success'] && response['data'] != null) {
+        return {
+          'success': true,
+          'data': PaymentModel.fromJson(response['data']),
+          'message': response['message'],
+        };
+      } else {
+        return {
+          'success': false,
+          'message': response['message'] ?? 'Kiểm tra trạng thái phí nền tảng thất bại',
+          'data': null,
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Lỗi khi kiểm tra phí nền tảng: $e',
         'data': null,
       };
     }

@@ -1,0 +1,13 @@
+{
+    "dart.flutterSdkPath": "/Users/macos/flutter",
+    "dart.sdkPath": "/Users/macos/flutter/bin/cache/dart-sdk",
+    "dart.enableSdkFormatter": true,
+    "dart.lineLength": 120,
+    "editor.rulers": [
+        120
+    ],
+    "editor.formatOnSave": true,
+    "dart.previewFlutterUiGuides": true,
+    "dart.previewFlutterUiGuidesCustomTracking": true,
+    "dart.openDevTools": "flutter"
+}

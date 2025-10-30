@@ -70,11 +70,11 @@ class _MyDatePickerState extends State<MyDatePicker> {
         return StatefulBuilder(
           builder: (context, setLocalState) {
             ThemeData themed = Theme.of(context).copyWith(
-            colorScheme: scheme,
+              colorScheme: scheme,
               dialogTheme: DialogThemeData(
-              surfaceTintColor: Colors.transparent,
+                surfaceTintColor: Colors.transparent,
                 shape: const RoundedRectangleBorder(
-                borderRadius: BorderRadius.all(Radius.circular(12)),
+                  borderRadius: BorderRadius.all(Radius.circular(12)),
                 ),
                 elevation: 8,
               ),
@@ -82,12 +82,12 @@ class _MyDatePickerState extends State<MyDatePicker> {
                 style: ButtonStyle(
                   // Ẩn icon header mặc định của CalendarDatePicker
                   iconColor: const MaterialStatePropertyAll(Colors.transparent),
+                ),
               ),
-            ),
-            datePickerTheme: DatePickerThemeData(
-              backgroundColor: DesignTokens.surfacePrimary,
+              datePickerTheme: DatePickerThemeData(
+                backgroundColor: DesignTokens.surfacePrimary,
                 // Ẩn toàn bộ header mặc định để dùng header custom
-              headerBackgroundColor: DesignTokens.surfacePrimary,
+                headerBackgroundColor: DesignTokens.surfacePrimary,
                 headerForegroundColor: Colors.transparent,
                 headerHelpStyle: MyTypography.getStyle(
                   'label',
@@ -97,34 +97,29 @@ class _MyDatePickerState extends State<MyDatePicker> {
                   'head',
                   '16',
                 )?.copyWith(color: Colors.transparent, fontSize: 0),
-              dividerColor: DesignTokens.borderSecondary,
-              dayForegroundColor: MaterialStateProperty.resolveWith((states) {
-                if (states.contains(MaterialState.disabled))
-                    return DesignTokens.textSecondary.withOpacity(0.4);
-                if (states.contains(MaterialState.selected))
-                  return DesignTokens.textInvert;
-                return DesignTokens.textPrimary;
-              }),
-              dayBackgroundColor: MaterialStateProperty.resolveWith((states) {
-                if (states.contains(MaterialState.selected))
-                    return DesignTokens.surfaceBrand;
-                return Colors.transparent;
-              }),
-              dayOverlayColor: const MaterialStatePropertyAll(
-                Colors.transparent,
-              ),
+                dividerColor: DesignTokens.borderSecondary,
+                dayForegroundColor: MaterialStateProperty.resolveWith((states) {
+                  if (states.contains(MaterialState.disabled)) return DesignTokens.textSecondary.withOpacity(0.4);
+                  if (states.contains(MaterialState.selected)) return DesignTokens.textInvert;
+                  return DesignTokens.textPrimary;
+                }),
+                dayBackgroundColor: MaterialStateProperty.resolveWith((states) {
+                  if (states.contains(MaterialState.selected)) return DesignTokens.surfaceBrand;
+                  return Colors.transparent;
+                }),
+                dayOverlayColor: const MaterialStatePropertyAll(
+                  Colors.transparent,
+                ),
                 todayForegroundColor: MaterialStateProperty.resolveWith((
                   states,
                 ) {
-                if (states.contains(MaterialState.selected))
-                  return DesignTokens.textInvert;
+                  if (states.contains(MaterialState.selected)) return DesignTokens.textInvert;
                   return DesignTokens.textBrand;
-              }),
+                }),
                 todayBackgroundColor: MaterialStateProperty.resolveWith((
                   states,
                 ) {
-                if (states.contains(MaterialState.selected))
-                return Colors.transparent;
+                  if (states.contains(MaterialState.selected)) return Colors.transparent;
                   return DesignTokens.primaryBlue4;
                 }),
                 weekdayStyle: MyTypography.getStyle('label', '14')?.copyWith(
@@ -135,9 +130,9 @@ class _MyDatePickerState extends State<MyDatePicker> {
                   'label',
                   '14',
                 )?.copyWith(fontWeight: FontWeight.w500),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             );
 
@@ -203,8 +198,7 @@ class _MyDatePickerState extends State<MyDatePicker> {
                                             pickedYear,
                                             displayedMonth.month,
                                           );
-                                        }
-                                        );
+                                        });
                                       }
                                     },
                                     child: Row(
@@ -303,12 +297,12 @@ class _MyDatePickerState extends State<MyDatePicker> {
                     );
                   },
                 ),
-              ),  
+              ),
             );
           },
         );
       },
-    );  
+    );
   }
 
   Widget _buildCustomCalendar({
@@ -320,8 +314,7 @@ class _MyDatePickerState extends State<MyDatePicker> {
   }) {
     const double tileSize = 44;
     const double rowGap = 8;
-    const double gridWidth =
-        tileSize * 7; // không đặt khoảng cách cột để khít 7 ô
+    const double gridWidth = tileSize * 7; // không đặt khoảng cách cột để khít 7 ô
     final firstDayOfMonth = DateTime(
       displayedMonth.year,
       displayedMonth.month,
@@ -373,22 +366,21 @@ class _MyDatePickerState extends State<MyDatePicker> {
             children: [
               // Days of week header (cố định bề rộng từng ô 44)
               Row(
-                children:
-                    ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
-                        .map(
-                          (day) => SizedBox(
-                            width: tileSize,
-                            child: Center(
-                              child: MyText(
-                                text: day,
-                                textStyle: 'label',
-                                textSize: '14',
-                                textColor: 'tertiary',
-                              ),
-                            ),
+                children: ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
+                    .map(
+                      (day) => SizedBox(
+                        width: tileSize,
+                        child: Center(
+                          child: MyText(
+                            text: day,
+                            textStyle: 'label',
+                            textSize: '14',
+                            textColor: 'tertiary',
                           ),
-                        )
-                        .toList(),
+                        ),
+                      ),
+                    )
+                    .toList(),
               ),
               SizedBox(height: rowGap),
               // Calendar grid (tối đa 5 hàng)
@@ -407,17 +399,14 @@ class _MyDatePickerState extends State<MyDatePicker> {
 
                       final date = days[dayIndex];
                       final isCurrentMonth = date.month == displayedMonth.month;
-                      final isSelected =
-                          selectedDate != null &&
+                      final isSelected = selectedDate != null &&
                           date.year == selectedDate.year &&
                           date.month == selectedDate.month &&
                           date.day == selectedDate.day;
-                      final isToday =
-                          date.year == DateTime.now().year &&
+                      final isToday = date.year == DateTime.now().year &&
                           date.month == DateTime.now().month &&
                           date.day == DateTime.now().day;
-                      final isEnabled =
-                          date.isAfter(
+                      final isEnabled = date.isAfter(
                             firstDate.subtract(const Duration(days: 1)),
                           ) &&
                           date.isBefore(lastDate.add(const Duration(days: 1)));
@@ -426,16 +415,12 @@ class _MyDatePickerState extends State<MyDatePicker> {
                         width: tileSize,
                         height: tileSize,
                         child: GestureDetector(
-                          onTap:
-                              isEnabled && isCurrentMonth
-                                  ? () => onDateSelected(date)
-                                  : null,
+                          onTap: isEnabled && isCurrentMonth ? () => onDateSelected(date) : null,
                           child: Container(
                             decoration: BoxDecoration(
-                              color:
-                                  isSelected
-                                      ? DesignTokens.surfaceBrand
-                                      : isToday && !isSelected
+                              color: isSelected
+                                  ? DesignTokens.surfaceBrand
+                                  : isToday && !isSelected
                                       ? DesignTokens.primaryBlue4
                                       : Colors.transparent,
                               borderRadius: BorderRadius.circular(tileSize),
@@ -445,10 +430,9 @@ class _MyDatePickerState extends State<MyDatePicker> {
                                 text: date.day.toString(),
                                 textStyle: 'label',
                                 textSize: '14',
-                                textColor:
-                                    isSelected
-                                        ? 'invert'
-                                        : isCurrentMonth
+                                textColor: isSelected
+                                    ? 'invert'
+                                    : isCurrentMonth
                                         ? isToday
                                             ? 'brand'
                                             : 'primary'
@@ -551,9 +535,7 @@ class _MyDatePickerState extends State<MyDatePicker> {
   @override
   Widget build(BuildContext context) {
     final containerHeight = widget.height ?? 44.0;
-    final containerPadding =
-        widget.padding ??
-        const EdgeInsets.symmetric(horizontal: 12, vertical: 12);
+    final containerPadding = widget.padding ?? const EdgeInsets.symmetric(horizontal: 12, vertical: 12);
 
     Widget suffixIcon;
     // Fallback dùng icon hệ thống vì asset có thể không tồn tại
@@ -586,10 +568,7 @@ class _MyDatePickerState extends State<MyDatePicker> {
               color: DesignTokens.surfacePrimary,
               borderRadius: BorderRadius.circular(widget.borderRadius),
               border: Border.all(
-                color:
-                    widget.hasError
-                        ? DesignTokens.alerts['error']!
-                        : DesignTokens.borderPrimary,
+                color: widget.hasError ? DesignTokens.alerts['error']! : DesignTokens.borderPrimary,
                 width: widget.hasError ? 2 : 1,
               ),
             ),
@@ -598,18 +577,14 @@ class _MyDatePickerState extends State<MyDatePicker> {
               children: [
                 Expanded(
                   child: MyText(
-                    text:
-                        selectedDate != null
-                            ? _formatDate(selectedDate!)
-                            : 'DD/MM/YYYY',
+                    text: selectedDate != null ? _formatDate(selectedDate!) : 'DD/MM/YYYY',
                     textStyle: 'label',
                     textSize: '14',
-                    color:
-                        widget.enabled
-                            ? selectedDate != null
-                                ? DesignTokens.textPrimary
-                                : DesignTokens.textPlaceholder
-                            : DesignTokens.textDisable,
+                    color: widget.enabled
+                        ? selectedDate != null
+                            ? DesignTokens.textPrimary
+                            : DesignTokens.textPlaceholder
+                        : DesignTokens.textDisable,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),

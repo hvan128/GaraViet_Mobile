@@ -20,8 +20,8 @@ class FileInfo {
   factory FileInfo.fromJson(Map<String, dynamic> json) {
     return FileInfo(
       id: _toInt(json['id']),
-      name: (json['name'] ?? '').toString(),
-      path: (json['path'] ?? '').toString(),
+      name: (json['name'] ?? '' ?? json['file_name'] ?? '').toString(),
+      path: (json['path'] ?? '' ?? json['file_path'] ?? '').toString(),
       timeUpload: (json['time_upload'] ?? json['timeUpload'] ?? '').toString(),
       fileType: json['file_type']?.toString() ?? json['fileType']?.toString(),
       fileSize: _toInt(json['file_size'] ?? json['fileSize']),
@@ -52,6 +52,19 @@ class FileInfo {
     // Fallback: check file extension
     final extension = name.toLowerCase().split('.').last;
     return ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg'].contains(extension);
+  }
+
+  // Helper method to check if file is a video
+  bool get isVideo {
+    if (mimeType != null) {
+      return mimeType!.startsWith('video/');
+    }
+    if (fileType != null) {
+      return fileType!.toLowerCase() == 'video';
+    }
+    // Fallback: check file extension
+    final extension = name.toLowerCase().split('.').last;
+    return ['mp4', 'mov', 'avi', 'mkv', 'webm', '3gp', 'flv'].contains(extension);
   }
 
   // Helper method to get file extension

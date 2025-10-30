@@ -8,7 +8,6 @@ import 'package:gara/widgets/button.dart';
 import 'package:gara/navigation/navigation.dart';
 import 'package:gara/services/auth/auth_service.dart';
 import 'package:gara/widgets/app_toast.dart';
-import 'package:gara/services/messaging/push_notification_service.dart';
 import 'package:gara/models/user/login_model.dart';
 import 'package:gara/services/storage_service.dart';
 import 'package:gara/theme/index.dart';
@@ -81,7 +80,6 @@ class _LoginScreenState extends State<LoginScreen> {
       // Get device ID
       final deviceId = await Storage.getDeviceID() ?? 'unknown_device';
 
-
       final request = UserLoginRequest(
         phone: _phoneController.text.trim(),
         password: _passwordController.text,
@@ -106,8 +104,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
         // FCM token đã được đăng ký trong AuthService.loginUser()
 
+        // Đợi một chút để đảm bảo UserProvider đã được cập nhật
+        await Future.delayed(const Duration(milliseconds: 100));
+
         // Navigate to home screen or next step
-        Navigate.pushNamed('/home');
+        Navigate.pushNamedAndRemoveAll('/home');
       } else {
         if (!mounted) return;
         AppToastHelper.showError(context, message: response.message ?? 'Đăng nhập thất bại');
@@ -137,12 +138,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 IconField(svgPath: 'assets/icons_final/key.svg'),
                 const SizedBox(height: 12),
                 // Title
-                MyText(
-                  text: 'Đăng nhập',
-                  textStyle: 'head',
-                  textSize: '24',
-                  textColor: 'primary',
-                ),
+                MyText(text: 'Đăng nhập', textStyle: 'head', textSize: '24', textColor: 'primary'),
                 const SizedBox(height: 8),
                 MyText(
                   text: 'Đăng nhập bằng số điện thoại của bạn.',
@@ -165,7 +161,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       keyboardType: TextInputType.phone,
                     ),
                     const SizedBox(height: 16),
-                                
+
                     // Password input
                     MyTextField(
                       controller: _passwordController,
@@ -185,9 +181,8 @@ class _LoginScreenState extends State<LoginScreen> {
                           height: 24,
                           alignment: Alignment.center,
                           child: SvgIcon(
-                            svgPath: _obscurePassword
-                                ? 'assets/icons_final/eye-slash.svg'
-                                : 'assets/icons_final/eye.svg',
+                            svgPath:
+                                _obscurePassword ? 'assets/icons_final/eye-slash.svg' : 'assets/icons_final/eye.svg',
                             width: 24,
                             height: 24,
                           ),
@@ -195,7 +190,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                                
+
                     // Remember me checkbox
                     Row(
                       children: [
@@ -211,25 +206,17 @@ class _LoginScreenState extends State<LoginScreen> {
                             },
                             materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                             visualDensity: VisualDensity.compact,
-                            side: BorderSide(
-                              color: DesignTokens.borderPrimary,
-                              width: 1,
-                            ),
+                            side: BorderSide(color: DesignTokens.borderPrimary, width: 1),
                             activeColor: DesignTokens.textBrand,
                             checkColor: Colors.white,
                           ),
                         ),
                         const SizedBox(width: 8),
-                        MyText(
-                          text: 'Ghi nhớ đăng nhập',
-                          textStyle: 'body',
-                          textSize: '14',
-                          textColor: 'primary',
-                        ),
+                        MyText(text: 'Ghi nhớ đăng nhập', textStyle: 'body', textSize: '14', textColor: 'primary'),
                       ],
                     ),
                     const SizedBox(height: 24),
-                                
+
                     // Login button
                     MyButton(
                       text: _isLoading ? 'Đang đăng nhập...' : 'Đăng nhập',
@@ -237,12 +224,12 @@ class _LoginScreenState extends State<LoginScreen> {
                       buttonType: ButtonType.primary,
                     ),
                     const SizedBox(height: 12),
-                                
+
                     // Register button
                     MyButton(
                       text: 'Đăng ký',
                       onPressed: () {
-                        Navigate.pushNamed('/register');
+                        Navigate.pushNamedAndRemoveAll('/register');
                       },
                       buttonType: ButtonType.transparent,
                     ),
@@ -250,12 +237,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        MyText(
-                          text: 'Quên mật khẩu?',
-                          textStyle: 'body',
-                          textSize: '14',
-                          textColor: 'primary',
-                        ),
+                        MyText(text: 'Quên mật khẩu?', textStyle: 'body', textSize: '14', textColor: 'primary'),
                         const SizedBox(width: 8),
                         MyText(
                           text: 'Cài lại mật khẩu',

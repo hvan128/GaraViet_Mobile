@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:gara/theme/index.dart';
 import 'package:gara/widgets/header.dart';
 import 'package:gara/widgets/svg_icon.dart';
@@ -6,8 +7,13 @@ import 'package:gara/widgets/text.dart';
 import 'package:gara/widgets/button.dart';
 import 'package:gara/services/api/auth_http_client.dart';
 import 'package:gara/config.dart';
-import 'package:gara/utils/debug_logger.dart';
 import 'package:gara/navigation/navigation.dart';
+import 'package:gara/widgets/app_toast.dart';
+import 'dart:typed_data';
+import 'dart:ui' as ui;
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
+import 'package:gal/gal.dart';
 
 class TransactionDetailScreen extends StatefulWidget {
   final Object? arguments;
@@ -15,14 +21,14 @@ class TransactionDetailScreen extends StatefulWidget {
   const TransactionDetailScreen({super.key, this.arguments});
 
   @override
-  State<TransactionDetailScreen> createState() =>
-      _TransactionDetailScreenState();
+  State<TransactionDetailScreen> createState() => _TransactionDetailScreenState();
 }
 
 class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
   Map<String, dynamic>? _bookingDetail;
   bool _isLoading = true;
   String? _error;
+  final GlobalKey _repaintKey = GlobalKey();
 
   @override
   void initState() {
@@ -49,10 +55,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
             bookingId = int.tryParse('$idInBooking');
           }
         }
-        bookingId ??=
-            args['booking_id'] is int
-                ? args['booking_id'] as int
-                : int.tryParse('${args['booking_id']}');
+        bookingId ??= args['booking_id'] is int ? args['booking_id'] as int : int.tryParse('${args['booking_id']}');
       }
 
       if (bookingId == null) {
@@ -73,10 +76,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
       const int maxAttempts = 6; // thử tối đa 6 lần với backoff
       int delayMs = 300; // backoff bắt đầu 300ms
       for (int attempt = 1; attempt <= maxAttempts; attempt++) {
-        res = await AuthHttpClient.get(
-          Config.bookingDetailUrl,
-          queryParams: {'booking_id': bookingId.toString()},
-        );
+        res = await AuthHttpClient.get(Config.bookingDetailUrl, queryParams: {'booking_id': bookingId.toString()});
 
         // DebugLogger.largeJson(
         //   '[BookingDetail] Attempt ' +
@@ -92,10 +92,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
           break;
         }
         await Future.delayed(Duration(milliseconds: delayMs));
-        delayMs = (delayMs * 2).clamp(
-          300,
-          2400,
-        ); // exponential backoff, trần 2.4s
+        delayMs = (delayMs * 2).clamp(300, 2400); // exponential backoff, trần 2.4s
       }
 
       if (!mounted) return;
@@ -124,10 +121,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final Map<String, dynamic> summary = _extractMap(
-      widget.arguments,
-      'summary',
-    );
+    final Map<String, dynamic> summary = _extractMap(widget.arguments, 'summary');
 
     final int total = _toInt(summary['total']);
     final int voucher = _toInt(summary['voucher']);
@@ -142,18 +136,15 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
         child: Column(
           children: [
             // Header
-            MyHeader(title: 'Chi tiết giao dịch'),
+            MyHeader(
+              title: 'Chi tiết giao dịch',
+              onLeftPressed: () {
+                Navigate.pushNamedAndRemoveAll('/home', arguments: {'selectedTab': 2});
+              },
+            ),
 
             if (_isLoading) ...[
-              Expanded(
-                child: Center(
-                  child: SizedBox(
-                    width: 36,
-                    height: 36,
-                    child: const CircularProgressIndicator(),
-                  ),
-                ),
-              ),
+              Expanded(child: Center(child: SizedBox(width: 36, height: 36, child: const CircularProgressIndicator()))),
             ] else if (_error != null) ...[
               const SizedBox(height: 24),
               Padding(
@@ -170,52 +161,40 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
               Expanded(
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 16),
-                      // Success Icon and Title
-                      Container(
-                        width: 92,
-                        height: 92,
-                        decoration: BoxDecoration(
-                          color: DesignTokens.surfaceSecondary,
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: DesignTokens.borderSecondary,
+                  child: RepaintBoundary(
+                    key: _repaintKey,
+                    child: Container(
+                      color: DesignTokens.surfacePrimary,
+                      child: Column(
+                        children: [
+                          const SizedBox(height: 16),
+                          // Success Icon and Title
+                          Container(
+                            width: 92,
+                            height: 92,
+                            decoration: BoxDecoration(
+                              color: DesignTokens.surfaceSecondary,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: DesignTokens.borderSecondary),
+                            ),
+                            child: Center(child: SvgIcon(svgPath: 'assets/icons_final/check_green.svg', size: 54)),
                           ),
-                        ),
-                        child: Center(
-                          child: SvgIcon(
-                            svgPath: 'assets/icons_final/check_green.svg',
-                            size: 54,
+                          const SizedBox(height: 8),
+                          MyText(text: 'Đặt lịch thành công', textStyle: 'head', textSize: '18', textColor: 'primary'),
+                          const SizedBox(height: 4),
+                          MyText(
+                            text: 'Đã thành công đặt lịch cho xe của bạn.',
+                            textStyle: 'body',
+                            textSize: '14',
+                            textColor: 'tertiary',
                           ),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      MyText(
-                        text: 'Đặt lịch thành công',
-                        textStyle: 'head',
-                        textSize: '18',
-                        textColor: 'primary',
-                      ),
-                      const SizedBox(height: 4),
-                      MyText(
-                        text: 'Đã thành công đặt lịch cho xe của bạn.',
-                        textStyle: 'body',
-                        textSize: '14',
-                        textColor: 'tertiary',
-                      ),
 
-                      const SizedBox(height: 16),
-                      // Card Detail
-                      _buildDetailCard(
-                        booking,
-                        total,
-                        voucher,
-                        deposit,
-                        remain,
+                          const SizedBox(height: 16),
+                          // Card Detail
+                          _buildDetailCard(booking, total, voucher, deposit, remain),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ),
@@ -230,7 +209,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
                   Expanded(
                     child: MyButton(
                       text: 'Tải biên lai',
-                      onPressed: () {},
+                      onPressed: () => _screenshotAndSave(),
                       startIcon: 'assets/icons_final/document-download.svg',
                       sizeStartIcon: const Size(24, 24),
                       buttonType: ButtonType.secondary,
@@ -242,10 +221,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
                     child: MyButton(
                       text: 'Xem đơn',
                       onPressed: () {
-                        Navigate.pushNamedAndRemoveAll(
-                          '/home',
-                          arguments: {'selectedTab': 2},
-                        );
+                        Navigate.pushNamedAndRemoveAll('/home', arguments: {'selectedTab': 2});
                       },
                       buttonType: ButtonType.primary,
                       endIcon: 'assets/icons_final/arrow-right.svg',
@@ -263,20 +239,13 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
     );
   }
 
-  Widget _buildDetailCard(
-    Map<String, dynamic> booking,
-    int total,
-    int voucher,
-    int deposit,
-    int remain,
-  ) {
+  Widget _buildDetailCard(Map<String, dynamic> booking, int total, int voucher, int deposit, int remain) {
     final request = _extractMap(booking, 'request_service');
     final quotation = _extractMap(booking, 'quotation');
     final payment = _extractMap(booking, 'payment_transaction');
     final garage = _extractMap(quotation, 'infor_garage');
 
-    final serviceName =
-        request['description'] ?? booking['service_name'] ?? '—';
+    final serviceName = request['description'] ?? booking['service_name'] ?? '—';
     final garageName = garage['name_garage'] ?? '';
     final idText = payment['transaction_id'] ?? '';
     final bookingTime = booking['time'] ?? quotation['time'];
@@ -308,18 +277,13 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
           ..._divider(),
           _row('Dịch vụ', serviceName.toString()),
           ..._divider(),
-          MyText(
-            text: 'Chi tiết giao dịch',
-            textStyle: 'title',
-            textSize: '14',
-            textColor: 'primary',
-          ),
+          MyText(text: 'Chi tiết giao dịch', textStyle: 'title', textSize: '14', textColor: 'primary'),
           const SizedBox(height: 12),
-          if(idText != '') ...[
+          if (idText != '') ...[
             _row('ID giao dịch', idText),
             ..._divider(),
             _row('Ngày giao dịch', _formatDateTimeNow()),
-          ..._divider(),
+            ..._divider(),
           ],
           _row('Trị giá đơn hàng', '${_dot(finalTotal)} đ'),
           ..._divider(),
@@ -327,11 +291,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
           ..._divider(),
           _row('Đã cọc', '- ${_dot(finalDeposit)} đ'),
           ..._divider(),
-          _row(
-            'Còn phải thanh toán',
-            '${_dot(finalRemain)} đ',
-            isEmphasis: true,
-          ),
+          _row('Còn phải thanh toán', '${_dot(finalRemain)} đ', isEmphasis: true),
         ],
       ),
     );
@@ -350,12 +310,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        MyText(
-          text: label,
-          textStyle: 'body',
-          textSize: '14',
-          textColor: isEmphasis ? 'primary' : 'tertiary',
-        ),
+        MyText(text: label, textStyle: 'body', textSize: '14', textColor: isEmphasis ? 'primary' : 'tertiary'),
         Flexible(
           child: Align(
             alignment: Alignment.centerRight,
@@ -418,5 +373,52 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
       buf.write(s[i]);
     }
     return buf.toString();
+  }
+
+  /// Hàm chụp và lưu ảnh từ một widget có GlobalKey
+  Future<void> _screenshotAndSave({bool saveToGallery = true}) async {
+    try {
+      // Hiển thị loading
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(child: CircularProgressIndicator()),
+      );
+
+      // 1️⃣ Lấy RenderRepaintBoundary từ key
+      RenderRepaintBoundary boundary = _repaintKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
+
+      // 2️⃣ Chụp ảnh widget
+      ui.Image image = await boundary.toImage(pixelRatio: 3.0);
+
+      // 3️⃣ Chuyển sang byte
+      ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      Uint8List pngBytes = byteData!.buffer.asUint8List();
+
+      // 4️⃣ Lưu file tạm trong thư mục app
+      final directory = await getApplicationDocumentsDirectory();
+      final filePath = '${directory.path}/bien_lai_${DateTime.now().millisecondsSinceEpoch}.png';
+      final file = File(filePath);
+      await file.writeAsBytes(pngBytes);
+
+      // 5️⃣ (Tuỳ chọn) Lưu vào thư viện ảnh
+      if (saveToGallery) {
+        await Gal.putImage(file.path);
+        if (mounted) {
+          Navigator.of(context).pop(); // Đóng loading dialog
+          AppToastHelper.showSuccess(context, message: 'Biên lai đã được lưu vào thư viện ảnh');
+        }
+      } else {
+        if (mounted) {
+          Navigator.of(context).pop(); // Đóng loading dialog
+          AppToastHelper.showSuccess(context, message: 'Biên lai đã được lưu tại: $filePath');
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.of(context).pop(); // Đóng loading dialog
+        AppToastHelper.showError(context, message: 'Lỗi khi chụp và lưu biên lai: $e');
+      }
+    }
   }
 }

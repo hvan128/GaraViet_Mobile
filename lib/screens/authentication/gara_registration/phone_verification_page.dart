@@ -85,10 +85,10 @@ class _PhoneVerificationPageState extends State<PhoneVerificationPage> {
       context,
       listen: false,
     );
-    
+
     if (registrationData.phoneNumber == null) {
       ErrorDialog.showSnackBar(
-        context, 
+        context,
         'Không tìm thấy số điện thoại',
         backgroundColor: Colors.red,
       );
@@ -109,7 +109,7 @@ class _PhoneVerificationPageState extends State<PhoneVerificationPage> {
           );
         } else {
           ErrorDialog.showSnackBar(
-            context, 
+            context,
             response['message'] ?? 'Không thể gửi mã OTP',
             backgroundColor: Colors.red,
           );
@@ -139,10 +139,10 @@ class _PhoneVerificationPageState extends State<PhoneVerificationPage> {
 
   void _verifyOtp() async {
     final otp = _otpControllers.map((controller) => controller.text).join();
-    
+
     if (otp.length != 4) {
       ErrorDialog.showSnackBar(
-        context, 
+        context,
         'Vui lòng nhập đầy đủ 4 số OTP',
         backgroundColor: Colors.red,
       );
@@ -175,7 +175,7 @@ class _PhoneVerificationPageState extends State<PhoneVerificationPage> {
           _isLoading = false;
         });
         ErrorDialog.showSnackBar(
-          context, 
+          context,
           verifyResponse['message'] ?? 'Mã OTP không đúng',
           backgroundColor: Colors.red,
         );
@@ -190,11 +190,13 @@ class _PhoneVerificationPageState extends State<PhoneVerificationPage> {
         'garageName': registrationData.garageName,
         'email': registrationData.email,
         'address': registrationData.address,
+        'latitude': registrationData.latitude,
+        'longitude': registrationData.longitude,
         'numberOfWorkers': registrationData.numberOfWorkers,
         'descriptionGarage': registrationData.descriptionGarage,
         'garageImagesCount': registrationData.garageImages?.length,
       });
-      
+
       // Validate required fields
       if (registrationData.phoneNumber == null ||
           registrationData.password == null ||
@@ -206,7 +208,7 @@ class _PhoneVerificationPageState extends State<PhoneVerificationPage> {
           _isLoading = false;
         });
         ErrorDialog.showSnackBar(
-          context, 
+          context,
           'Thiếu thông tin đăng ký. Vui lòng kiểm tra lại.',
           backgroundColor: Colors.red,
         );
@@ -222,6 +224,8 @@ class _PhoneVerificationPageState extends State<PhoneVerificationPage> {
         nameGarage: registrationData.garageName!,
         emailGarage: registrationData.email!,
         address: registrationData.address!,
+        latitude: registrationData.latitude?.toString(),
+        longitude: registrationData.longitude?.toString(),
         numberOfWorker: registrationData.numberOfWorkers!.toString(),
         descriptionGarage: registrationData.descriptionGarage ?? 'mô tả', // Truyền chuỗi rỗng nếu null
         cccd: registrationData.cccd,
@@ -290,7 +294,7 @@ class _PhoneVerificationPageState extends State<PhoneVerificationPage> {
           final userProvider = Provider.of<UserProvider>(context, listen: false);
           await userProvider.refreshUserInfo();
           final userInfo = userProvider.userInfo;
-          
+
           DebugHelper.logError('GetUserInfo Response', {
             'avatarPath': userInfo?.avatarPath,
             'nameGarage': userInfo?.nameGarage,
@@ -308,7 +312,7 @@ class _PhoneVerificationPageState extends State<PhoneVerificationPage> {
           _isLoading = false;
         });
         ErrorDialog.showSnackBar(
-          context, 
+          context,
           registerResponse.message ?? 'Đăng ký garage thất bại',
           backgroundColor: Colors.red,
         );
@@ -354,7 +358,7 @@ class _PhoneVerificationPageState extends State<PhoneVerificationPage> {
           );
         } else {
           ErrorDialog.showSnackBar(
-            context, 
+            context,
             response['message'] ?? 'Không thể gửi lại mã OTP',
             backgroundColor: Colors.red,
           );
@@ -372,7 +376,6 @@ class _PhoneVerificationPageState extends State<PhoneVerificationPage> {
     }
   }
 
- 
   @override
   Widget build(BuildContext context) {
     final registrationData = Provider.of<RegistrationData>(context);
@@ -389,7 +392,7 @@ class _PhoneVerificationPageState extends State<PhoneVerificationPage> {
               title: 'Xác thực số điện thoại',
               onLeftPressed: widget.onBack ?? () => Navigator.pop(context),
             ),
-            
+
             // Progress bar
             StepProgressBar(
               currentStep: widget.currentStep,
@@ -397,7 +400,7 @@ class _PhoneVerificationPageState extends State<PhoneVerificationPage> {
               height: 1.0,
               fullWidth: true,
             ),
-            
+
             // Content
             Expanded(
               child: Padding(
@@ -407,27 +410,27 @@ class _PhoneVerificationPageState extends State<PhoneVerificationPage> {
                   children: [
                     IconField(svgPath: "assets/icons_final/send.svg"),
 
-                      const SizedBox(height: 12),
+                    const SizedBox(height: 12),
 
-                      // Title
-                      MyText(
-                        text: 'Xác thực số điện thoại',
-                        textStyle: 'head',
-                        textSize: '24',
-                        textColor: 'primary',
-                      ),
+                    // Title
+                    MyText(
+                      text: 'Xác thực số điện thoại',
+                      textStyle: 'head',
+                      textSize: '24',
+                      textColor: 'primary',
+                    ),
 
-                      const SizedBox(height: 4),
+                    const SizedBox(height: 4),
 
-                      MyText(
-                        text: 'Chúng tôi đã gửi mã xác thực đến số $maskedPhone',
-                        textStyle: 'body',
-                        textSize: '14',
-                        textColor: 'secondary',
-                      ),
+                    MyText(
+                      text: 'Chúng tôi đã gửi mã xác thực đến số $maskedPhone',
+                      textStyle: 'body',
+                      textSize: '14',
+                      textColor: 'secondary',
+                    ),
 
-                      const SizedBox(height: 32),
-                    
+                    const SizedBox(height: 32),
+
                     // OTP Input Fields
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -436,8 +439,7 @@ class _PhoneVerificationPageState extends State<PhoneVerificationPage> {
                           width: 56,
                           height: 56,
                           decoration: BoxDecoration(
-                            border: Border.all(
-                              color: DesignTokens.borderPrimary),
+                            border: Border.all(color: DesignTokens.borderPrimary),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: TextField(
@@ -462,8 +464,7 @@ class _PhoneVerificationPageState extends State<PhoneVerificationPage> {
                         );
                       }),
                     ),
-                    
-                    
+
                     const SizedBox(height: 24),
 
                     Row(
@@ -486,12 +487,12 @@ class _PhoneVerificationPageState extends State<PhoneVerificationPage> {
                         ),
                         const SizedBox(width: 4),
                         if (_countdown > 0)
-                        MyText(
-                          text: 'sau ${_countdown}s',
-                          textStyle: 'body',
-                          textSize: '14',
-                          textColor: 'secondary',
-                        ),
+                          MyText(
+                            text: 'sau ${_countdown}s',
+                            textStyle: 'body',
+                            textSize: '14',
+                            textColor: 'secondary',
+                          ),
                       ],
                     ),
 
@@ -501,7 +502,6 @@ class _PhoneVerificationPageState extends State<PhoneVerificationPage> {
                       text: _isLoading ? 'Đang xác thực...' : 'Xác thực',
                       onPressed: _isLoading ? null : _verifyOtp,
                     ),
-                    
                   ],
                 ),
               ),

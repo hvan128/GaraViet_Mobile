@@ -1,7 +1,6 @@
 import 'package:gara/models/file/file_info_model.dart';
 
-List<UserInfoResponse> userInfoResponseFromJson(dynamic str) =>
-    List<UserInfoResponse>.from(
+List<UserInfoResponse> userInfoResponseFromJson(dynamic str) => List<UserInfoResponse>.from(
       (str).map((x) => UserInfoResponse.fromJson(x)),
     );
 
@@ -25,16 +24,18 @@ class UserInfoResponse {
   final String? nameGarage;
   final String? emailGarage;
   final String? address;
+  final String? latitude;
+  final String? longitude;
   final String? numberOfWorker;
   final String? descriptionGarage;
-  final List<FileInfo>? listFileAvatar; // Changed to FileInfo objects
-  final List<FileInfo>? listFileCertificate; // New field from API
-  final int? isVerifiedGarage; // 0 INACTIVE, 1 ACTIVE, 2 PENDING
-  final String? servicesProvided; // New field from API
-  final String? activeFrom; // New field from API
-  final int? numberOfCompletedOrders; // New field from API
-  final double? starRatingStandard; // New field from API
-  final int? warranty; // New field from API
+  final List<FileInfo>? listFileAvatar;
+  final List<FileInfo>? listFileCertificate;
+  final int? isVerifiedGarage;
+  final String? servicesProvided;
+  final String? activeFrom;
+  final int? numberOfCompletedOrders;
+  final double? starRatingStandard;
+  final int? warranty;
 
   UserInfoResponse({
     required this.id,
@@ -54,6 +55,8 @@ class UserInfoResponse {
     this.nameGarage,
     this.emailGarage,
     this.address,
+    this.latitude,
+    this.longitude,
     this.numberOfWorker,
     this.descriptionGarage,
     this.listFileAvatar,
@@ -82,9 +85,21 @@ class UserInfoResponse {
     }
 
     final roleId = json['role_id'] ?? 0;
-    final normalizedName = roleId == 3
-        ? (json['name_garage'] ?? json['name'] ?? '')
-        : (json['name'] ?? '');
+    final normalizedName = roleId == 3 ? (json['name_garage'] ?? json['name'] ?? '') : (json['name'] ?? '');
+
+    final addressJson = json['address'];
+    final address = addressJson is Map<String, dynamic> ? (addressJson['label'] ?? '') : (addressJson ?? '');
+    // Chuẩn hóa latitude/longitude về chuỗi để tránh lỗi kiểu dữ liệu (server có thể trả double)
+    String? _toStringOrNull(dynamic v) {
+      if (v == null) return null;
+      if (v is String) return v;
+      return v.toString();
+    }
+
+    final latitude =
+        addressJson is Map<String, dynamic> ? _toStringOrNull(addressJson['latitude']) : _toStringOrNull(addressJson);
+    final longitude =
+        addressJson is Map<String, dynamic> ? _toStringOrNull(addressJson['longitude']) : _toStringOrNull(addressJson);
 
     return UserInfoResponse(
       id: json['id'] ?? 0,
@@ -103,7 +118,9 @@ class UserInfoResponse {
       updatedAt: json['updated_at'] ?? '',
       nameGarage: json['name_garage'],
       emailGarage: json['email_garage'],
-      address: json['address'],
+      address: address,
+      latitude: latitude,
+      longitude: longitude,
       numberOfWorker: json['number_of_worker']?.toString(),
       descriptionGarage: json['description_garage'],
       listFileAvatar: _parseFileList(json['list_file_avatar']),
@@ -119,9 +136,7 @@ class UserInfoResponse {
       starRatingStandard: json['star_rating_standard'] is num
           ? (json['star_rating_standard'] as num).toDouble()
           : double.tryParse('${json['star_rating_standard'] ?? ''}'),
-      warranty: json['warranty'] is num
-          ? (json['warranty'] as num).toInt()
-          : int.tryParse('${json['warranty'] ?? ''}'),
+      warranty: json['warranty'] is num ? (json['warranty'] as num).toInt() : int.tryParse('${json['warranty'] ?? ''}'),
     );
   }
 
@@ -176,6 +191,8 @@ class UserInfoResponse {
     String? nameGarage,
     String? emailGarage,
     String? address,
+    String? latitude,
+    String? longitude,
     String? numberOfWorker,
     String? descriptionGarage,
     List<FileInfo>? listFileAvatar,
@@ -205,6 +222,8 @@ class UserInfoResponse {
       nameGarage: nameGarage ?? this.nameGarage,
       emailGarage: emailGarage ?? this.emailGarage,
       address: address ?? this.address,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
       numberOfWorker: numberOfWorker ?? this.numberOfWorker,
       descriptionGarage: descriptionGarage ?? this.descriptionGarage,
       listFileAvatar: listFileAvatar ?? this.listFileAvatar,

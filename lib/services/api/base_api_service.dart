@@ -15,51 +15,37 @@ class BaseApiService {
     bool includeAuth = true,
   }) async {
     try {
-      
       final url = '${Config.baseUrl}$endpoint';
-      final response = await AuthHttpClient.get(
-        url,
-        queryParams: queryParams,
-        includeAuth: includeAuth,
-      );
-      
+      final response = await AuthHttpClient.get(url, queryParams: queryParams, includeAuth: includeAuth);
+
       // Kiểm tra nếu response là HTML (thường là error page)
       if (response is String && response.toString().startsWith('<!doctype html>')) {
         AppToastHelper.showGlobalError('Lỗi hệ thống, vui lòng thử lại sau!');
-        return {
-          'success': false,
-          'message': 'Lỗi hệ thống, vui lòng thử lại sau!',
-          'data': null,
-        };
+        return {'success': false, 'message': 'Lỗi hệ thống, vui lòng thử lại sau!', 'data': null};
       }
-      
+
       // Tự động xử lý auth error cho tất cả request
       if (includeAuth && AuthHelper.checkAuthError(response)) {
         // AuthHelper đã tự động navigate đến login
         return response; // Response đã chứa thông tin lỗi auth
       }
-      
+
       // Không hiển thị toast lỗi nếu là lỗi mạng
       if (response['isNetworkError'] == true) {
         return response;
       }
-      
+
       return response;
     } catch (e) {
       // Log chi tiết lỗi API
-      developer.log(
-        'API Error: $endpoint',
-        name: 'BaseApiService',
-        error: e,
-        stackTrace: StackTrace.current,
-      );
+      developer.log('API Error: $endpoint', name: 'BaseApiService', error: e, stackTrace: StackTrace.current);
       // Không hiển thị toast lỗi nếu là lỗi mạng
       if (NetworkUtils.isNetworkError(e)) {
         // Chỉ log, không hiển thị toast
       } else {
         AppToastHelper.showGlobalError(ErrorHandler.getErrorMessage(e));
       }
-      
+
       return {
         'success': false,
         'message': ErrorHandler.getErrorMessage(e),
@@ -79,46 +65,32 @@ class BaseApiService {
     bool includeAuth = true,
   }) async {
     try {
-      
       final url = '${Config.baseUrl}$endpoint';
-      final response = await AuthHttpClient.post(
-        url,
-        body: body, 
-        includeAuth: includeAuth,
-      );
-      
+      final response = await AuthHttpClient.post(url, body: body, includeAuth: includeAuth);
+
       // Kiểm tra nếu response là HTML (thường là error page)
       if (response is String && response.toString().startsWith('<!doctype html>')) {
         AppToastHelper.showGlobalError('Lỗi hệ thống, vui lòng thử lại sau!');
-        return {
-          'success': false,
-          'message': 'Lỗi hệ thống, vui lòng thử lại sau!',
-          'data': null,
-        };
+        return {'success': false, 'message': 'Lỗi hệ thống, vui lòng thử lại sau!', 'data': null};
       }
-      
-      // Tự động xử lý auth error cho tất cả request  
+
+      // Tự động xử lý auth error cho tất cả request
       if (includeAuth && AuthHelper.checkAuthError(response)) {
         // AuthHelper đã tự động navigate đến login
         return response; // Response đã chứa thông tin lỗi auth
       }
-      
+
       return response;
     } catch (e) {
       // Log chi tiết lỗi API
-      developer.log(
-        'API Error: $endpoint',
-        name: 'BaseApiService',
-        error: e,
-        stackTrace: StackTrace.current,
-      );
+      developer.log('API Error: $endpoint', name: 'BaseApiService', error: e, stackTrace: StackTrace.current);
       // Không hiển thị toast lỗi nếu là lỗi mạng
       if (NetworkUtils.isNetworkError(e)) {
         // Chỉ log, không hiển thị toast
       } else {
         AppToastHelper.showGlobalError(ErrorHandler.getErrorMessage(e));
       }
-      
+
       return {
         'success': false,
         'message': ErrorHandler.getErrorMessage(e),
@@ -139,49 +111,36 @@ class BaseApiService {
   }) async {
     try {
       final url = '${Config.baseUrl}$endpoint';
-      final response = await AuthHttpClient.postFormData(
-        url,
-        formData: formData,
-        includeAuth: includeAuth,
-      );
-      
+      final response = await AuthHttpClient.postFormData(url, formData: formData, includeAuth: includeAuth);
+
       // Kiểm tra nếu response là HTML (thường là error page)
       if (response is String && response.toString().startsWith('<!doctype html>')) {
         AppToastHelper.showGlobalError('API endpoint không tồn tại hoặc server lỗi');
-        return {
-          'success': false,
-          'message': 'API endpoint không tồn tại hoặc server lỗi',
-          'data': null,
-        };
+        return {'success': false, 'message': 'API endpoint không tồn tại hoặc server lỗi', 'data': null};
       }
-      
+
       // Tự động xử lý auth error cho tất cả request
       if (includeAuth && AuthHelper.checkAuthError(response)) {
         // AuthHelper đã tự động navigate đến login
         return response; // Response đã chứa thông tin lỗi auth
       }
-      
+
       // Không hiển thị toast lỗi nếu là lỗi mạng
       if (response['isNetworkError'] == true) {
         return response;
       }
-      
+
       return response;
     } catch (e) {
       // Log chi tiết lỗi API
-      developer.log(
-        'API Error: $endpoint',
-        name: 'BaseApiService',
-        error: e,
-        stackTrace: StackTrace.current,
-      );
+      developer.log('API Error: $endpoint', name: 'BaseApiService', error: e, stackTrace: StackTrace.current);
       // Không hiển thị toast lỗi nếu là lỗi mạng
       if (NetworkUtils.isNetworkError(e)) {
         // Chỉ log, không hiển thị toast
       } else {
         AppToastHelper.showGlobalError(ErrorHandler.getErrorMessage(e));
       }
-      
+
       return {
         'success': false,
         'message': ErrorHandler.getErrorMessage(e),
@@ -198,7 +157,7 @@ class BaseApiService {
   static Future<Map<String, dynamic>> postMultipartFormData(
     String endpoint, {
     Map<String, String>? formData,
-      List<dynamic>? files, // http.MultipartFile expected
+    List<dynamic>? files, // http.MultipartFile expected
     bool includeAuth = true,
   }) async {
     try {
@@ -209,44 +168,35 @@ class BaseApiService {
         files: files?.cast(),
         includeAuth: includeAuth,
       );
-      
+
       // Kiểm tra nếu response là HTML (thường là error page)
       if (response is String && response.toString().startsWith('<!doctype html>')) {
         AppToastHelper.showGlobalError('API endpoint không tồn tại hoặc server lỗi');
-        return {
-          'success': false,
-          'message': 'API endpoint không tồn tại hoặc server lỗi',
-          'data': null,
-        };
+        return {'success': false, 'message': 'API endpoint không tồn tại hoặc server lỗi', 'data': null};
       }
-      
+
       // Tự động xử lý auth error cho tất cả request
       if (includeAuth && AuthHelper.checkAuthError(response)) {
         // AuthHelper đã tự động navigate đến login
         return response; // Response đã chứa thông tin lỗi auth
       }
-      
+
       // Không hiển thị toast lỗi nếu là lỗi mạng
       if (response['isNetworkError'] == true) {
         return response;
       }
-      
+
       return response;
     } catch (e) {
       // Log chi tiết lỗi API
-      developer.log(
-        'API Error: $endpoint',
-        name: 'BaseApiService',
-        error: e,
-        stackTrace: StackTrace.current,
-      );
+      developer.log('API Error: $endpoint', name: 'BaseApiService', error: e, stackTrace: StackTrace.current);
       // Không hiển thị toast lỗi nếu là lỗi mạng
       if (NetworkUtils.isNetworkError(e)) {
         // Chỉ log, không hiển thị toast
       } else {
         AppToastHelper.showGlobalError(ErrorHandler.getErrorMessage(e));
       }
-      
+
       return {
         'success': false,
         'message': ErrorHandler.getErrorMessage(e),
@@ -267,49 +217,36 @@ class BaseApiService {
   }) async {
     try {
       final url = '${Config.baseUrl}$endpoint';
-      final response = await AuthHttpClient.put(
-        url,
-        body: body,
-        includeAuth: includeAuth,
-      );
-      
+      final response = await AuthHttpClient.put(url, body: body, includeAuth: includeAuth);
+
       // Kiểm tra nếu response là HTML (thường là error page)
       if (response is String && response.toString().startsWith('<!doctype html>')) {
         AppToastHelper.showGlobalError('API endpoint không tồn tại hoặc server lỗi');
-        return {
-          'success': false,
-          'message': 'API endpoint không tồn tại hoặc server lỗi',
-          'data': null,
-        };
+        return {'success': false, 'message': 'API endpoint không tồn tại hoặc server lỗi', 'data': null};
       }
-      
+
       // Tự động xử lý auth error cho tất cả request
       if (includeAuth && AuthHelper.checkAuthError(response)) {
         // AuthHelper đã tự động navigate đến login
         return response; // Response đã chứa thông tin lỗi auth
       }
-      
+
       // Không hiển thị toast lỗi nếu là lỗi mạng
       if (response['isNetworkError'] == true) {
         return response;
       }
-      
+
       return response;
     } catch (e) {
       // Log chi tiết lỗi API
-      developer.log(
-        'API Error: $endpoint',
-        name: 'BaseApiService',
-        error: e,
-        stackTrace: StackTrace.current,
-      );
+      developer.log('API Error: $endpoint', name: 'BaseApiService', error: e, stackTrace: StackTrace.current);
       // Không hiển thị toast lỗi nếu là lỗi mạng
       if (NetworkUtils.isNetworkError(e)) {
         // Chỉ log, không hiển thị toast
       } else {
         AppToastHelper.showGlobalError(ErrorHandler.getErrorMessage(e));
       }
-      
+
       return {
         'success': false,
         'message': ErrorHandler.getErrorMessage(e),
@@ -325,45 +262,34 @@ class BaseApiService {
   // DELETE request
   static Future<Map<String, dynamic>> delete(
     String endpoint, {
+    Map<String, dynamic>? body,
     bool includeAuth = true,
   }) async {
     try {
       final url = '${Config.baseUrl}$endpoint';
-      final response = await AuthHttpClient.delete(
-        url,
-        includeAuth: includeAuth,
-      );
-      
+      final response = await AuthHttpClient.delete(url, body: body, includeAuth: includeAuth);
+
       // Kiểm tra nếu response là HTML (thường là error page)
       if (response is String && response.toString().startsWith('<!doctype html>')) {
-        return {
-          'success': false,
-          'message': 'API endpoint không tồn tại hoặc server lỗi',
-          'data': null,
-        };
+        return {'success': false, 'message': 'API endpoint không tồn tại hoặc server lỗi', 'data': null};
       }
-      
+
       // Tự động xử lý auth error cho tất cả request
       if (includeAuth && AuthHelper.checkAuthError(response)) {
         // AuthHelper đã tự động navigate đến login
         return response; // Response đã chứa thông tin lỗi auth
       }
-      
+
       // Không hiển thị toast lỗi nếu là lỗi mạng
       if (response['isNetworkError'] == true) {
         return response;
       }
-      
+
       return response;
     } catch (e) {
       // Log chi tiết lỗi API
-      developer.log(
-        'API Error: $endpoint',
-        name: 'BaseApiService',
-        error: e,
-        stackTrace: StackTrace.current,
-      );
-      
+      developer.log('API Error: $endpoint', name: 'BaseApiService', error: e, stackTrace: StackTrace.current);
+
       return {
         'success': false,
         'message': ErrorHandler.getErrorMessage(e),

@@ -11,7 +11,11 @@ class RequestServiceModel {
   final UserInfoResponse? inforUser;
   final CarInfo? carInfo;
   final int status; // 1 WAITING_FOR_QUOTATION, 2 ACCEPTED, 3 REJECTED, 4 COMPLETED
+  // Address label for display; server may return address as an object
+  // { label: string, latitude: number|null, longitude: number|null }
   final String address;
+  final double? addressLatitude;
+  final double? addressLongitude;
   final String? description;
   final String? radiusSearch;
   final List<FileInfo> listImageAttachment;
@@ -27,6 +31,8 @@ class RequestServiceModel {
     this.carInfo,
     required this.status,
     required this.address,
+    this.addressLatitude,
+    this.addressLongitude,
     this.description,
     this.radiusSearch,
     this.listImageAttachment = const [],
@@ -39,6 +45,27 @@ class RequestServiceModel {
   factory RequestServiceModel.fromJson(Map<String, dynamic> json) {
     // Normalize textual fields: collapse multiple whitespaces/newlines to single space and trim
     String _normalize(String? v) => (v ?? '').replaceAll(RegExp(r'\s+'), ' ').trim();
+    double? _toDouble(dynamic v) {
+      if (v == null) return null;
+      if (v is double) return v;
+      if (v is int) return v.toDouble();
+      if (v is num) return v.toDouble();
+      if (v is String) return double.tryParse(v);
+      return null;
+    }
+
+    // Address could be a string or an object
+    final dynamic addressJson = json['address'];
+    String addressLabel;
+    double? latitude;
+    double? longitude;
+    if (addressJson is Map<String, dynamic>) {
+      addressLabel = _normalize((addressJson['label'] ?? '').toString());
+      latitude = _toDouble(addressJson['latitude']);
+      longitude = _toDouble(addressJson['longitude']);
+    } else {
+      addressLabel = _normalize((addressJson ?? '').toString());
+    }
     return RequestServiceModel(
       id: _toInt(json['id']),
       requestCode: _normalize((json['request_code'] ?? json['requestCode'])?.toString()),
@@ -53,15 +80,13 @@ class RequestServiceModel {
                       : null))),
       carInfo: json['car_infor'] != null ? CarInfo.fromJson(json['car_infor']) : null,
       status: _toInt(json['status']),
-      address: _normalize((json['address'] ?? '').toString()),
+      address: addressLabel,
+      addressLatitude: latitude,
+      addressLongitude: longitude,
       description: _normalize(json['description']?.toString()),
       radiusSearch: _normalize((json['radius_search'] ?? json['radiusSearch'])?.toString()),
-      listImageAttachment: (json['list_image_attachment'] as List?)
-          ?.map((e) => FileInfo.fromJson(e))
-          .toList() ?? [],
-      listQuotation: (json['list_quotation'] as List?)
-          ?.map((e) => QuotationModel.fromJson(e))
-          .toList(),
+      listImageAttachment: (json['list_image_attachment'] as List?)?.map((e) => FileInfo.fromJson(e)).toList() ?? [],
+      listQuotation: (json['list_quotation'] as List?)?.map((e) => QuotationModel.fromJson(e)).toList(),
       createdAt: _normalize((json['created_at'] ?? json['createdAt'] ?? '').toString()),
       updatedAt: _normalize((json['updated_at'] ?? json['updatedAt'] ?? '').toString()),
       timeAgo: _normalize(json['time_ago']?.toString()),
@@ -75,7 +100,11 @@ class RequestServiceModel {
       'infor_user': inforUser?.toJson(),
       'car_infor': carInfo?.toJson(),
       'status': status,
-      'address': address,
+      'address': {
+        'label': address,
+        'latitude': addressLatitude,
+        'longitude': addressLongitude,
+      },
       'description': description,
       'radius_search': radiusSearch,
       'list_image_attachment': listImageAttachment.map((e) => e.toJson()).toList(),
@@ -130,12 +159,8 @@ class RequestListResponse {
 
   factory RequestListResponse.fromJson(Map<String, dynamic> json) {
     return RequestListResponse(
-      requests: (json['requests'] as List?)
-          ?.map((e) => RequestServiceModel.fromJson(e))
-          .toList() ?? [],
+      requests: (json['requests'] as List?)?.map((e) => RequestServiceModel.fromJson(e)).toList() ?? [],
       pagination: PaginationInfo.fromJson(json['pagination'] ?? {}),
     );
   }
 }
-
-

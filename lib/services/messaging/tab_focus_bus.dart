@@ -8,6 +8,7 @@ class TabFocusBus {
 
   /// Chỉ số tab hiện tại
   final ValueNotifier<int> currentIndex = ValueNotifier<int>(0);
+
   /// Tick tăng để ép phát sự kiện ngay cả khi index không đổi
   final ValueNotifier<int> focusTick = ValueNotifier<int>(0);
 
@@ -20,5 +21,3 @@ class TabFocusBus {
     }
   }
 }
-
-

@@ -81,8 +81,7 @@ class _ElectronicContractPageState extends State<ElectronicContractPage> {
       }
     });
     // Ưu tiên md từ server nếu được truyền vào
-    if (widget.initialContractMarkdown != null &&
-        widget.initialContractMarkdown!.trim().isNotEmpty) {
+    if (widget.initialContractMarkdown != null && widget.initialContractMarkdown!.trim().isNotEmpty) {
       _contractMarkdown = _normalizeServerMarkdown(
         widget.initialContractMarkdown!,
       );
@@ -279,7 +278,8 @@ class _ElectronicContractPageState extends State<ElectronicContractPage> {
       final picked = DateTime(year, month, day);
       registrationData.setIssueDate(picked);
       // Format yyyy-MM-dd for API
-      issuedDateApi = '${picked.year.toString().padLeft(4, '0')}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
+      issuedDateApi =
+          '${picked.year.toString().padLeft(4, '0')}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
     }
 
     if (_signatureBytes != null) {
@@ -296,13 +296,13 @@ class _ElectronicContractPageState extends State<ElectronicContractPage> {
 
       if (mounted) {
         if (resp['success'] == true) {
-          // Cập nhật isVerifiedGarage = 0 (chờ xác thực) sau khi ký hợp đồng thành công
+          // Cập nhật isVerifiedGarage = 2 sau khi ký hợp đồng thành công
           final userProvider = Provider.of<UserProvider>(context, listen: false);
           if (userProvider.userInfo != null) {
-            final updatedUserInfo = userProvider.userInfo!.copyWith(isVerifiedGarage: 0);
+            final updatedUserInfo = userProvider.userInfo!.copyWith(isVerifiedGarage: 2);
             userProvider.updateUserInfo(updatedUserInfo);
           }
-          
+
           AppToastHelper.showSuccess(
             context,
             message: resp['message'] ?? 'Ký hợp đồng thành công',
@@ -334,8 +334,7 @@ class _ElectronicContractPageState extends State<ElectronicContractPage> {
     }
   }
 
-  bool get _hasSignature =>
-      _signatureBytes != null && _signatureBytes!.isNotEmpty;
+  bool get _hasSignature => _signatureBytes != null && _signatureBytes!.isNotEmpty;
 
   Future<void> _openSignaturePad() async {
     await showModalBottomSheet(
@@ -411,8 +410,7 @@ class _ElectronicContractPageState extends State<ElectronicContractPage> {
                         Navigator.pop(ctx);
                         return;
                       }
-                      final bytes =
-                          await _signaturePadController.toPngBytes();
+                      final bytes = await _signaturePadController.toPngBytes();
                       if (bytes != null) {
                         setState(() {
                           _signatureBytes = bytes;
@@ -420,11 +418,10 @@ class _ElectronicContractPageState extends State<ElectronicContractPage> {
                             _signatureError = null;
                           }
                         });
-                        final registrationData =
-                            Provider.of<RegistrationData>(
-                              context,
-                              listen: false,
-                            );
+                        final registrationData = Provider.of<RegistrationData>(
+                          context,
+                          listen: false,
+                        );
                         registrationData.setSignature(
                           base64Encode(bytes),
                         );
@@ -563,8 +560,7 @@ class _ElectronicContractPageState extends State<ElectronicContractPage> {
                                         if (value.trim().isEmpty) {
                                           _cccdError = 'Vui lòng nhập số CCCD';
                                         } else if (value.trim().length != 12) {
-                                          _cccdError =
-                                              'Số CCCD phải có 12 chữ số';
+                                          _cccdError = 'Số CCCD phải có 12 chữ số';
                                         } else {
                                           _cccdError = null;
                                         }
@@ -578,8 +574,7 @@ class _ElectronicContractPageState extends State<ElectronicContractPage> {
                               Expanded(
                                 child: MyDatePicker(
                                   label: 'Ngày cấp',
-                                  hasError:
-                                      _submitted && _issueDateError != null,
+                                  hasError: _submitted && _issueDateError != null,
                                   errorText: _issueDateError,
                                   onDateSelected: (picked) {
                                     setState(() {
@@ -590,11 +585,10 @@ class _ElectronicContractPageState extends State<ElectronicContractPage> {
                                         _issueDateError = null;
                                       }
                                     });
-                                    final registrationData =
-                                        Provider.of<RegistrationData>(
-                                          context,
-                                          listen: false,
-                                        );
+                                    final registrationData = Provider.of<RegistrationData>(
+                                      context,
+                                      listen: false,
+                                    );
                                     registrationData.setIssueDate(picked);
                                   },
                                 ),
@@ -624,10 +618,9 @@ class _ElectronicContractPageState extends State<ElectronicContractPage> {
                                     color: DesignTokens.surfacePrimary,
                                     borderRadius: BorderRadius.circular(12),
                                     border: Border.all(
-                                      color:
-                                          _submitted && _signatureError != null
-                                              ? DesignTokens.alertError
-                                              : DesignTokens.borderSecondary,
+                                      color: _submitted && _signatureError != null
+                                          ? DesignTokens.alertError
+                                          : DesignTokens.borderSecondary,
                                       style: BorderStyle.solid,
                                     ),
                                   ),
@@ -649,20 +642,17 @@ class _ElectronicContractPageState extends State<ElectronicContractPage> {
                                             mainAxisSize: MainAxisSize.min,
                                             children: [
                                               SvgIcon(
-                                                svgPath:
-                                                    'assets/icons_final/edit-2.svg',
+                                                svgPath: 'assets/icons_final/edit-2.svg',
                                                 width: 20,
                                                 height: 20,
-                                                color:
-                                                    DesignTokens.surfaceBrand,
+                                                color: DesignTokens.surfaceBrand,
                                               ),
                                               const SizedBox(width: 8),
                                               MyText(
                                                 text: 'Ký tại đây',
                                                 textStyle: 'body',
                                                 textSize: '14',
-                                                color:
-                                                    DesignTokens.surfaceBrand,
+                                                color: DesignTokens.surfaceBrand,
                                               ),
                                             ],
                                           ),
@@ -673,42 +663,31 @@ class _ElectronicContractPageState extends State<ElectronicContractPage> {
                                           child: Center(
                                             child: Container(
                                               decoration: BoxDecoration(
-                                                color:
-                                                    DesignTokens
-                                                        .surfaceSecondary,
-                                                borderRadius:
-                                                    BorderRadius.circular(12),
+                                                color: DesignTokens.surfaceSecondary,
+                                                borderRadius: BorderRadius.circular(12),
                                                 border: Border.all(
-                                                  color:
-                                                      DesignTokens
-                                                          .borderBrandSecondary,
+                                                  color: DesignTokens.borderBrandSecondary,
                                                 ),
                                               ),
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 12,
-                                                    vertical: 6,
-                                                  ),
+                                              padding: const EdgeInsets.symmetric(
+                                                horizontal: 12,
+                                                vertical: 6,
+                                              ),
                                               child: Row(
                                                 mainAxisSize: MainAxisSize.min,
                                                 children: [
                                                   SvgIcon(
-                                                    svgPath:
-                                                        'assets/icons_final/edit-2.svg',
+                                                    svgPath: 'assets/icons_final/edit-2.svg',
                                                     width: 20,
                                                     height: 20,
-                                                    color:
-                                                        DesignTokens
-                                                            .surfaceBrand,
+                                                    color: DesignTokens.surfaceBrand,
                                                   ),
                                                   const SizedBox(width: 8),
                                                   MyText(
                                                     text: 'Ký lại',
                                                     textStyle: 'body',
                                                     textSize: '14',
-                                                    color:
-                                                        DesignTokens
-                                                            .surfaceBrand,
+                                                    color: DesignTokens.surfaceBrand,
                                                   ),
                                                 ],
                                               ),
@@ -736,14 +715,8 @@ class _ElectronicContractPageState extends State<ElectronicContractPage> {
                           // Continue button
                           MyButton(
                             text: _isLoading ? 'Đang xử lý...' : 'Tiếp tục',
-                            onPressed:
-                                _isLoading || !_hasSignature
-                                    ? null
-                                    : _validateAndNext,
-                            buttonType:
-                                !_hasSignature
-                                    ? ButtonType.disable
-                                    : ButtonType.primary,
+                            onPressed: _isLoading || !_hasSignature ? null : _validateAndNext,
+                            buttonType: !_hasSignature ? ButtonType.disable : ButtonType.primary,
                           ),
                         ],
                       ),

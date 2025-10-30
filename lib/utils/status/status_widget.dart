@@ -17,6 +17,7 @@ class StatusWidget extends StatelessWidget {
   final bool isSelected;
   final VoidCallback? onRemove;
   final VoidCallback? onTap;
+  final VoidCallback? onToggle;
 
   const StatusWidget({
     Key? key,
@@ -30,6 +31,7 @@ class StatusWidget extends StatelessWidget {
     this.isSelected = false,
     this.onRemove,
     this.onTap,
+    this.onToggle,
   }) : super(key: key);
 
   @override
@@ -45,28 +47,22 @@ class StatusWidget extends StatelessWidget {
         color: colors.background,
         borderRadius: BorderRadius.circular(borderRadius ?? 16),
         border: Border.all(color: colors.border, width: isSelected ? 2 : 1),
-        boxShadow: isSelected
-            ? [
-                BoxShadow(
-                  color: colors.border.withOpacity(0.4),
-                  blurRadius: 4,
-                  spreadRadius: 0,
-                  offset: const Offset(0, 3),
-                ),
-              ]
-            : null,
+        boxShadow:
+            isSelected
+                ? [
+                  BoxShadow(
+                    color: colors.border.withOpacity(0.4),
+                    blurRadius: 4,
+                    spreadRadius: 0,
+                    offset: const Offset(0, 3),
+                  ),
+                ]
+                : null,
       ),
       child: Center(
         child: Row(
           mainAxisSize: MainAxisSize.min,
-          children: [
-            MyText(
-              text: statusInfo.displayName,
-              color: colors.text,
-              textStyle: 'body',
-              textSize: '10',
-            ),
-          ],
+          children: [MyText(text: statusInfo.displayName, color: colors.text, textStyle: 'body', textSize: '10')],
         ),
       ),
     );
@@ -77,21 +73,24 @@ class StatusWidget extends StatelessWidget {
         base,
         if (isSelected && onRemove != null)
           Positioned(
-            top: -5,
-            right: -5,
-            child: GestureDetector(
-              onTap: onRemove,
-              child: Container(
-                width: 16,
-                height: 16,
-                decoration: const BoxDecoration(
-                  color: DesignTokens.alertError,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.close,
-                  size: 12,
-                  color: Colors.white,
+            top: -12,
+            right: -12,
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: onRemove,
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  width: 32,
+                  height: 32,
+                  child: Center(
+                    child: Container(
+                      width: 16,
+                      height: 16,
+                      decoration: const BoxDecoration(color: DesignTokens.alertError, shape: BoxShape.circle),
+                      child: const Icon(Icons.close, size: 12, color: Colors.white),
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -99,49 +98,33 @@ class StatusWidget extends StatelessWidget {
       ],
     );
 
+    // Xử lý tap logic: ưu tiên onTap, sau đó onToggle
+    VoidCallback? handleTap;
     if (onTap != null) {
-      return InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(borderRadius ?? 16),
-        child: child,
-      );
+      handleTap = onTap;
+    } else if (onToggle != null && isSelected) {
+      handleTap = onToggle;
+    }
+
+    if (handleTap != null) {
+      return InkWell(onTap: handleTap, borderRadius: BorderRadius.circular(borderRadius ?? 16), child: child);
     }
     return child;
   }
 
   StatusInfo _getStatusInfo() {
     if (type == StatusType.quotation) {
-      final quotationStatus = status is int 
-          ? QuotationStatus.fromValue(status)
-          : status as QuotationStatus;
-      return StatusInfo(
-        displayName: quotationStatus.displayName,
-        color: quotationStatus.color,
-      );
+      final quotationStatus = status is int ? QuotationStatus.fromValue(status) : status as QuotationStatus;
+      return StatusInfo(displayName: quotationStatus.displayName, color: quotationStatus.color);
     } else if (type == StatusType.request) {
-      final requestStatus = status is int 
-          ? RequestStatus.fromValue(status)
-          : status as RequestStatus;
-      return StatusInfo(
-        displayName: requestStatus.displayName,
-        color: requestStatus.color,
-      );
+      final requestStatus = status is int ? RequestStatus.fromValue(status) : status as RequestStatus;
+      return StatusInfo(displayName: requestStatus.displayName, color: requestStatus.color);
     } else if (type == StatusType.booking) {
-      final bookingStatus = status is int
-          ? BookingStatus.fromValue(status)
-          : status as BookingStatus;
-      return StatusInfo(
-        displayName: bookingStatus.displayName,
-        color: bookingStatus.color,
-      );
+      final bookingStatus = status is int ? BookingStatus.fromValue(status) : status as BookingStatus;
+      return StatusInfo(displayName: bookingStatus.displayName, color: bookingStatus.color);
     } else {
-      final messageStatus = status is int
-          ? MessageStatus.fromValue(status)
-          : status as MessageStatus;
-      return StatusInfo(
-        displayName: messageStatus.displayName,
-        color: messageStatus.color,
-      );
+      final messageStatus = status is int ? MessageStatus.fromValue(status) : status as MessageStatus;
+      return StatusInfo(displayName: messageStatus.displayName, color: messageStatus.color);
     }
   }
 
@@ -163,36 +146,23 @@ class StatusWidget extends StatelessWidget {
     // Fallback: sử dụng màu background với độ đậm hơn
     return statusColor.background.withOpacity(0.8);
   }
-
 }
 
 class StatusInfo {
   final String displayName;
   final dynamic color;
 
-  StatusInfo({
-    required this.displayName,
-    required this.color,
-  });
+  StatusInfo({required this.displayName, required this.color});
 }
 
-enum StatusType {
-  quotation,
-  request,
-  booking,
-  message,
-}
+enum StatusType { quotation, request, booking, message }
 
 class _WidgetColors {
   final Color background;
   final Color text;
   final Color border;
 
-  const _WidgetColors({
-    required this.background,
-    required this.text,
-    required this.border,
-  });
+  const _WidgetColors({required this.background, required this.text, required this.border});
 }
 
 // Widget hiển thị danh sách trạng thái như trong ảnh
@@ -220,22 +190,16 @@ class StatusListWidget extends StatelessWidget {
       children: [
         Text(
           type == StatusType.quotation ? 'Báo giá' : 'Yêu cầu user',
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
-          ),
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white),
         ),
         const SizedBox(height: 12),
         Wrap(
           spacing: spacing,
           runSpacing: spacing,
-          children: statuses.map((status) {
-            return StatusWidget(
-              status: status,
-              type: type,
-            );
-          }).toList(),
+          children:
+              statuses.map((status) {
+                return StatusWidget(status: status, type: type);
+              }).toList(),
         ),
       ],
     );

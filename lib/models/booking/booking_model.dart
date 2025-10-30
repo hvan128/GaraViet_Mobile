@@ -7,6 +7,7 @@ class BookingModel {
   final RequestServiceModel? requestService;
   final QuotationModel? quotation;
   final DateTime? time;
+  final bool reviewed; // true nếu người dùng đã đánh giá đơn này
 
   const BookingModel({
     required this.id,
@@ -14,6 +15,7 @@ class BookingModel {
     this.requestService,
     this.quotation,
     this.time,
+    this.reviewed = false,
   });
 
   factory BookingModel.fromJson(Map<String, dynamic> json) {
@@ -27,6 +29,8 @@ class BookingModel {
           ? QuotationModel.fromJson(json['quotation'] as Map<String, dynamic>)
           : null,
       time: _parseTime(json['booking']?['time'] ?? json['time']),
+      reviewed: _toBool(
+          json['reviewed'] ?? json['is_reviewed'] ?? json['isReviewed'] ?? json['has_review'] ?? json['hasReview']),
     );
   }
 
@@ -37,6 +41,7 @@ class BookingModel {
       'request_service': requestService?.toJson(),
       'quotation': quotation?.toJson(),
       'time': time?.toIso8601String(),
+      'reviewed': reviewed,
     };
   }
 
@@ -55,6 +60,16 @@ class BookingModel {
     if (v is num) return v.toInt();
     if (v is String) return int.tryParse(v) ?? 0;
     return 0;
+  }
+
+  static bool _toBool(dynamic v) {
+    if (v is bool) return v;
+    if (v is int) return v == 1;
+    if (v is String) {
+      final s = v.toLowerCase();
+      return s == 'true' || s == '1';
+    }
+    return false;
   }
 }
 
@@ -126,5 +141,3 @@ class BookingListResponse {
     };
   }
 }
-
-

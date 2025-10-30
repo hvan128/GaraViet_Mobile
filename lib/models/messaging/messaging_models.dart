@@ -1,15 +1,12 @@
 import 'package:gara/models/request/request_service_model.dart';
 import 'package:gara/models/quotation/quotation_model.dart';
+
 class CreateRoomResponse {
   final bool success;
   final String message;
   final CreateRoomData? data;
 
-  const CreateRoomResponse({
-    required this.success,
-    required this.message,
-    this.data,
-  });
+  const CreateRoomResponse({required this.success, required this.message, this.data});
 }
 
 class CreateRoomData {
@@ -45,10 +42,7 @@ class RoomListResponse {
   final List<RoomData> rooms;
   final PaginationInfo pagination;
 
-  const RoomListResponse({
-    required this.rooms,
-    required this.pagination,
-  });
+  const RoomListResponse({required this.rooms, required this.pagination});
 
   factory RoomListResponse.fromJson(Map<String, dynamic> json) {
     final data = json['data'] ?? json; // support both wrapped and flat
@@ -75,7 +69,7 @@ class RoomData {
   final String? otherUserAvatar;
   final RequestServiceModel? requestServiceInfo;
   final QuotationModel? quotationInfo;
-  final int? messageStatus; 
+  final int? messageStatus;
 
   const RoomData({
     required this.roomId,
@@ -112,19 +106,15 @@ class RoomData {
       }
     }
 
-    final priceString = quotationInfoMap != null && quotationInfoMap['price'] != null
-        ? quotationInfoMap['price'].toString()
-        : null;
+    final priceString =
+        quotationInfoMap != null && quotationInfoMap['price'] != null ? quotationInfoMap['price'].toString() : null;
 
     return RoomData(
       roomId: json['room_id'] ?? '',
-      requestServiceId:
-          json['request_service_id'] ?? requestInfo?['request_service_id'] ?? 0,
-      requestCode:
-          json['request_code'] ?? requestInfo?['request_code'],
+      requestServiceId: json['request_service_id'] ?? requestInfo?['request_service_id'] ?? 0,
+      requestCode: json['request_code'] ?? requestInfo?['request_code'],
       carInfo: json['car_info'] ?? computedCarInfo,
-      serviceDescription:
-          json['service_description'] ?? requestInfo?['description'],
+      serviceDescription: json['service_description'] ?? requestInfo?['description'],
       lastMessage: json['last_message'],
       lastMessageTime: json['last_message_time'],
       unreadCount: json['unread_count'] ?? 0,
@@ -144,15 +134,11 @@ class MessageListResponse {
   final List<MessageData> messages;
   final PaginationInfo pagination;
 
-  const MessageListResponse({
-    required this.messages,
-    required this.pagination,
-  });
+  const MessageListResponse({required this.messages, required this.pagination});
 
   factory MessageListResponse.fromJson(Map<String, dynamic> json) {
     final messagesList = json['messages'] as List<dynamic>? ?? [];
-    final messages =
-        messagesList.map((message) => MessageData.fromJson(message)).toList();
+    final messages = messagesList.map((message) => MessageData.fromJson(message)).toList();
     final pagination = PaginationInfo.fromJson(json['pagination'] ?? {});
     return MessageListResponse(messages: messages, pagination: pagination);
   }
@@ -170,6 +156,8 @@ class MessageData {
   final String? messageType;
   // URL file/hình ảnh nếu có (cho IMAGE/FILE)
   final String? fileUrl;
+  // Thumbnail URLs cho video (các URL cách nhau dấu phẩy)
+  final String? thumbnails;
   // Metadata bổ sung (ví dụ thông tin quotation/booking)
   final Map<String, dynamic>? metadata;
 
@@ -184,6 +172,7 @@ class MessageData {
     this.isRead = false,
     this.messageType,
     this.fileUrl,
+    this.thumbnails,
     this.metadata,
   });
 
@@ -199,9 +188,8 @@ class MessageData {
       isRead: json['is_read'] ?? false,
       messageType: json['message_type']?.toString(),
       fileUrl: (json['file_url'] ?? json['fileUrl'])?.toString(),
-      metadata: (json['metadata'] is Map<String, dynamic>)
-          ? (json['metadata'] as Map<String, dynamic>)
-          : null,
+      thumbnails: (json['thumbnail_url'] ?? json['thumbnails'])?.toString(),
+      metadata: (json['metadata'] is Map<String, dynamic>) ? (json['metadata'] as Map<String, dynamic>) : null,
     );
   }
 }
@@ -211,21 +199,14 @@ class SendMessageResponse {
   final String message;
   final MessageData? data;
 
-  const SendMessageResponse({
-    required this.success,
-    required this.message,
-    this.data,
-  });
+  const SendMessageResponse({required this.success, required this.message, this.data});
 }
 
 class UnreadCountResponse {
   final bool success;
   final int count;
 
-  const UnreadCountResponse({
-    required this.success,
-    required this.count,
-  });
+  const UnreadCountResponse({required this.success, required this.count});
 }
 
 class PaginationInfo {
@@ -278,3 +259,43 @@ class RoomDetailResponse {
   }
 }
 
+class DeleteRoomsResponse {
+  final bool success;
+  final String message;
+  final int deletedCount;
+  final int totalCount;
+  final List<FailedRoom> failedRooms;
+
+  // Flags để phân biệt các trường hợp
+  final bool isFullySuccessful; // 3/3 - Xóa thành công hoàn toàn
+  final bool isPartiallySuccessful; // 2/3 - Xóa thành công một phần
+  final bool isBusinessRuleFailure; // 0/3 - Xóa thất bại do ràng buộc nghiệp vụ
+  final bool isApiFailure; // API error (token, mạng, server)
+
+  // Trường để xác định data có thay đổi không
+  final bool hasDataChanged; // Có room nào được xóa thành công không
+
+  const DeleteRoomsResponse({
+    required this.success,
+    required this.message,
+    required this.deletedCount,
+    required this.totalCount,
+    required this.failedRooms,
+    this.isFullySuccessful = false,
+    this.isPartiallySuccessful = false,
+    this.isBusinessRuleFailure = false,
+    this.isApiFailure = false,
+    this.hasDataChanged = false,
+  });
+}
+
+class FailedRoom {
+  final String roomId;
+  final String error;
+
+  const FailedRoom({required this.roomId, required this.error});
+
+  factory FailedRoom.fromJson(Map<String, dynamic> json) {
+    return FailedRoom(roomId: json['room_id'] ?? '', error: json['error'] ?? '');
+  }
+}

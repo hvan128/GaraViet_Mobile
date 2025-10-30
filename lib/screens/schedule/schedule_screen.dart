@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:gara/models/booking/booking_model.dart';
 import 'package:gara/models/user/user_info_model.dart';
 import 'package:gara/services/booking/booking_service.dart';
-import 'package:gara/utils/debug_logger.dart';
 import 'package:gara/widgets/svg_icon.dart';
 import 'package:gara/widgets/text.dart';
 import 'package:gara/theme/design_tokens.dart';
@@ -16,6 +15,12 @@ import 'package:gara/widgets/header.dart';
 import 'package:gara/widgets/app_toast.dart';
 import 'package:gara/widgets/month_picker.dart';
 import 'package:gara/widgets/skeleton.dart';
+import 'package:gara/widgets/loading_spinner.dart';
+import 'package:gara/widgets/app_dialog.dart';
+import 'package:gara/services/phone/phone_service.dart';
+import 'package:gara/components/payment/platform_fee_modal.dart';
+import 'package:gara/screens/review/review_screen.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ScheduleScreen extends StatefulWidget {
   const ScheduleScreen({super.key});
@@ -24,8 +29,7 @@ class ScheduleScreen extends StatefulWidget {
   State<ScheduleScreen> createState() => _ScheduleScreenState();
 }
 
-class _ScheduleScreenState extends State<ScheduleScreen>
-    with TickerProviderStateMixin {
+class _ScheduleScreenState extends State<ScheduleScreen> with TickerProviderStateMixin {
   final List<BookingModel> _items = [];
   BookingPagination? _pagination;
   int _page = 1;
@@ -39,32 +43,23 @@ class _ScheduleScreenState extends State<ScheduleScreen>
   final ScrollController _scrollController = ScrollController();
 
   // Summary sticky bar (chỉ cho gara)
-  DateTime _fromDate = DateTime(
-  DateTime.now().year,
-  DateTime.now().month,
-  1,
-  );
-  DateTime _toDate = DateTime(
-    DateTime.now().year,
-    DateTime.now().month + 1,
-    0,
-    23,
-    59,
-    59,
-  );
+  DateTime _fromDate = DateTime(DateTime.now().year, DateTime.now().month, 1);
+  DateTime _toDate = DateTime(DateTime.now().year, DateTime.now().month + 1, 0, 23, 59, 59);
   bool _isCalculating = false;
   int? _totalRevenue; // total_revenue (G)
   int? _totalUnpaid; // total_unpaid (10%*G - V - C)
   int? _totalPaid; // total_paid (C + V)
   int? _totalPlatformFee; // total_platform_fee (10% * G)
   bool _summaryExpanded = true;
-  DateTime _selectedMonth = DateTime(
-    DateTime.now().year,
-    DateTime.now().month,
-  );
+  DateTime _selectedMonth = DateTime(DateTime.now().year, DateTime.now().month);
 
   // Banner thông báo phí nền tảng
   DateTime? _dueDate; // Ngày hết hạn (sẽ được tính toán)
+
+  // Loading state cho hủy đặt lịch và hoàn thành đơn hàng
+  bool _isCancelling = false;
+  bool _isCompleting = false;
+  bool _isOpeningPlatformFee = false;
 
   // Animation cho summary bar
   late AnimationController _summaryAnimationController;
@@ -77,16 +72,11 @@ class _ScheduleScreenState extends State<ScheduleScreen>
     _scrollController.addListener(_onScroll);
 
     // Khởi tạo animation controller
-    _summaryAnimationController = AnimationController(
-      duration: const Duration(milliseconds: 300),
-      vsync: this,
-    );
-    _summaryAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _summaryAnimationController,
-        curve: Curves.easeInOut,
-      ),
-    );
+    _summaryAnimationController = AnimationController(duration: const Duration(milliseconds: 300), vsync: this);
+    _summaryAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _summaryAnimationController, curve: Curves.easeInOut));
 
     // Thiết lập trạng thái ban đầu
     if (_summaryExpanded) {
@@ -117,9 +107,29 @@ class _ScheduleScreenState extends State<ScheduleScreen>
     super.dispose();
   }
 
+  Future<void> _openInMaps({double? latitude, double? longitude, String? queryLabel}) async {
+    try {
+      Uri? uri;
+      if (latitude != null && longitude != null) {
+        final geoUri = Uri.parse(
+            'geo:$latitude,$longitude?q=$latitude,$longitude(${Uri.encodeComponent(queryLabel ?? 'Vị trí')})');
+        if (await canLaunchUrl(geoUri)) {
+          uri = geoUri;
+        } else {
+          uri = Uri.parse('https://www.google.com/maps/search/?api=1&query=$latitude,$longitude');
+        }
+      } else if ((queryLabel ?? '').isNotEmpty) {
+        final encoded = Uri.encodeComponent(queryLabel!);
+        uri = Uri.parse('https://www.google.com/maps/search/?api=1&query=$encoded');
+      }
+      if (uri != null) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+    } catch (_) {}
+  }
+
   void _onScroll() {
-    if (_scrollController.position.pixels >=
-            _scrollController.position.maxScrollExtent - 200 &&
+    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200 &&
         !_isLoading &&
         _hasMore) {
       _fetchPage();
@@ -217,8 +227,7 @@ class _ScheduleScreenState extends State<ScheduleScreen>
       res = await BookingServiceApi.getGarageBookedQuotations(
         page: _page,
         perPage: _perPage,
-        statusCsv:
-            _selectedStatuses.isEmpty ? null : _selectedStatuses.join(','),
+        statusCsv: _selectedStatuses.isEmpty ? null : _selectedStatuses.join(','),
         fromDate: _fromDate,
         toDate: _toDate,
       );
@@ -226,8 +235,7 @@ class _ScheduleScreenState extends State<ScheduleScreen>
       res = await BookingServiceApi.getUserBookedServices(
         page: _page,
         perPage: _perPage,
-        statusCsv:
-            _selectedStatuses.isEmpty ? null : _selectedStatuses.join(','),
+        statusCsv: _selectedStatuses.isEmpty ? null : _selectedStatuses.join(','),
         fromDate: _fromDate,
         toDate: _toDate,
       );
@@ -248,14 +256,7 @@ class _ScheduleScreenState extends State<ScheduleScreen>
     setState(() => _isCalculating = true);
     try {
       final res = await BookingServiceApi.calculateGarageOrdersPrice(
-        fromDate: DateTime(
-          _fromDate.year,
-          _fromDate.month,
-          _fromDate.day,
-          0,
-          0,
-          0,
-        ),
+        fromDate: DateTime(_fromDate.year, _fromDate.month, _fromDate.day, 0, 0, 0),
         toDate: DateTime(_toDate.year, _toDate.month, _toDate.day, 23, 59, 59),
       );
       // debugPrint(
@@ -276,10 +277,7 @@ class _ScheduleScreenState extends State<ScheduleScreen>
       // );
     } catch (e) {
       if (mounted) {
-        AppToastHelper.showError(
-          context,
-          message: 'Lỗi tính giá: ${e.toString()}',
-        );
+        AppToastHelper.showError(context, message: 'Lỗi tính giá: ${e.toString()}');
       }
     } finally {
       if (mounted) setState(() => _isCalculating = false);
@@ -296,22 +294,14 @@ class _ScheduleScreenState extends State<ScheduleScreen>
     };
 
     // Tính vị trí của nút lọc để neo menu ngay bên dưới
-    final RenderBox? button =
-        _filterKey.currentContext?.findRenderObject() as RenderBox?;
-    final RenderBox overlay =
-        Overlay.of(context).context.findRenderObject() as RenderBox;
+    final RenderBox? button = _filterKey.currentContext?.findRenderObject() as RenderBox?;
+    final RenderBox overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
 
-    final Offset buttonOffset =
-        button?.localToGlobal(Offset.zero) ?? const Offset(0, 0);
+    final Offset buttonOffset = button?.localToGlobal(Offset.zero) ?? const Offset(0, 0);
     final Size buttonSize = button?.size ?? const Size(0, 0);
 
     final RelativeRect position = RelativeRect.fromRect(
-      Rect.fromLTWH(
-        buttonOffset.dx,
-        buttonOffset.dy + buttonSize.height,
-        buttonSize.width,
-        0,
-      ),
+      Rect.fromLTWH(buttonOffset.dx, buttonOffset.dy + buttonSize.height, buttonSize.width, 0),
       Offset.zero & overlay.size,
     );
 
@@ -363,203 +353,192 @@ class _ScheduleScreenState extends State<ScheduleScreen>
   @override
   Widget build(BuildContext context) {
     final isGarage = context.watch<UserProvider>().isGarageUser;
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8F8F8),
-      body: SafeArea(
-        child: Column(
-          children: [
-            MyHeader(
-              showLeftButton: false,
-              customTitle: const MyText(
-                text: 'Các đơn hàng',
-                textStyle: 'head',
-                textSize: '16',
-                textColor: 'primary',
+    return LoadingOverlay(
+      isLoading: _isCancelling || _isCompleting,
+      loadingText: _isCancelling ? 'Đang hủy đặt lịch...' : 'Đang hoàn thành đơn hàng...',
+      child: Scaffold(
+        backgroundColor: DesignTokens.surfaceSecondary,
+        body: SafeArea(
+          child: Column(
+            children: [
+              MyHeader(
+                showLeftButton: false,
+                customTitle: const MyText(
+                  text: 'Các đơn hàng',
+                  textStyle: 'head',
+                  textSize: '16',
+                  textColor: 'primary',
+                ),
+                showRightButton: true,
+                rightIcon: MyMonthPicker(
+                  defaultValue: _selectedMonth,
+                  onMonthSelected: (dt) {
+                    final firstDay = DateTime(dt.year, dt.month, 1);
+                    final lastDay = DateTime(dt.year, dt.month + 1, 0, 23, 59, 59);
+                    setState(() {
+                      _selectedMonth = DateTime(dt.year, dt.month);
+                      _fromDate = firstDay;
+                      _toDate = lastDay;
+                    });
+                    _fetchSummary();
+                    _fetchPage(reset: true);
+                  },
+                ),
               ),
-              showRightButton: true,
-              rightIcon: MyMonthPicker(
-                defaultValue: _selectedMonth,
-                onMonthSelected: (dt) {
-                  final firstDay = DateTime(dt.year, dt.month, 1);
-                  final lastDay = DateTime(
-                    dt.year,
-                    dt.month + 1,
-                    0,
-                    23,
-                    59,
-                    59,
-                  );
-                  setState(() {
-                    _selectedMonth = DateTime(dt.year, dt.month);
-                    _fromDate = firstDay;
-                    _toDate = lastDay;
-                  });
-                  _fetchSummary();
-                  _fetchPage(reset: true);
-                },
-              ),
-            ),
-            // Nút lọc dưới header
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  InkWell(
-                    onTap: _openStatusFilter,
-                    borderRadius: BorderRadius.circular(12),
-                    child: Container(
-                      key: _filterKey,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: DesignTokens.surfaceSecondary,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: DesignTokens.borderSecondary),
-                      ),
-                      child: Row(
-                        children: [
-                          SvgIcon(
-                            svgPath: 'assets/icons_final/filter.svg',
-                            size: 16,
-                            color: DesignTokens.textBrand,
-                          ),
-                          const SizedBox(width: 6),
-                          const MyText(
-                            text: 'Lọc',
-                            textStyle: 'label',
-                            textSize: '12',
-                            textColor: 'brand',
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: SizedBox(
-                      height: 32,
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        reverse: false,
+              // Nút lọc dưới header
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    InkWell(
+                      onTap: _openStatusFilter,
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        key: _filterKey,
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: DesignTokens.surfaceSecondary,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: DesignTokens.borderSecondary),
+                        ),
                         child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
-                            for (final st in _selectedStatuses)
-                              Padding(
-                                padding:  EdgeInsets.only(left: st == _selectedStatuses.first ? 0 : 6),
-                                child: StatusWidget(
-                                  status: st,
-                                  type:
-                                      isGarage
-                                          ? StatusType.quotation
-                                          : StatusType.booking,
-                                  isSelected: true,
-                                  height: 24,
-                                  onRemove: () {
-                                    setState(() {
-                                      _selectedStatuses.remove(st);
-                                    });
-                                    _fetchPage(reset: true);
-                                    // Refetch summary khi xóa filter
-                                    final isGarage = context.read<UserProvider>().isGarageUser;
-                                    if (isGarage) {
-                                      _fetchSummary();
-                                    }
-                                  },
-                                ),
-                              ),
+                            SvgIcon(svgPath: 'assets/icons_final/filter.svg', size: 16, color: DesignTokens.textBrand),
+                            const SizedBox(width: 6),
+                            const MyText(text: 'Lọc', textStyle: 'label', textSize: '12', textColor: 'brand'),
                           ],
                         ),
                       ),
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: SizedBox(
+                        height: 32,
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          reverse: false,
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              for (final st in _selectedStatuses)
+                                Padding(
+                                  padding: EdgeInsets.only(left: st == _selectedStatuses.first ? 0 : 6),
+                                  child: StatusWidget(
+                                    status: st,
+                                    type: isGarage ? StatusType.quotation : StatusType.booking,
+                                    isSelected: true,
+                                    height: 24,
+                                    onRemove: () {
+                                      setState(() {
+                                        _selectedStatuses.remove(st);
+                                      });
+                                      _fetchPage(reset: true);
+                                      // Refetch summary khi xóa filter
+                                      final isGarage = context.read<UserProvider>().isGarageUser;
+                                      if (isGarage) {
+                                        _fetchSummary();
+                                      }
+                                    },
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            Expanded(
-              child: RefreshIndicator(
-                onRefresh: () async {
-                  await _fetchPage(reset: true);
-                  // Refetch summary khi refresh
-                  final isGarage = context.read<UserProvider>().isGarageUser;
-                  if (isGarage) {
-                    await _fetchSummary();
-                  }
-                },
-                child: ListView.builder(
-                  controller: _scrollController,
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: EdgeInsets.fromLTRB(12, 12, 12, 240),
-                  itemCount:
-                      _items.isEmpty
-                          ? (_isLoading ? 1 : 1)
-                          : _items.length +
-                              (_hasMore ? 1 : 0) +
-                              (isGarage && (_totalUnpaid ?? 0) > 0 ? 1 : 0),
-                  itemBuilder: (context, index) {
-                    // Hiển thị banner unpaid ở đầu danh sách
-                    if (isGarage && (_totalUnpaid ?? 0) > 0 && index == 0) {
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: _buildUnpaidBanner(),
-                      );
+              Expanded(
+                child: RefreshIndicator(
+                  onRefresh: () async {
+                    await _fetchPage(reset: true);
+                    // Refetch summary khi refresh
+                    final isGarage = context.read<UserProvider>().isGarageUser;
+                    if (isGarage) {
+                      await _fetchSummary();
                     }
+                  },
+                  child: ListView.builder(
+                    controller: _scrollController,
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: EdgeInsets.fromLTRB(12, 12, 12, 240),
+                    itemCount: _items.isEmpty
+                        ? (_isLoading ? 1 : 1)
+                        : _items.length + (_hasMore ? 1 : 0) + (isGarage && (_totalUnpaid ?? 0) > 0 ? 1 : 0),
+                    itemBuilder: (context, index) {
+                      // Hiển thị banner unpaid ở đầu danh sách
+                      if (isGarage && (_totalUnpaid ?? 0) > 0 && index == 0) {
+                        return Padding(padding: const EdgeInsets.only(bottom: 8), child: _buildUnpaidBanner());
+                      }
 
-                    // Điều chỉnh index cho các item khác
-                    final dataIndex =
-                        isGarage && (_totalUnpaid ?? 0) > 0 ? index - 1 : index;
+                      // Điều chỉnh index cho các item khác
+                      final dataIndex = isGarage && (_totalUnpaid ?? 0) > 0 ? index - 1 : index;
 
-                    if (_items.isEmpty) {
-                      if (_isLoading) {
+                      if (_items.isEmpty) {
+                        if (_isLoading) {
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 16),
+                            child: SizedBox(
+                              height: MediaQuery.of(context).size.height,
+                              child: SkeletonList(itemHeight: 150, itemCount: 3),
+                            ),
+                          );
+                        }
+                        return _buildEmptyState();
+                      }
+                      if (dataIndex >= _items.length) {
                         return Padding(
                           padding: const EdgeInsets.only(top: 16),
                           child: SizedBox(
                             height: MediaQuery.of(context).size.height,
-                            child: SkeletonList(itemHeight: 150, itemCount: 3,),
+                            child: SkeletonList(itemHeight: 150, itemCount: 3),
                           ),
                         );
                       }
-                      return _buildEmptyState();
-                    }
-                    if (dataIndex >= _items.length) {
-                       return Padding(
-                          padding: const EdgeInsets.only(top: 16),
-                          child: SizedBox(
-                            height: MediaQuery.of(context).size.height,
-                            child: SkeletonList(itemHeight: 150, itemCount: 3,),
-                          ),
-                        );
-                    }
-                    final item = _items[dataIndex];
-                    return _buildOrderCard(item, isGarage);
-                  },
+                      final item = _items[dataIndex];
+                      return _buildOrderCard(item, isGarage);
+                    },
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
+        bottomNavigationBar: isGarage ? _buildStickySummaryBar() : null,
       ),
-      bottomNavigationBar: isGarage ? _buildStickySummaryBar() : null,
     );
   }
 
   Future<void> _onCompleteOrder(BookingModel item) async {
+    // Hiển thị dialog xác nhận
+    final bool? confirmed = await AppDialogHelper.confirm(
+      context,
+      title: 'Xác nhận hoàn thành đơn hàng',
+      message: 'Bạn có chắc chắn muốn hoàn thành đơn hàng này không?',
+      confirmText: 'Hoàn thành',
+      cancelText: 'Không',
+      type: AppDialogType.info,
+      confirmButtonType: ButtonType.primary,
+      showIconHeader: true,
+    );
+
+    if (confirmed != true) return;
+
     final quotationId = item.quotation?.id;
     if (quotationId == null) {
       AppToastHelper.showError(context, message: 'Không tìm thấy mã báo giá');
       return;
     }
+
+    setState(() => _isCompleting = true);
+
     try {
-      final res = await BookingServiceApi.completeOrder(
-        quotationId: quotationId,
-      );
+      final res = await BookingServiceApi.completeOrder(quotationId: quotationId);
       final success = (res['success'] ?? true) == true;
-      final message =
-          res['message']?.toString() ?? 'Hoàn thành đơn hàng thành công';
+      final message = res['message']?.toString() ?? 'Hoàn thành đơn hàng thành công';
       if (success) {
         if (mounted) AppToastHelper.showSuccess(context, message: message);
         await _fetchPage(reset: true);
@@ -571,15 +550,34 @@ class _ScheduleScreenState extends State<ScheduleScreen>
       if (mounted) {
         AppToastHelper.showError(context, message: 'Lỗi: ${e.toString()}');
       }
+    } finally {
+      if (mounted) setState(() => _isCompleting = false);
     }
   }
 
   Future<void> _onCancelOrder(BookingModel item) async {
+    // Hiển thị dialog xác nhận
+    final bool? confirmed = await AppDialogHelper.confirm(
+      context,
+      title: 'Xác nhận hủy đặt lịch',
+      message: 'Bạn có chắc chắn muốn hủy đặt lịch này không?',
+      confirmText: 'Hủy đặt lịch',
+      cancelText: 'Không',
+      type: AppDialogType.warning,
+      confirmButtonType: ButtonType.red,
+      showIconHeader: true,
+    );
+
+    if (confirmed != true) return;
+
     final quotationId = item.quotation?.id;
     if (quotationId == null) {
       AppToastHelper.showError(context, message: 'Không tìm thấy mã báo giá');
       return;
     }
+
+    setState(() => _isCancelling = true);
+
     try {
       final res = await BookingServiceApi.cancelOrder(quotationId: quotationId);
       final success = (res['success'] ?? true) == true;
@@ -599,6 +597,8 @@ class _ScheduleScreenState extends State<ScheduleScreen>
       if (mounted) {
         AppToastHelper.showError(context, message: 'Lỗi: ${e.toString()}');
       }
+    } finally {
+      if (mounted) setState(() => _isCancelling = false);
     }
   }
 
@@ -617,13 +617,10 @@ class _ScheduleScreenState extends State<ScheduleScreen>
     int garaUserId = (quotation?.inforGarage?.userId ?? 0) != 0
         ? (quotation?.inforGarage?.userId ?? 0)
         : (quotation?.inforGarage?.id ?? 0);
-    
 
     // User id: ưu tiên userId; nếu = 0 thì fallback sang id
-    int userId = (request?.inforUser?.userId ?? 0) != 0
-        ? (request?.inforUser?.userId ?? 0)
-        : (request?.inforUser?.id ?? 0);
-    
+    int userId =
+        (request?.inforUser?.userId ?? 0) != 0 ? (request?.inforUser?.userId ?? 0) : (request?.inforUser?.id ?? 0);
 
     // Bổ sung fallback theo vai trò đăng nhập
     final provider = context.read<UserProvider>();
@@ -637,23 +634,71 @@ class _ScheduleScreenState extends State<ScheduleScreen>
     }
 
     if (requestId == 0 || garaUserId == 0 || userId == 0) {
-      AppToastHelper.showError(
-        context,
-        message: 'Lỗi mạng! Vui lòng thử lại sau!',
-      );
-      DebugLogger.log('[Schedule] _onChat missing | isGarageUser='
-          '$isGarageUser currentUserId=$currentUserId requestId=$requestId '
-          'garaUserId=$garaUserId userId=$userId');
+      AppToastHelper.showError(context, message: 'Lỗi mạng! Vui lòng thử lại sau!');
+      // DebugLogger.log(
+      //   '[Schedule] _onChat missing | isGarageUser='
+      //   '$isGarageUser currentUserId=$currentUserId requestId=$requestId '
+      //   'garaUserId=$garaUserId userId=$userId',
+      // );
       return;
     }
 
     final String roomId = 'room_req${requestId}_${garaUserId}_$userId';
-    DebugLogger.log('[Schedule] _onChat room: $roomId');
-    Navigator.pushNamed(
+    // DebugLogger.log('[Schedule] _onChat room: $roomId');
+    Navigator.pushNamed(context, '/chat-room', arguments: roomId);
+  }
+
+  void _onContact(BookingModel item) {
+    // DebugLogger.log('[Schedule] _onContact item: ${item.toJson()}');
+    final isGarage = context.read<UserProvider>().isGarageUser;
+    String? phoneNumber;
+
+    if (isGarage) {
+      // Nếu là gara, lấy số điện thoại của user
+      phoneNumber = item.requestService?.inforUser?.phone;
+    } else {
+      // Nếu là user, lấy số điện thoại của gara
+      phoneNumber = item.quotation?.inforGarage?.phone;
+    }
+
+    if (phoneNumber == null || phoneNumber.isEmpty) {
+      AppToastHelper.showError(context, message: 'Không tìm thấy số điện thoại liên hệ');
+      return;
+    }
+
+    PhoneService.makePhoneCall(phoneNumber, context);
+  }
+
+  void _onReview(BookingModel item) {
+    final quotation = item.quotation;
+    final requestService = item.requestService;
+
+    if (quotation == null || requestService == null) {
+      AppToastHelper.showError(context, message: 'Không tìm thấy thông tin đơn hàng');
+      return;
+    }
+
+    final garageName = quotation.inforGarage?.nameGarage ?? '';
+    final serviceName = requestService.description ?? '';
+    final serviceDescription = requestService.description ?? '';
+
+    // Không cần garageId khi tạo review nữa
+
+    Navigator.push(
       context,
-      '/chat-room',
-      arguments: roomId,
-    );
+      MaterialPageRoute(
+        builder: (context) => ReviewScreen(
+          quotationId: quotation.id,
+          garageName: garageName,
+          serviceName: serviceName,
+          serviceDescription: serviceDescription,
+        ),
+      ),
+    ).then((result) {
+      if (result == true) {
+        _fetchPage(reset: true);
+      }
+    });
   }
 
   Widget _buildOrderCard(BookingModel item, bool isGarage) {
@@ -661,12 +706,18 @@ class _ScheduleScreenState extends State<ScheduleScreen>
     final UserInfoResponse? garage = item.quotation?.inforGarage;
     final customerName = user?.name ?? '';
     final garageName = garage?.nameGarage ?? '';
-    final code =
-        isGarage
-            ? item.quotation?.codeQuotation ?? ''
-            : item.requestService?.requestCode ?? '';
-    final address =
-        isGarage ? item.requestService?.address ?? '' : garage?.address ?? '';
+    final code = isGarage ? item.quotation?.codeQuotation ?? '' : item.requestService?.requestCode ?? '';
+    final address = isGarage ? item.requestService?.address ?? '' : garage?.address ?? '';
+    double? latitude;
+    double? longitude;
+    if (isGarage) {
+      latitude = item.requestService?.addressLatitude;
+      longitude = item.requestService?.addressLongitude;
+    } else {
+      double? _toDouble(String? v) => v == null ? null : double.tryParse(v);
+      latitude = _toDouble(garage?.latitude);
+      longitude = _toDouble(garage?.longitude);
+    }
     final timeText = item.time != null ? _formatDateTime(item.time!) : '';
     final statusValue = item.status; // luôn dùng Booking.status
     final statusType = isGarage ? StatusType.quotation : StatusType.booking;
@@ -692,18 +743,8 @@ class _ScheduleScreenState extends State<ScheduleScreen>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      MyText(
-                        text: titleName,
-                        textStyle: 'head',
-                        textSize: '16',
-                        textColor: 'brand',
-                      ),
-                      MyText(
-                        text: code,
-                        textStyle: 'body',
-                        textSize: '12',
-                        textColor: 'tertiary',
-                      ),
+                      MyText(text: titleName, textStyle: 'head', textSize: '16', textColor: 'brand'),
+                      MyText(text: code, textStyle: 'body', textSize: '12', textColor: 'tertiary'),
                     ],
                   ),
                 ),
@@ -712,58 +753,61 @@ class _ScheduleScreenState extends State<ScheduleScreen>
             ),
             const SizedBox(height: 8),
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                MyText(
-                  text: 'Địa chỉ: ',
-                  textStyle: 'body',
-                  textSize: '14',
-                  textColor: 'tertiary',
-                ),
-                MyText(
-                  text: address,
-                  textStyle: 'body',
-                  textSize: '14',
-                  textColor: 'primary',
-                ),
-                const SizedBox(width: 8),
-                SvgIcon(
-                  svgPath: 'assets/icons_final/map.svg',
-                  size: 20,
-                  color: DesignTokens.textBrand,
+                MyText(text: 'Địa chỉ: ', textStyle: 'body', textSize: '14', textColor: 'tertiary'),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => _openInMaps(
+                      latitude: latitude,
+                      longitude: longitude,
+                      queryLabel: address,
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: MyText(
+                            text: address,
+                            textStyle: 'body',
+                            textSize: '14',
+                            textColor: 'primary',
+                            maxLines: null,
+                            overflow: TextOverflow.visible,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        SvgIcon(
+                          svgPath: 'assets/icons_final/map.svg',
+                          size: 20,
+                          color: DesignTokens.textBrand,
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 4),
             Row(
               children: [
-                MyText(
-                  text: 'Thời gian: ',
-                  textStyle: 'body',
-                  textSize: '14',
-                  textColor: 'tertiary',
-                ),
-                MyText(
-                  text: timeText,
-                  textStyle: 'body',
-                  textSize: '14',
-                  textColor: 'primary',
-                ),
+                MyText(text: 'Thời gian: ', textStyle: 'body', textSize: '14', textColor: 'tertiary'),
+                MyText(text: timeText, textStyle: 'body', textSize: '14', textColor: 'primary'),
               ],
             ),
             const SizedBox(height: 4),
             Row(
               children: [
-                MyText(
-                  text: 'Dịch vụ: ',
-                  textStyle: 'body',
-                  textSize: '14',
-                  textColor: 'tertiary',
-                ),
-                MyText(
-                  text: description,
-                  textStyle: 'body',
-                  textSize: '14',
-                  textColor: 'primary',
+                MyText(text: 'Dịch vụ: ', textStyle: 'body', textSize: '14', textColor: 'tertiary'),
+                Expanded(
+                  child: MyText(
+                    text: description,
+                    textStyle: 'body',
+                    textSize: '14',
+                    textColor: 'primary',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ],
             ),
@@ -774,20 +818,10 @@ class _ScheduleScreenState extends State<ScheduleScreen>
               Row(
                 children: [
                   isGarage
-                      ? const MyText(
-                        text: 'Phí nền tảng: ',
-                        textStyle: 'body',
-                        textSize: '14',
-                        textColor: 'tertiary',
-                      )
+                      ? const MyText(text: 'Phí nền tảng: ', textStyle: 'body', textSize: '14', textColor: 'tertiary')
                       : const SizedBox.shrink(),
                   isGarage
-                      ? const MyText(
-                        text: '10%',
-                        textStyle: 'title',
-                        textSize: '16',
-                        textColor: 'brand',
-                      )
+                      ? const MyText(text: '10%', textStyle: 'title', textSize: '16', textColor: 'brand')
                       : const SizedBox.shrink(),
                   const Spacer(),
                   MyText(
@@ -820,24 +854,14 @@ class _ScheduleScreenState extends State<ScheduleScreen>
     if (isGarage) {
       // USER VIEW
       final bool showComplete =
-          isGarage &&
-          (bookingStatus == 1 ||
-              bookingStatus == 2 ||
-              bookingStatus == 3 ||
-              bookingStatus == 4);
+          isGarage && (bookingStatus == 1 || bookingStatus == 2 || bookingStatus == 3 || bookingStatus == 4);
 
       if (showComplete) {
-        buttons.add(
-          _buildBtn(
-            'Hoàn thành',
-            ButtonType.primary,
-            () => _onCompleteOrder(item),
-          ),
-        );
+        buttons.add(_buildBtn('Hoàn thành', ButtonType.primary, () => _onCompleteOrder(item)));
       }
       buttons.addAll([
         _buildBtn('Nhắn tin', ButtonType.secondary, () => _onChat(item)),
-        _buildBtn('Liên hệ', ButtonType.secondary, () {}),
+        _buildBtn('Liên hệ', ButtonType.secondary, () => _onContact(item)),
       ]);
     } else {
       // GARAGE VIEW
@@ -846,15 +870,15 @@ class _ScheduleScreenState extends State<ScheduleScreen>
         buttons.addAll([
           _buildBtn('Hủy đặt lịch', ButtonType.red, () => _onCancelOrder(item)),
           _buildBtn('Nhắn tin', ButtonType.secondary, () => _onChat(item)),
-          _buildBtn('Liên hệ', ButtonType.secondary, () {}),
+          _buildBtn('Liên hệ', ButtonType.secondary, () => _onContact(item)),
         ]);
-      } else if (bookingStatus == 2) {
-        // Chờ lên lịch
-        buttons.addAll([
-          _buildBtn('Báo cáo', ButtonType.red, () {}),
-          _buildBtn('Đánh giá', ButtonType.secondary, () {}),
-          _buildBtn('Bảo hành', ButtonType.secondary, () {}),
-        ]);
+      } else if (bookingStatus == BookingStatus.completed.value) {
+        // Đã hoàn thành: nếu chưa review thì hiển thị Đánh giá
+        buttons.add(_buildBtn('Báo cáo', ButtonType.red, () {}));
+        if (!item.reviewed && (item.quotation != null)) {
+          buttons.add(_buildBtn('Đánh giá', ButtonType.secondary, () => _onReview(item)));
+        }
+        buttons.add(_buildBtn('Bảo hành', ButtonType.secondary, () {}));
       } else if (bookingStatus == 3) {
         // Chưa cọc
         buttons.add(_buildBtn('Báo cáo', ButtonType.red, () {}));
@@ -862,7 +886,7 @@ class _ScheduleScreenState extends State<ScheduleScreen>
         // Các trạng thái khác: mặc định hiển thị liên hệ/nhắn tin
         buttons.addAll([
           _buildBtn('Nhắn tin', ButtonType.primary, () => _onChat(item)),
-          _buildBtn('Liên hệ', ButtonType.secondary, () {}),
+          _buildBtn('Liên hệ', ButtonType.secondary, () => _onContact(item)),
         ]);
       }
     }
@@ -878,14 +902,7 @@ class _ScheduleScreenState extends State<ScheduleScreen>
   }
 
   Widget _buildBtn(String text, ButtonType type, VoidCallback onPressed) {
-    return MyButton(
-      text: text,
-      onPressed: onPressed,
-      buttonType: type,
-      height: 30,
-      textStyle: 'label',
-      textSize: '12',
-    );
+    return MyButton(text: text, onPressed: onPressed, buttonType: type, height: 30, textStyle: 'label', textSize: '12');
   }
 
   String _formatDateTime(DateTime dt) {
@@ -912,14 +929,8 @@ class _ScheduleScreenState extends State<ScheduleScreen>
         child: Container(
           decoration: BoxDecoration(
             color: Colors.transparent,
-            border: Border(
-              top: BorderSide(color: DesignTokens.borderSecondary, width: 1),
-            ),
-
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(12),
-              topRight: Radius.circular(12),
-            ),
+            border: Border(top: BorderSide(color: DesignTokens.borderSecondary, width: 1)),
+            borderRadius: BorderRadius.only(topLeft: Radius.circular(12), topRight: Radius.circular(12)),
           ),
           padding: EdgeInsets.fromLTRB(12, 0, 12, 16 + 80),
           child: Column(
@@ -963,131 +974,111 @@ class _ScheduleScreenState extends State<ScheduleScreen>
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: DesignTokens.borderSecondary),
                     ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 12,
-                    ),
-                    child:
-                        _isCalculating
-                            ? Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: const [
-                                SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    child: _isCalculating
+                        ? Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: const [
+                              SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                              SizedBox(width: 8),
+                              MyText(
+                                text: 'Đang tính toán...',
+                                textStyle: 'label',
+                                textSize: '14',
+                                textColor: 'tertiary',
+                              ),
+                            ],
+                          )
+                        : Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              // Dòng Tổng doanh thu (luôn hiển thị)
+                              Row(
+                                children: [
+                                  const MyText(
+                                    text: 'Tổng doanh thu',
+                                    textStyle: 'title',
+                                    textSize: '16',
+                                    textColor: 'primary',
+                                  ),
+                                  const Spacer(),
+                                  MyText(
+                                    text: _formatMoney((_totalRevenue ?? 0)),
+                                    textStyle: 'title',
+                                    textSize: '16',
+                                    textColor: 'primary',
+                                  ),
+                                ],
+                              ),
+                              // Phần chi tiết với animation
+                              ClipRect(
+                                child: Align(
+                                  alignment: Alignment.topCenter,
+                                  heightFactor: _summaryAnimation.value,
+                                  child: Column(
+                                    children: [
+                                      const SizedBox(height: 8),
+                                      const Divider(color: DesignTokens.borderBrandSecondary, height: 1),
+                                      const SizedBox(height: 8),
+                                      Row(
+                                        children: [
+                                          const MyText(
+                                            text: 'Phí nền tảng',
+                                            textStyle: 'body',
+                                            textSize: '14',
+                                            textColor: 'tertiary',
+                                          ),
+                                          const Spacer(),
+                                          MyText(
+                                            text: _formatMoney((_totalPlatformFee ?? 0)),
+                                            textStyle: 'body',
+                                            textSize: '14',
+                                            textColor: 'primary',
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Row(
+                                        children: [
+                                          const MyText(
+                                            text: 'Đã thanh toán',
+                                            textStyle: 'body',
+                                            textSize: '14',
+                                            textColor: 'tertiary',
+                                          ),
+                                          const Spacer(),
+                                          MyText(
+                                            text: _formatMoney((_totalPaid ?? 0)),
+                                            textStyle: 'body',
+                                            textSize: '14',
+                                            textColor: 'primary',
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Row(
+                                        children: [
+                                          const MyText(
+                                            text: 'Chưa thanh toán',
+                                            textStyle: 'body',
+                                            textSize: '14',
+                                            textColor: 'error',
+                                          ),
+                                          const Spacer(),
+                                          MyText(
+                                            text: _formatMoney((_totalUnpaid ?? 0)),
+                                            textStyle: 'body',
+                                            textSize: '14',
+                                            textColor: 'error',
+                                          ),
+                                        ],
+                                      ),
+                                    ],
                                   ),
                                 ),
-                                SizedBox(width: 8),
-                                MyText(
-                                  text: 'Đang tính toán...',
-                                  textStyle: 'label',
-                                  textSize: '14',
-                                  textColor: 'tertiary',
-                                ),
-                              ],
-                            )
-                            : Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                // Dòng Tổng doanh thu (luôn hiển thị)
-                                Row(
-                                  children: [
-                                    const MyText(
-                                      text: 'Tổng doanh thu',
-                                      textStyle: 'title',
-                                      textSize: '16',
-                                      textColor: 'primary',
-                                    ),
-                                    const Spacer(),
-                                    MyText(
-                                      text: _formatMoney((_totalRevenue ?? 0)),
-                                      textStyle: 'title',
-                                      textSize: '16',
-                                      textColor: 'primary',
-                                    ),
-                                  ],
-                                ),
-                                // Phần chi tiết với animation
-                                ClipRect(
-                                  child: Align(
-                                    alignment: Alignment.topCenter,
-                                    heightFactor: _summaryAnimation.value,
-                                    child: Column(
-                                      children: [
-                                        const SizedBox(height: 8),
-                                        const Divider(
-                                          color:
-                                              DesignTokens.borderBrandSecondary,
-                                          height: 1,
-                                        ),
-                                        const SizedBox(height: 8),
-                                        Row(
-                                          children: [
-                                            const MyText(
-                                              text: 'Phí nền tảng',
-                                              textStyle: 'body',
-                                              textSize: '14',
-                                              textColor: 'tertiary',
-                                            ),
-                                            const Spacer(),
-                                            MyText(
-                                              text: _formatMoney(
-                                                (_totalPlatformFee ?? 0),
-                                              ),
-                                              textStyle: 'body',
-                                              textSize: '14',
-                                              textColor: 'primary',
-                                            ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Row(
-                                          children: [
-                                            const MyText(
-                                              text: 'Đã thanh toán',
-                                              textStyle: 'body',
-                                              textSize: '14',
-                                              textColor: 'tertiary',
-                                            ),
-                                            const Spacer(),
-                                            MyText(
-                                              text: _formatMoney(
-                                                (_totalPaid ?? 0),
-                                              ),
-                                              textStyle: 'body',
-                                              textSize: '14',
-                                              textColor: 'primary',
-                                            ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Row(
-                                          children: [
-                                            const MyText(
-                                              text: 'Chưa thanh toán',
-                                              textStyle: 'body',
-                                              textSize: '14',
-                                              textColor: 'error',
-                                            ),
-                                            const Spacer(),
-                                            MyText(
-                                              text: _formatMoney(
-                                                (_totalUnpaid ?? 0),
-                                              ),
-                                              textStyle: 'body',
-                                              textSize: '14',
-                                              textColor: 'error',
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
+                              ),
+                            ],
+                          ),
                   );
                 },
               ),
@@ -1124,24 +1115,9 @@ class _ScheduleScreenState extends State<ScheduleScreen>
           children: [
             Row(
               children: [
-                MyText(
-                  text: 'Bạn có ',
-                  textStyle: 'body',
-                  textSize: '12',
-                  textColor: 'primary',
-                ),
-                MyText(
-                  text: _formatMoney(unpaidAmount),
-                  textStyle: 'title',
-                  textSize: '12',
-                  textColor: 'brand',
-                ),
-                MyText(
-                  text: ' phí nền tảng chưa thanh toán.',
-                  textStyle: 'body',
-                  textSize: '12',
-                  textColor: 'primary',
-                ),
+                MyText(text: 'Bạn có ', textStyle: 'body', textSize: '12', textColor: 'primary'),
+                MyText(text: _formatMoney(unpaidAmount), textStyle: 'title', textSize: '12', textColor: 'brand'),
+                MyText(text: ' phí nền tảng chưa thanh toán.', textStyle: 'body', textSize: '12', textColor: 'primary'),
               ],
             ),
             const SizedBox(height: 4),
@@ -1158,14 +1134,10 @@ class _ScheduleScreenState extends State<ScheduleScreen>
                 decoration: BoxDecoration(
                   color: DesignTokens.alerts['error']!.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: DesignTokens.alerts['error']!.withOpacity(0.3),
-                    width: 1,
-                  ),
+                  border: Border.all(color: DesignTokens.alerts['error']!.withOpacity(0.3), width: 1),
                 ),
                 child: MyText(
-                  text:
-                      'Tài khoản của bạn đã bị hạn chế. Vui lòng thanh toán ngay để tiếp tục sử dụng các dịch vụ.',
+                  text: 'Tài khoản của bạn đã bị hạn chế. Vui lòng thanh toán ngay để tiếp tục sử dụng các dịch vụ.',
                   textStyle: 'body',
                   textSize: '12',
                   textColor: 'error',
@@ -1181,12 +1153,35 @@ class _ScheduleScreenState extends State<ScheduleScreen>
                   buttonType: ButtonType.primary,
                   textStyle: 'label',
                   textSize: '12',
-                  onPressed: () {
-                    // TODO: Navigate to payment screen
-                    AppToastHelper.showInfo(
-                      context,
-                      message: 'Chức năng thanh toán đang được phát triển',
-                    );
+                  onPressed: () async {
+                    if (_isOpeningPlatformFee) return;
+                    setState(() => _isOpeningPlatformFee = true);
+                    try {
+                      await showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        backgroundColor: Colors.transparent,
+                        builder: (ctx) => PlatformFeeModal(
+                          month: _selectedMonth.month,
+                          year: _selectedMonth.year,
+                          onPaymentSuccess: () async {
+                            await _fetchSummary();
+                            await _fetchPage(reset: true);
+                            if (mounted) {
+                              AppToastHelper.showSuccess(context, message: 'Thanh toán phí nền tảng thành công');
+                            }
+                          },
+                          onPaymentFailed: () {
+                            if (mounted) {
+                              AppToastHelper.showError(context,
+                                  message: 'Thanh toán thất bại hoặc hết hạn. Vui lòng thử lại.');
+                            }
+                          },
+                        ),
+                      );
+                    } finally {
+                      if (mounted) setState(() => _isOpeningPlatformFee = false);
+                    }
                   },
                   height: 30,
                   width: 95,
@@ -1212,19 +1207,9 @@ class _ScheduleScreenState extends State<ScheduleScreen>
         crossAxisAlignment: CrossAxisAlignment.center,
         children: const [
           // Không dùng ảnh để đơn giản; có thể thêm icon sau
-          MyText(
-            text: 'Chưa có đơn hàng nào',
-            textStyle: 'title',
-            textSize: '16',
-            textColor: 'tertiary',
-          ),
+          MyText(text: 'Chưa có đơn hàng nào', textStyle: 'title', textSize: '16', textColor: 'tertiary'),
           SizedBox(height: 8),
-          MyText(
-            text: 'Kéo xuống để làm mới',
-            textStyle: 'body',
-            textSize: '12',
-            textColor: 'tertiary',
-          ),
+          MyText(text: 'Kéo xuống để làm mới', textStyle: 'body', textSize: '12', textColor: 'tertiary'),
         ],
       ),
     );

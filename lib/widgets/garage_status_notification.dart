@@ -17,7 +17,6 @@ class GarageStatusNotification extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    
     // Xác định trạng thái và thông báo tương ứng
     String message;
     String buttonText;
@@ -49,7 +48,7 @@ class GarageStatusNotification extends StatelessWidget {
       height: 48,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-      color: DesignTokens.primaryBlue4,
+        color: DesignTokens.primaryBlue4,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: DesignTokens.borderBrandPrimary,
@@ -65,7 +64,7 @@ class GarageStatusNotification extends StatelessWidget {
             color: DesignTokens.surfaceBrand,
           ),
           const SizedBox(width: 8),
-          
+
           // Message
           Expanded(
             child: MyText(
@@ -75,12 +74,14 @@ class GarageStatusNotification extends StatelessWidget {
               textColor: 'brand',
             ),
           ),
-          
+
           // Button (chỉ hiển thị khi có action)
           if (onButtonPressed != null) ...[
             const SizedBox(width: 12),
             MyButton(
               text: buttonText,
+              textStyle: 'title',
+              textSize: '14',
               onPressed: onButtonPressed,
               buttonType: ButtonType.primary,
               height: 36,

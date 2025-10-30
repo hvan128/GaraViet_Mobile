@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:gara/theme/index.dart';
-import 'package:gara/utils/debug_logger.dart';
 import 'package:gara/widgets/app_dialog.dart';
 import 'package:gara/widgets/app_toast.dart';
 import 'package:gara/widgets/button.dart';
@@ -14,6 +13,10 @@ import 'package:gara/widgets/text.dart';
 import 'package:gara/services/booking/booking_service.dart';
 import 'package:gara/models/booking/booking_model.dart';
 import 'package:gara/utils/status/status_widget.dart';
+import 'package:gara/widgets/image_carousel_widget.dart';
+import 'package:gara/models/file/file_info_model.dart';
+import 'package:gara/widgets/fullscreen_image_viewer.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class MyCarScreen extends StatefulWidget {
   const MyCarScreen({super.key});
@@ -35,6 +38,27 @@ class _MyCarScreenState extends State<MyCarScreen> {
   final int _historyPerPage = 10;
   bool _historyLoading = false;
   bool _historyHasMore = true;
+
+  Future<void> _openInMaps({double? latitude, double? longitude, String? queryLabel}) async {
+    try {
+      Uri? uri;
+      if (latitude != null && longitude != null) {
+        final geoUri = Uri.parse(
+            'geo:$latitude,$longitude?q=$latitude,$longitude(${Uri.encodeComponent(queryLabel ?? 'Vị trí')})');
+        if (await canLaunchUrl(geoUri)) {
+          uri = geoUri;
+        } else {
+          uri = Uri.parse('https://www.google.com/maps/search/?api=1&query=$latitude,$longitude');
+        }
+      } else if ((queryLabel ?? '').isNotEmpty) {
+        final encoded = Uri.encodeComponent(queryLabel!);
+        uri = Uri.parse('https://www.google.com/maps/search/?api=1&query=$encoded');
+      }
+      if (uri != null) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+    } catch (_) {}
+  }
 
   @override
   void initState() {
@@ -62,18 +86,14 @@ class _MyCarScreenState extends State<MyCarScreen> {
       return;
     }
 
-    final items =
-        cars.map((c) {
-          final id = c.id.toString();
-          final plate = formatLicensePlate(c.vehicleLicensePlate);
-          String label = [
-            c.typeCar,
-            c.yearModel,
-          ].where((s) => s.isNotEmpty).join(' ');
-          if (label.isEmpty) label = 'Xe $id';
-          if (plate.isNotEmpty) label = '$label • $plate';
-          return DropdownItem(value: id, label: label);
-        }).toList();
+    final items = cars.map((c) {
+      final id = c.id.toString();
+      final plate = formatLicensePlate(c.vehicleLicensePlate);
+      String label = [c.typeCar, c.yearModel].where((s) => s.isNotEmpty).join(' ');
+      if (label.isEmpty) label = 'Xe $id';
+      if (plate.isNotEmpty) label = '$label • $plate';
+      return DropdownItem(value: id, label: label);
+    }).toList();
 
     setState(() {
       _carItems = items;
@@ -84,12 +104,49 @@ class _MyCarScreenState extends State<MyCarScreen> {
     await _loadCarDetail(items.first.value);
   }
 
+  Future<void> _loadCarsAndSelectNewest() async {
+    setState(() {
+      _loading = true;
+    });
+    final cars = await UserService.getAllCars();
+    if (!mounted) return;
+    if (cars.isEmpty) {
+      setState(() {
+        _carItems = [DropdownItem(value: 'none', label: 'Chưa có xe')];
+        _selectedCarId = 'none';
+        _carDetail = null;
+        _loading = false;
+      });
+      return;
+    }
+
+    final items = cars.map((c) {
+      final id = c.id.toString();
+      final plate = formatLicensePlate(c.vehicleLicensePlate);
+      String label = [c.typeCar, c.yearModel].where((s) => s.isNotEmpty).join(' ');
+      if (label.isEmpty) label = 'Xe $id';
+      if (plate.isNotEmpty) label = '$label • $plate';
+      return DropdownItem(value: id, label: label);
+    }).toList();
+
+    setState(() {
+      _carItems = items;
+      _selectedCarId = items.first.value; // Chọn xe đầu tiên (mới nhất)
+      _loading = false;
+    });
+
+    // Tải chi tiết xe mới nhất
+    await _loadCarDetail(items.first.value);
+
+    // Hiển thị toast thành công
+    AppToastHelper.showSuccess(context, message: 'Thêm xe thành công!');
+  }
+
   Future<void> _loadCarDetail(String carId) async {
     setState(() {
       _loadingDetail = true;
     });
     final detail = await UserService.getCarById(carId);
-    // DebugLogger.largeJson('[MyCarScreen] detail', detail);
     if (!mounted) return;
     setState(() {
       _carDetail = detail;
@@ -120,12 +177,11 @@ class _MyCarScreenState extends State<MyCarScreen> {
         _historyPagination = res.pagination;
         if (reset) _historyItems.clear();
         _historyItems.addAll(res.data);
-        _historyHasMore =
-            _historyItems.length < (_historyPagination?.totalItems ?? _historyItems.length);
+        _historyHasMore = _historyItems.length < (_historyPagination?.totalItems ?? _historyItems.length);
         _historyPage += 1;
       });
     } catch (e) {
-      DebugLogger.largeJson('[MyCar] fetch history error', e.toString());
+      // DebugLogger.largeJson('[MyCar] fetch history error', e.toString());
     } finally {
       if (mounted) {
         setState(() {
@@ -148,11 +204,7 @@ class _MyCarScreenState extends State<MyCarScreen> {
           children: [
             MyHeader(
               title: 'Xe của bạn',
-              rightIcon: SvgIcon(
-                svgPath: 'assets/icons_final/more.svg',
-                size: 24,
-                color: DesignTokens.textPrimary,
-              ),
+              rightIcon: SvgIcon(svgPath: 'assets/icons_final/more.svg', size: 24, color: DesignTokens.textPrimary),
               showRightButton: true,
               showLeftButton: false,
               onRightPressed: _openMoreMenu,
@@ -175,23 +227,24 @@ class _MyCarScreenState extends State<MyCarScreen> {
                           title: 'Chọn xe',
                           hintText: 'Chọn xe của bạn',
                           onChanged: (val) {
+                            print('[MyCarScreen] Dropdown changed: $val');
                             if (val == null || val == _selectedCarId) return;
-                            setState(() {
-                              _selectedCarId = val;
+
+                            // Delay một chút để đảm bảo dropdown đã đóng hoàn toàn
+                            Future.delayed(const Duration(milliseconds: 100), () {
+                              if (!mounted) return;
+                              setState(() {
+                                _selectedCarId = val;
+                              });
+                              if (val != 'none') {
+                                _loadCarDetail(val);
+                              }
                             });
-                            if (val != 'none') {
-                              _loadCarDetail(val);
-                            }
                           },
                         ),
                         const SizedBox(height: 12),
                         if (_loading || _loadingDetail) ...[
-                          const Center(
-                            child: Padding(
-                              padding: EdgeInsets.all(24),
-                              child: CircularProgressIndicator(),
-                            ),
-                          ),
+                          const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator())),
                         ] else if (_carDetail == null) ...[
                           Padding(
                             padding: EdgeInsets.all(16),
@@ -226,7 +279,11 @@ class _MyCarScreenState extends State<MyCarScreen> {
           child: MyButton(
             text: 'Tạo yêu cầu',
             onPressed: () {
-              Navigator.pushNamed(context, '/create-request');
+              Navigator.pushNamed(
+                context,
+                '/create-request',
+                arguments: {'selectedCarId': _selectedCarId, 'carInfo': _carDetail},
+              );
             },
           ),
         ),
@@ -243,33 +300,17 @@ class _MyCarScreenState extends State<MyCarScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(16),
-              topRight: Radius.circular(16),
-            ),
+            borderRadius: BorderRadius.only(topLeft: Radius.circular(16), topRight: Radius.circular(16)),
           ),
           child: SafeArea(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _buildListTile(
-                  'Thêm xe mới',
-                  'assets/icons_final/add.svg',
-                  _onAddCar,
-                ),
+                _buildListTile('Thêm xe mới', 'assets/icons_final/add.svg', _onAddCar),
                 const SizedBox(height: 8),
-                _buildListTile(
-                  'Sửa thông tin',
-                  'assets/icons_final/edit-2.svg',
-                  _onEditCar,
-                ),
+                _buildListTile('Sửa thông tin', 'assets/icons_final/edit-2.svg', _onEditCar),
                 const SizedBox(height: 8),
-                _buildListTile(
-                  'Xóa xe',
-                  'assets/icons_final/trash.svg',
-                  _onDeleteCar,
-                  isLast: true,
-                ),
+                _buildListTile('Xóa xe', 'assets/icons_final/trash.svg', _onDeleteCar, isLast: true),
               ],
             ),
           ),
@@ -281,21 +322,42 @@ class _MyCarScreenState extends State<MyCarScreen> {
   void _onAddCar() {
     Navigator.pushNamed(context, '/add-car').then((value) {
       if (value is Map && value['created'] == true) {
-        _onRefresh();
+        // Đóng modal bottom sheet nếu đang mở
+        Navigator.of(context).pop();
+
+        // Tải lại danh sách xe và chọn xe mới nhất
+        _loadCarsAndSelectNewest();
       }
     });
   }
+
   void _onEditCar() {
-    // TODO: implement _onEditCar
+    if (_selectedCarId == null || _selectedCarId == 'none' || _carDetail == null) {
+      AppToastHelper.showWarning(context, message: 'Vui lòng chọn xe để sửa');
+      return;
+    }
+
+    Navigator.pushNamed(context, '/edit-car', arguments: {'carInfo': _carDetail}).then((value) {
+      if (value is Map && value['updated'] == true) {
+        // Đóng modal bottom sheet nếu đang mở
+        Navigator.of(context).pop();
+
+        // Tải lại thông tin xe
+        _loadCarDetail(_selectedCarId!);
+
+        // Hiển thị toast thành công
+        AppToastHelper.showSuccess(context, message: 'Cập nhật xe thành công!');
+      }
+    });
   }
+
   void _onDeleteCar() {
     if (_selectedCarId == null || _selectedCarId == 'none') return;
     final carId = _selectedCarId!;
     AppDialogHelper.confirm(
       context,
       title: 'Xóa xe',
-      message:
-          'Nếu xóa xe sẽ mất toàn bộ thông tin đi kèm và các đơn hàng của xe. Bạn vẫn muốn xóa chứ?',
+      message: 'Nếu xóa xe sẽ mất toàn bộ thông tin đi kèm và các đơn hàng của xe. Bạn vẫn muốn xóa chứ?',
       confirmText: 'Xóa',
       confirmButtonType: ButtonType.delete,
       type: AppDialogType.warning,
@@ -305,26 +367,18 @@ class _MyCarScreenState extends State<MyCarScreen> {
       final ok = await UserService.deleteCar(carId);
       if (!mounted) return;
       if (ok) {
-        AppToastHelper.showSuccess(
-          context,
-          message: 'Xóa xe thành công',
-        );
+        // Đóng modal bottom sheet
+        Navigator.of(context).pop();
+
+        AppToastHelper.showSuccess(context, message: 'Xóa xe thành công');
         await _loadCars();
       } else {
-        AppToastHelper.showError(
-          context,
-          message: 'Không thể xóa xe. Vui lòng thử lại sau.',
-        );
+        AppToastHelper.showError(context, message: 'Không thể xóa xe. Vui lòng thử lại sau.');
       }
     });
   }
 
-  Widget _buildListTile(
-    String title,
-    String iconPath,
-    VoidCallback onTap, {
-    bool isLast = false,
-  }) {
+  Widget _buildListTile(String title, String iconPath, VoidCallback onTap, {bool isLast = false}) {
     return GestureDetector(
       onTap: onTap,
       child: Padding(
@@ -333,19 +387,9 @@ class _MyCarScreenState extends State<MyCarScreen> {
           height: 36,
           child: Row(
             children: [
-              SvgIcon(
-                svgPath: iconPath,
-                color:
-                    isLast ? DesignTokens.alertError : DesignTokens.primaryBlue,
-                size: 20,
-              ),
+              SvgIcon(svgPath: iconPath, color: isLast ? DesignTokens.alertError : DesignTokens.primaryBlue, size: 20),
               const SizedBox(width: 12),
-              MyText(
-                text: title,
-                textStyle: 'label',
-                textSize: '16',
-                textColor: isLast ? 'error' : 'primary',
-              ),
+              MyText(text: title, textStyle: 'label', textSize: '16', textColor: isLast ? 'error' : 'primary'),
             ],
           ),
         ),
@@ -357,24 +401,49 @@ class _MyCarScreenState extends State<MyCarScreen> {
     final plate = formatLicensePlate(_carDetail!.vehicleLicensePlate);
     final typeCar = _carDetail!.typeCar;
     final yearModel = _carDetail!.yearModel;
+
+    // Tạo danh sách files để hiển thị
+    List<FileInfo> filesToShow = [];
+    if (_carDetail!.listFiles != null && _carDetail!.listFiles!.isNotEmpty) {
+      filesToShow = _carDetail!.listFiles!;
+    } else if (_carDetail!.files != null) {
+      filesToShow = [_carDetail!.files!];
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              height: 160,
-              decoration: BoxDecoration(
-                color: DesignTokens.surfaceSecondary,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Center(
-                child: SvgIcon(
-                  svgPath: 'assets/icons_final/car.svg',
-                  size: 56,
-                  color: DesignTokens.textSecondary,
-                ),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                height: 160,
+                width: double.infinity,
+                decoration: BoxDecoration(color: DesignTokens.surfaceSecondary),
+                child: filesToShow.isNotEmpty
+                    ? ImageCarouselWidget(
+                        files: filesToShow,
+                        height: 160,
+                        showPageIndicators: true,
+                        autoPlay: true,
+                        onImageTap: (index) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => FullscreenImageViewer(files: filesToShow, initialIndex: index),
+                            ),
+                          );
+                        },
+                      )
+                    : Center(
+                        child: SvgIcon(
+                          svgPath: 'assets/icons_final/car.svg',
+                          size: 56,
+                          color: DesignTokens.textSecondary,
+                        ),
+                      ),
               ),
             ),
             const SizedBox(height: 12),
@@ -391,35 +460,15 @@ class _MyCarScreenState extends State<MyCarScreen> {
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    MyText(
-                      text: 'Đời xe: ',
-                      textStyle: 'body',
-                      textSize: '14',
-                      textColor: 'tertiary',
-                    ),
-                    MyText(
-                      text: yearModel,
-                      textStyle: 'body',
-                      textSize: '14',
-                      textColor: 'primary',
-                    ),
+                    MyText(text: 'Đời xe: ', textStyle: 'body', textSize: '14', textColor: 'tertiary'),
+                    MyText(text: yearModel, textStyle: 'body', textSize: '14', textColor: 'primary'),
                   ],
                 ),
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    MyText(
-                      text: 'Biển số: ',
-                      textStyle: 'body',
-                      textSize: '14',
-                      textColor: 'tertiary',
-                    ),
-                    MyText(
-                      text: plate,
-                      textStyle: 'body',
-                      textSize: '14',
-                      textColor: 'primary',
-                    ),
+                    MyText(text: 'Biển số: ', textStyle: 'body', textSize: '14', textColor: 'tertiary'),
+                    MyText(text: plate, textStyle: 'body', textSize: '14', textColor: 'primary'),
                   ],
                 ),
               ],
@@ -443,12 +492,7 @@ class _MyCarScreenState extends State<MyCarScreen> {
         ),
         const SizedBox(height: 12),
         if (_historyLoading && _historyItems.isEmpty) ...[
-          const Center(
-            child: Padding(
-              padding: EdgeInsets.symmetric(vertical: 16),
-              child: CircularProgressIndicator(),
-            ),
-          ),
+          const Center(child: Padding(padding: EdgeInsets.symmetric(vertical: 16), child: CircularProgressIndicator())),
         ] else if (_historyItems.isEmpty) ...[
           const MyText(
             text: 'Không có lịch sử thực hiện',
@@ -481,6 +525,9 @@ class _MyCarScreenState extends State<MyCarScreen> {
   Widget _buildHistoryCard(BookingModel item) {
     final garageName = item.quotation?.inforGarage?.nameGarage ?? '';
     final address = item.quotation?.inforGarage?.address ?? '';
+    double? _toDouble(String? v) => v == null ? null : double.tryParse(v);
+    final double? latitude = _toDouble(item.quotation?.inforGarage?.latitude);
+    final double? longitude = _toDouble(item.quotation?.inforGarage?.longitude);
     final timeText = item.time != null ? _formatDateTime(item.time!) : '';
     final description = item.requestService?.description ?? '';
     final remain = item.quotation?.remainPrice ?? 0;
@@ -503,12 +550,7 @@ class _MyCarScreenState extends State<MyCarScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      MyText(
-                        text: garageName,
-                        textStyle: 'head',
-                        textSize: '16',
-                        textColor: 'brand',
-                      ),
+                      MyText(text: garageName, textStyle: 'head', textSize: '16', textColor: 'brand'),
                       MyText(
                         text: item.requestService?.requestCode ?? '',
                         textStyle: 'body',
@@ -523,85 +565,75 @@ class _MyCarScreenState extends State<MyCarScreen> {
             ),
             const SizedBox(height: 8),
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const MyText(
-                  text: 'Địa chỉ: ',
-                  textStyle: 'body',
-                  textSize: '14',
-                  textColor: 'tertiary',
-                ),
+                const MyText(text: 'Địa chỉ: ', textStyle: 'body', textSize: '14', textColor: 'tertiary'),
                 Expanded(
-                  child: MyText(
-                    text: address,
-                    textStyle: 'body',
-                    textSize: '14',
-                    textColor: 'primary',
+                  child: GestureDetector(
+                    onTap: () => _openInMaps(
+                      latitude: latitude,
+                      longitude: longitude,
+                      queryLabel: address,
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: MyText(
+                            text: address,
+                            textStyle: 'body',
+                            textSize: '14',
+                            textColor: 'primary',
+                            maxLines: null,
+                            overflow: TextOverflow.visible,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        SvgIcon(
+                          svgPath: 'assets/icons_final/map.svg',
+                          size: 20,
+                          color: DesignTokens.textBrand,
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                SvgIcon(
-                  svgPath: 'assets/icons_final/map.svg',
-                  size: 20,
-                  color: DesignTokens.textBrand,
                 ),
               ],
             ),
             const SizedBox(height: 4),
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const MyText(
-                  text: 'Thời gian: ',
-                  textStyle: 'body',
-                  textSize: '14',
-                  textColor: 'tertiary',
-                ),
-                MyText(
-                  text: timeText,
-                  textStyle: 'body',
-                  textSize: '14',
-                  textColor: 'primary',
-                ),
+                const MyText(text: 'Thời gian: ', textStyle: 'body', textSize: '14', textColor: 'tertiary'),
+                MyText(text: timeText, textStyle: 'body', textSize: '14', textColor: 'primary'),
               ],
             ),
             const SizedBox(height: 4),
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const MyText(
-                  text: 'Dịch vụ: ',
-                  textStyle: 'body',
-                  textSize: '14',
-                  textColor: 'tertiary',
-                ),
-                Expanded(
-                  child: MyText(
-                    text: description,
-                    textStyle: 'body',
-                    textSize: '14',
-                    textColor: 'primary',
-                  ),
-                ),
+                const MyText(text: 'Dịch vụ: ', textStyle: 'body', textSize: '14', textColor: 'tertiary'),
+                Expanded(child: MyText(text: description, textStyle: 'body', textSize: '14', textColor: 'primary')),
               ],
             ),
-            const SizedBox(height: 8),
-            const Divider(color: DesignTokens.borderBrandSecondary, height: 1),
-            const SizedBox(height: 8),
+            if (item.status != 3) ...[
+              const SizedBox(height: 8),
+              const Divider(color: DesignTokens.borderBrandSecondary, height: 1),
+              const SizedBox(height: 8),
+            ],
             if (item.quotation != null) ...[
-              Row(
-                children: [
-                  const MyText(
-                    text: 'Còn phải thanh toán: ',
-                    textStyle: 'body',
-                    textSize: '14',
-                    textColor: 'tertiary',
-                  ),
-                  MyText(
-                    text: _formatMoney(remain),
-                    textStyle: 'title',
-                    textSize: '16',
-                    textColor: 'brand',
-                  ),
-                ],
-              ),
+              if (item.status != 3)
+                Row(
+                  children: [
+                    MyText(
+                      text: item.status == 2 ? 'Đã thanh toán: ' : 'Còn phải thanh toán: ',
+                      textStyle: 'body',
+                      textSize: '14',
+                      textColor: 'tertiary',
+                    ),
+                    MyText(text: _formatMoney(remain), textStyle: 'title', textSize: '16', textColor: 'brand'),
+                  ],
+                ),
             ],
           ],
         ),

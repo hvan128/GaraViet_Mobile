@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:gara/components/auth/icon_field.dart';
 import 'package:gara/theme/index.dart';
@@ -14,6 +15,8 @@ import 'package:gara/widgets/button.dart';
 import 'package:gara/widgets/smart_image_picker.dart';
 import 'package:gara/widgets/progress_bar.dart';
 import 'package:gara/widgets/header.dart';
+import 'package:gara/services/location/goong_place_service.dart';
+import 'package:uuid/uuid.dart';
 
 class GarageInformationPage extends StatefulWidget {
   final VoidCallback onNext;
@@ -35,8 +38,7 @@ class GarageInformationPage extends StatefulWidget {
 
 class _GarageInformationPageState extends State<GarageInformationPage> {
   final TextEditingController _garageNameController = TextEditingController();
-  final TextEditingController _numberOfWorkersController =
-      TextEditingController();
+  final TextEditingController _numberOfWorkersController = TextEditingController();
   final TextEditingController _addressController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
 
@@ -49,6 +51,15 @@ class _GarageInformationPageState extends State<GarageInformationPage> {
   String? _emailError;
 
   List<File> _selectedImages = [];
+
+  // Autocomplete state
+  Timer? _debounce;
+  List<GoongAutocompletePrediction> _addressSuggestions = [];
+  bool _isSearchingAddress = false;
+  final ScrollController _suggestionScrollController = ScrollController();
+  String _goongSessionToken = const Uuid().v4();
+  double? _selectedLat;
+  double? _selectedLng;
 
   // Trang này chỉ còn thông tin gara (không còn tài khoản)
 
@@ -64,8 +75,7 @@ class _GarageInformationPageState extends State<GarageInformationPage> {
       _garageNameController.text = registrationData.garageName!;
     }
     if (registrationData.numberOfWorkers != null) {
-      _numberOfWorkersController.text =
-          registrationData.numberOfWorkers.toString();
+      _numberOfWorkersController.text = registrationData.numberOfWorkers.toString();
     }
     if (registrationData.address != null) {
       _addressController.text = registrationData.address!;
@@ -86,7 +96,9 @@ class _GarageInformationPageState extends State<GarageInformationPage> {
     _numberOfWorkersController.dispose();
     _addressController.dispose();
     _emailController.dispose();
-    
+    _debounce?.cancel();
+    _suggestionScrollController.dispose();
+
     super.dispose();
   }
 
@@ -111,13 +123,11 @@ class _GarageInformationPageState extends State<GarageInformationPage> {
     final String numWorkersStr = _numberOfWorkersController.text.trim();
     final String address = _addressController.text.trim();
     final String email = _emailController.text.trim();
-    
 
     String? garageNameError;
     String? numberOfWorkersError;
     String? addressError;
     String? emailError;
-    
 
     if (garageName.isEmpty) {
       garageNameError = 'Vui lòng nhập tên gara';
@@ -136,13 +146,9 @@ class _GarageInformationPageState extends State<GarageInformationPage> {
     } else if (!email.contains('@')) {
       emailError = 'Email không hợp lệ';
     }
-    
 
     final bool hasAnyError =
-        garageNameError != null ||
-        numberOfWorkersError != null ||
-        addressError != null ||
-        emailError != null;
+        garageNameError != null || numberOfWorkersError != null || addressError != null || emailError != null;
 
     if (hasAnyError) {
       setState(() {
@@ -163,8 +169,10 @@ class _GarageInformationPageState extends State<GarageInformationPage> {
     registrationData.setGarageName(garageName);
     registrationData.setNumberOfWorkers(numberOfWorkers);
     registrationData.setAddress(address);
+    registrationData.setLatitude(_selectedLat);
+    registrationData.setLongitude(_selectedLng);
     registrationData.setEmail(email);
-    
+
     registrationData.setGarageImages(_selectedImages);
 
     // Reset loading state before navigation
@@ -250,9 +258,7 @@ class _GarageInformationPageState extends State<GarageInformationPage> {
                             onChange: (value) {
                               setState(() {
                                 if (_submitted) {
-                                  _garageNameError = value.trim().isEmpty
-                                      ? 'Vui lòng nhập tên gara'
-                                      : null;
+                                  _garageNameError = value.trim().isEmpty ? 'Vui lòng nhập tên gara' : null;
                                 }
                               });
                             },
@@ -264,8 +270,7 @@ class _GarageInformationPageState extends State<GarageInformationPage> {
                             controller: _numberOfWorkersController,
                             label: 'Số lượng nhân viên',
                             obscureText: false,
-                            hasError:
-                                _submitted && _numberOfWorkersError != null,
+                            hasError: _submitted && _numberOfWorkersError != null,
                             errorText: _numberOfWorkersError,
                             keyboardType: TextInputType.number,
                             onChange: (value) {
@@ -285,22 +290,43 @@ class _GarageInformationPageState extends State<GarageInformationPage> {
                           ),
                           const SizedBox(height: 16),
 
-                          // Address input
-                          MyTextField(
-                            controller: _addressController,
-                            label: 'Địa chỉ',
-                            obscureText: false,
-                            hasError: _submitted && _addressError != null,
-                            errorText: _addressError,
-                            onChange: (value) {
-                              setState(() {
-                                if (_submitted) {
-                                  _addressError = value.trim().isEmpty
-                                      ? 'Vui lòng nhập địa chỉ'
-                                      : null;
-                                }
-                              });
-                            },
+                          // Address input + suggestions
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              MyTextField(
+                                controller: _addressController,
+                                label: 'Địa chỉ',
+                                obscureText: false,
+                                hasError: _submitted && _addressError != null,
+                                errorText: _addressError,
+                                suffixIcon: _isSearchingAddress
+                                    ? const SizedBox(
+                                        width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                                    : null,
+                                onChange: _onAddressChanged,
+                              ),
+                              if (_addressSuggestions.isNotEmpty)
+                                Container(
+                                  margin: const EdgeInsets.only(top: 8),
+                                  decoration: BoxDecoration(
+                                    color: DesignTokens.surfacePrimary,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: DesignTokens.borderPrimary),
+                                  ),
+                                  constraints: const BoxConstraints(maxHeight: 260),
+                                  child: ListView.separated(
+                                    controller: _suggestionScrollController,
+                                    shrinkWrap: true,
+                                    itemCount: _addressSuggestions.length,
+                                    separatorBuilder: (_, __) => Divider(height: 1, color: DesignTokens.borderPrimary),
+                                    itemBuilder: (ctx, i) {
+                                      final s = _addressSuggestions[i];
+                                      return _suggestionItem(s);
+                                    },
+                                  ),
+                                ),
+                            ],
                           ),
                           const SizedBox(height: 16),
 
@@ -329,7 +355,6 @@ class _GarageInformationPageState extends State<GarageInformationPage> {
                           ),
                           const SizedBox(height: 16),
 
-                         
                           MyText(text: 'Hình ảnh', textStyle: 'body', textSize: '14', textColor: 'secondary'),
                           const SizedBox(height: 6),
                           // Image Picker
@@ -341,10 +366,7 @@ class _GarageInformationPageState extends State<GarageInformationPage> {
                                 child: SmartImagePicker(
                                   label: 'Hình ảnh',
                                   onImageSelected: _onImagesSelected,
-                                  initialImage:
-                                      _selectedImages.isNotEmpty
-                                          ? _selectedImages.first
-                                          : null,
+                                  initialImage: _selectedImages.isNotEmpty ? _selectedImages.first : null,
                                 ),
                               ),
                               const SizedBox(width: 6),
@@ -354,10 +376,7 @@ class _GarageInformationPageState extends State<GarageInformationPage> {
                                 child: SmartImagePicker(
                                   label: 'Hình ảnh',
                                   onImageSelected: _onImagesSelected,
-                                  initialImage:
-                                      _selectedImages.length > 1
-                                          ? _selectedImages[1]
-                                          : null,
+                                  initialImage: _selectedImages.length > 1 ? _selectedImages[1] : null,
                                 ),
                               ),
                               const SizedBox(width: 6),
@@ -367,10 +386,7 @@ class _GarageInformationPageState extends State<GarageInformationPage> {
                                 child: SmartImagePicker(
                                   label: 'Hình ảnh',
                                   onImageSelected: _onImagesSelected,
-                                  initialImage:
-                                      _selectedImages.length > 2
-                                          ? _selectedImages[2]
-                                          : null,
+                                  initialImage: _selectedImages.length > 2 ? _selectedImages[2] : null,
                                 ),
                               ),
                             ],
@@ -381,9 +397,21 @@ class _GarageInformationPageState extends State<GarageInformationPage> {
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              MyText(text: 'Lưu ý: Bạn có thể chọn tối đa 3 hình ảnh', textStyle: 'body', textSize: '12', textColor: 'primary'),
-                              MyText(text: '  - 1 hình ảnh nhìn từ trước, có biển hiệu', textStyle: 'body', textSize: '12', textColor: 'primary'),
-                              MyText(text: '  - 2 hình ảnh ở trong gara', textStyle: 'body', textSize: '12', textColor: 'primary'),
+                              MyText(
+                                  text: 'Lưu ý: Bạn có thể chọn tối đa 3 hình ảnh',
+                                  textStyle: 'body',
+                                  textSize: '12',
+                                  textColor: 'primary'),
+                              MyText(
+                                  text: '  - 1 hình ảnh nhìn từ trước, có biển hiệu',
+                                  textStyle: 'body',
+                                  textSize: '12',
+                                  textColor: 'primary'),
+                              MyText(
+                                  text: '  - 2 hình ảnh ở trong gara',
+                                  textStyle: 'body',
+                                  textSize: '12',
+                                  textColor: 'primary'),
                             ],
                           ),
 
@@ -392,14 +420,8 @@ class _GarageInformationPageState extends State<GarageInformationPage> {
                           // Continue button
                           MyButton(
                             text: _isLoading ? 'Đang xử lý...' : 'Tiếp tục',
-                            buttonType:
-                                (_isLoading || !_isFormNotEmpty())
-                                    ? ButtonType.disable
-                                    : ButtonType.primary,
-                            onPressed:
-                                (_isLoading || !_isFormNotEmpty())
-                                    ? null
-                                    : _validateAndNext,
+                            buttonType: (_isLoading || !_isFormNotEmpty()) ? ButtonType.disable : ButtonType.primary,
+                            onPressed: (_isLoading || !_isFormNotEmpty()) ? null : _validateAndNext,
                           ),
                           const SizedBox(height: 12),
 
@@ -427,6 +449,76 @@ class _GarageInformationPageState extends State<GarageInformationPage> {
                     ],
                   ),
                 ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _onAddressChanged(String value) {
+    _debounce?.cancel();
+    if (value.trim().length < 2) {
+      setState(() {
+        _addressSuggestions = [];
+        _isSearchingAddress = false;
+      });
+      return;
+    }
+    _debounce = Timer(const Duration(milliseconds: 350), () async {
+      setState(() => _isSearchingAddress = true);
+      try {
+        final results = await GoongPlaceService.autocomplete(
+          input: value.trim(),
+          sessionToken: _goongSessionToken,
+          limit: 10,
+          moreCompound: true,
+        );
+        if (!mounted) return;
+        setState(() => _addressSuggestions = results);
+      } finally {
+        if (mounted) setState(() => _isSearchingAddress = false);
+      }
+    });
+  }
+
+  Future<void> _onSelectSuggestion(GoongAutocompletePrediction s) async {
+    setState(() {
+      _addressController.text = s.description;
+      _addressSuggestions = [];
+    });
+    final detail = await GoongPlaceService.getPlaceDetail(placeId: s.placeId, sessionToken: _goongSessionToken);
+    if (detail != null && mounted) {
+      setState(() {
+        _selectedLat = detail.lat;
+        _selectedLng = detail.lng;
+      });
+    }
+  }
+
+  Widget _suggestionItem(GoongAutocompletePrediction s) {
+    final title = s.mainText?.isNotEmpty == true ? s.mainText! : s.description;
+    final subtitle = s.secondaryText;
+    return InkWell(
+      onTap: () => _onSelectSuggestion(s),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Icon(Icons.location_on, size: 18, color: Colors.grey),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  MyText(text: title, textStyle: 'title', textSize: '14', textColor: 'primary'),
+                  if (subtitle != null && subtitle.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    MyText(text: subtitle, textStyle: 'body', textSize: '14', textColor: 'tertiary'),
+                  ],
+                ],
               ),
             ),
           ],

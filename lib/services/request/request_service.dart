@@ -1,6 +1,5 @@
 import 'package:gara/services/api/base_api_service.dart';
 import 'package:gara/models/request/request_service_model.dart';
-import 'package:flutter/foundation.dart';
 
 class RequestServiceApi {
   static Future<RequestListResponse> getAllRequests({
@@ -11,10 +10,7 @@ class RequestServiceApi {
     String? dateTo,
     String? search,
   }) async {
-    final queryParams = <String, String>{
-      'pagenum': pageNum.toString(),
-      'pagesize': pageSize.toString(),
-    };
+    final queryParams = <String, String>{'pagenum': pageNum.toString(), 'pagesize': pageSize.toString()};
 
     if (status != null) {
       queryParams['status'] = status.toString();
@@ -29,40 +25,19 @@ class RequestServiceApi {
       queryParams['search'] = search;
     }
 
-    debugPrint('[RequestServiceApi.getAllRequests] queryParams=$queryParams');
-    final response = await BaseApiService.get(
-      '/manager-request/get-all-requests',
-      queryParams: queryParams,
-    );
-    debugPrint('[RequestServiceApi.getAllRequests] rawResponse=$response');
+    final response = await BaseApiService.get('/manager-request/get-all-requests', queryParams: queryParams);
 
     final dynamic data = response['data'];
-    try {
-      if (data is Map<String, dynamic>) {
-        final list = data['requests'];
-        if (list is List && list.isNotEmpty && list.first is Map<String, dynamic>) {
-          final Map<String, dynamic> first = list.first as Map<String, dynamic>;
-          debugPrint('[RequestServiceApi.getAllRequests] firstItem.keys=${first.keys.toList()}');
-        }
-      }
-    } catch (e) {
-      debugPrint('[RequestServiceApi.getAllRequests] debug parse error: $e');
-    }
-    
+
     if (data is Map<String, dynamic>) {
       final requestResponse = RequestListResponse.fromJson(data);
-     return requestResponse;
+      return requestResponse;
     }
 
     // Fallback: return empty response
     return const RequestListResponse(
       requests: [],
-      pagination: PaginationInfo(
-        currentPage: 1,
-        perPage: 10,
-        total: 0,
-        totalPages: 0,
-      ),
+      pagination: PaginationInfo(currentPage: 1, perPage: 10, total: 0, totalPages: 0),
     );
   }
 
@@ -75,10 +50,7 @@ class RequestServiceApi {
     String? search,
     int? userId,
   }) async {
-    final queryParams = <String, String>{
-      'pagenum': pageNum.toString(),
-      'pagesize': pageSize.toString(),
-    };
+    final queryParams = <String, String>{'pagenum': pageNum.toString(), 'pagesize': pageSize.toString()};
 
     if (status != null) {
       queryParams['status'] = status.toString();
@@ -96,27 +68,11 @@ class RequestServiceApi {
       queryParams['user_id'] = userId.toString();
     }
 
-    debugPrint('[RequestServiceApi.getAllRequestsForGarage] queryParams=$queryParams');
-    final response = await BaseApiService.get(
-      '/manager-request/get-all-requests-garage',
-      queryParams: queryParams,
-    );
-    debugPrint('[RequestServiceApi.getAllRequestsForGarage] rawResponse=$response');
-   
+    final response = await BaseApiService.get('/manager-request/get-all-requests-garage', queryParams: queryParams);
+
     // Response shape: { data: { requests: [], pagination: {} } }
     final dynamic data = response['data'];
-    try {
-      if (data is Map<String, dynamic>) {
-        final list = data['requests'];
-        if (list is List && list.isNotEmpty && list.first is Map<String, dynamic>) {
-          final Map<String, dynamic> first = list.first as Map<String, dynamic>;
-          debugPrint('[RequestServiceApi.getAllRequestsForGarage] firstItem.keys=${first.keys.toList()}');
-        }
-      }
-    } catch (e) {
-      debugPrint('[RequestServiceApi.getAllRequestsForGarage] debug parse error: $e');
-    }
-    
+
     if (data is Map<String, dynamic>) {
       final requestResponse = RequestListResponse.fromJson(data);
       return requestResponse;
@@ -125,14 +81,24 @@ class RequestServiceApi {
     // Fallback: return empty response
     return const RequestListResponse(
       requests: [],
-      pagination: PaginationInfo(
-        currentPage: 1,
-        perPage: 10,
-        total: 0,
-        totalPages: 0,
-      ),
+      pagination: PaginationInfo(currentPage: 1, perPage: 10, total: 0, totalPages: 0),
     );
   }
+
+  // Garages in radius
+  static Future<Map<String, dynamic>> getGaragesInRadius({
+    required double latitude,
+    required double longitude,
+    required double radiusKm,
+  }) async {
+    final response = await BaseApiService.post(
+      '/manager-request/garages-in-radius',
+      body: {
+        'latitude': latitude,
+        'longitude': longitude,
+        'radius': radiusKm,
+      },
+    );
+    return response;
+  }
 }
-
-

@@ -53,6 +53,8 @@ class GarageRegisterRequest {
   final String nameGarage;
   final String emailGarage;
   final String address;
+  final String? latitude;
+  final String? longitude;
   final String numberOfWorker;
   final String descriptionGarage;
   final String? deviceId;
@@ -66,6 +68,8 @@ class GarageRegisterRequest {
     required this.nameGarage,
     required this.emailGarage,
     required this.address,
+    this.latitude,
+    this.longitude,
     required this.numberOfWorker,
     required this.descriptionGarage,
     this.deviceId,
@@ -81,16 +85,18 @@ class GarageRegisterRequest {
       'name_garage': nameGarage,
       'email_garage': emailGarage,
       'address': address,
+      if (latitude != null) 'latitude': latitude,
+      if (longitude != null) 'longitude': longitude,
       'number_of_worker': numberOfWorker,
       'description_garage': descriptionGarage,
     };
-    
+
     // Chỉ thêm các trường optional nếu có giá trị
     if (deviceId != null) data['device_id'] = deviceId;
     if (cccd != null) data['cccd'] = cccd;
     if (issueDate != null) data['issue_date'] = issueDate;
     if (signature != null) data['signature'] = signature;
-    
+
     return data;
   }
 }
@@ -121,4 +127,3 @@ class GarageRegisterResponse {
     );
   }
 }
-

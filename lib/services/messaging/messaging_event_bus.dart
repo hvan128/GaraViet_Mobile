@@ -8,7 +8,9 @@ class NewChatMessageEvent {
   final String senderName;
   final String content;
   final String createdAt;
-  final String? messageType; // '1'=TEXT, '2'=IMAGE, ...
+  final String? messageType; // '1'=TEXT, '2'=IMAGE, '3'=VIDEO, ...
+  final String? fileUrl; // URL file cho IMAGE/VIDEO (type 2, 3)
+  final String? thumbnailUrl; // URL thumbnail (đặc biệt cho VIDEO)
   final Map<String, dynamic>? metadata; // Thông tin mở rộng (booking/quotation...)
   final int? messageStatus; // Trạng thái tin nhắn (ví dụ: sent/delivered/read)
 
@@ -20,6 +22,8 @@ class NewChatMessageEvent {
     required this.content,
     required this.createdAt,
     this.messageType,
+    this.fileUrl,
+    this.thumbnailUrl,
     this.metadata,
     this.messageStatus,
   });
@@ -32,8 +36,7 @@ class MessagingEventBus {
   static final MessagingEventBus _instance = MessagingEventBus._();
   factory MessagingEventBus() => _instance;
 
-  final StreamController<NewChatMessageEvent> _newMessageController =
-      StreamController<NewChatMessageEvent>.broadcast();
+  final StreamController<NewChatMessageEvent> _newMessageController = StreamController<NewChatMessageEvent>.broadcast();
 
   Stream<NewChatMessageEvent> get onNewMessage => _newMessageController.stream;
 
@@ -44,8 +47,7 @@ class MessagingEventBus {
   }
 
   // Phát sự kiện danh sách phòng thay đổi (không có push realtime)
-  final StreamController<void> _roomsDirtyController =
-      StreamController<void>.broadcast();
+  final StreamController<void> _roomsDirtyController = StreamController<void>.broadcast();
 
   Stream<void> get onRoomsDirty => _roomsDirtyController.stream;
 
@@ -60,5 +62,3 @@ class MessagingEventBus {
     _roomsDirtyController.close();
   }
 }
-
-

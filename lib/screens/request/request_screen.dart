@@ -43,7 +43,6 @@ class _RequestScreenState extends State<RequestScreen> {
   // Tab focus tracking
   bool _shouldRefreshOnFocus = false;
 
-
   // Getter for user type
   bool get isGarageUser {
     final userProvider = Provider.of<UserProvider>(context, listen: false);
@@ -55,27 +54,17 @@ class _RequestScreenState extends State<RequestScreen> {
     if (isGarageUser) {
       _showQuotationBottomSheet(item);
     } else {
-      Navigator.pushNamed(
-        context,
-        '/quotation-list',
-        arguments: item,
-      );
+      Navigator.pushNamed(context, '/quotation-list', arguments: item);
     }
   }
 
   // Handle message button press
   Future<void> onMessagePressed(RequestServiceModel item) async {
     try {
-      final res = await MessagingServiceApi.createRoomFromRequest(
-        requestServiceId: item.id,
-      );
+      final res = await MessagingServiceApi.createRoomFromRequest(requestServiceId: item.id);
       if (res.success && res.data != null && res.data!.roomId.isNotEmpty) {
         if (!mounted) return;
-        Navigator.pushNamed(
-          context,
-          '/chat-room',
-          arguments: res.data!.roomId,
-        );
+        Navigator.pushNamed(context, '/chat-room', arguments: res.data!.roomId);
       } else {
         if (!mounted) return;
         AppToastHelper.showError(context, message: 'Không thể mở phòng chat.');
@@ -92,12 +81,13 @@ class _RequestScreenState extends State<RequestScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => _QuotationBottomSheet(
-        item: item,
-        onSuccess: () {
-          _fetch(refresh: true);
-        },
-      ),
+      builder:
+          (context) => _QuotationBottomSheet(
+            item: item,
+            onSuccess: () {
+              _fetch(refresh: true);
+            },
+          ),
     );
   }
 
@@ -114,8 +104,14 @@ class _RequestScreenState extends State<RequestScreen> {
   }
 
   void _onFocusChange() {
-    final isFocused = TabFocusBus.instance.currentIndex.value == 1; // Request tab index
+    final currentTabIndex = TabFocusBus.instance.currentIndex.value;
+    final isFocused = currentTabIndex == 1; // Request tab index
+    print(
+      '[RequestScreen] _onFocusChange called - currentTabIndex: $currentTabIndex, isFocused: $isFocused, _shouldRefreshOnFocus: $_shouldRefreshOnFocus',
+    );
+
     if (isFocused && _shouldRefreshOnFocus) {
+      print('[RequestScreen] Refreshing due to focus change');
       _shouldRefreshOnFocus = false;
       _fetch(refresh: true);
     }
@@ -158,7 +154,7 @@ class _RequestScreenState extends State<RequestScreen> {
       final createdAt = data['createdAt']?.toString() ?? '';
       final userName = data['userName']?.toString() ?? '';
       final userAvatar = data['userAvatar']?.toString() ?? '';
-      
+
       // Parse carInfo JSON
       CarInfo? carInfo;
       try {
@@ -171,7 +167,7 @@ class _RequestScreenState extends State<RequestScreen> {
           for (final match in matches) {
             carInfoMap[match.group(1)!] = match.group(2)!;
           }
-          
+
           carInfo = CarInfo(
             id: int.tryParse(carInfoMap['id'] ?? '0') ?? 0,
             userId: int.tryParse(carInfoMap['user_id'] ?? '0') ?? 0,
@@ -287,17 +283,13 @@ class _RequestScreenState extends State<RequestScreen> {
   }
 
   Future<void> _loadMore() async {
-    if (_pagination == null ||
-        _currentPage >= _pagination!.totalPages ||
-        _loadingMore) {
+    if (_pagination == null || _currentPage >= _pagination!.totalPages || _loadingMore) {
       return;
     }
 
     _currentPage++;
     await _fetch();
   }
-
-  
 
   @override
   Widget build(BuildContext context) {
@@ -310,15 +302,10 @@ class _RequestScreenState extends State<RequestScreen> {
             Consumer<UserProvider>(
               builder: (context, userProvider, child) {
                 return MyHeader(
-                  title:
-                     'Danh sách yêu cầu',
+                  title: 'Danh sách yêu cầu',
                   showLeftButton: false,
                   showRightButton: true,
-                  rightIcon: SvgIcon(
-                    svgPath: 'assets/icons_final/more.svg',
-                    size: 24,
-                    color: DesignTokens.textPrimary,
-                  ),
+                  rightIcon: SvgIcon(svgPath: 'assets/icons_final/more.svg', size: 24, color: DesignTokens.textPrimary),
                 );
               },
             ),
@@ -349,14 +336,10 @@ class _RequestScreenState extends State<RequestScreen> {
                                   ],
                                 )
                                 : NotificationListener<ScrollNotification>(
-                                  onNotification: (
-                                    ScrollNotification scrollInfo,
-                                  ) {
+                                  onNotification: (ScrollNotification scrollInfo) {
                                     final threshold = 200.0;
                                     if (!_loadingMore &&
-                                        scrollInfo.metrics.pixels >=
-                                            scrollInfo.metrics.maxScrollExtent -
-                                                threshold) {
+                                        scrollInfo.metrics.pixels >= scrollInfo.metrics.maxScrollExtent - threshold) {
                                       _loadMore();
                                     }
                                     return false;
@@ -368,17 +351,13 @@ class _RequestScreenState extends State<RequestScreen> {
                                       top: 0,
                                       bottom: 50 + kBottomNavigationBarHeight,
                                     ),
-                                    itemCount:
-                                        _items.length + (_loadingMore ? 1 : 0),
-                                    separatorBuilder:
-                                        (_, __) => const SizedBox(height: 12),
+                                    itemCount: _items.length + (_loadingMore ? 1 : 0),
+                                    separatorBuilder: (_, __) => const SizedBox(height: 12),
                                     itemBuilder: (context, index) {
                                       if (index == _items.length) {
                                         return const Padding(
                                           padding: EdgeInsets.all(16),
-                                          child: Center(
-                                            child: CircularProgressIndicator(),
-                                          ),
+                                          child: Center(child: CircularProgressIndicator()),
                                         );
                                       }
 
@@ -397,172 +376,142 @@ class _RequestScreenState extends State<RequestScreen> {
 
   Widget _buildRequestCard(RequestServiceModel item) {
     return InkWell(
-      onTap: () => Navigator.pushNamed(
-        context,
-        '/request-detail',
-        arguments: item,
-      ),
+      onTap: () => Navigator.pushNamed(context, '/request-detail', arguments: item),
       splashColor: Colors.transparent,
       highlightColor: Colors.transparent,
       child: Container(
-      decoration: BoxDecoration(
-        color: DesignTokens.surfaceSecondary,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: DesignTokens.borderSecondary),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Ảnh hoặc placeholder
-          _buildImageSection(item),
-          // Nội dung dưới ảnh
-          Padding(
-            padding: const EdgeInsets.only(
-              left: 12,
-              right: 12,
-              top: 12,
-              bottom: 12,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Row: Type xe + đời xe, mã đơn
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.baseline,
-                  textBaseline: TextBaseline.alphabetic,
-                  children: [
-                    Expanded(
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.baseline,
-                        textBaseline: TextBaseline.alphabetic,
-                        children: [
-                          Flexible(
-                            child: MyText(
-                              text:
-                                  item.carInfo != null
-                                      ? '${item.carInfo!.typeCar} ${item.carInfo!.yearModel}'
-                                      : 'Thông tin xe',
-                              textStyle: 'head',
-                              textSize: '16',
-                              textColor: 'primary',
+        decoration: BoxDecoration(
+          color: DesignTokens.surfaceSecondary,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: DesignTokens.borderSecondary),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Ảnh hoặc placeholder
+            _buildImageSection(item),
+            // Nội dung dưới ảnh
+            Padding(
+              padding: const EdgeInsets.only(left: 12, right: 12, top: 12, bottom: 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Row: Type xe + đời xe, mã đơn
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.baseline,
+                    textBaseline: TextBaseline.alphabetic,
+                    children: [
+                      Expanded(
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.baseline,
+                          textBaseline: TextBaseline.alphabetic,
+                          children: [
+                            Flexible(
+                              child: MyText(
+                                text:
+                                    item.carInfo != null
+                                        ? '${item.carInfo!.typeCar} ${item.carInfo!.yearModel}'
+                                        : 'Thông tin xe',
+                                textStyle: 'head',
+                                textSize: '16',
+                                textColor: 'primary',
+                              ),
                             ),
-                          ),
-                          Flexible(
-                            child: MyText(
-                              text:
-                                  item.requestCode.isNotEmpty
-                                      ? item.requestCode
-                                      : 'Mã đơn #${item.id}',
+                            Flexible(
+                              child: MyText(
+                                text: item.requestCode.isNotEmpty ? item.requestCode : 'Mã đơn #${item.id}',
+                                textStyle: 'body',
+                                textSize: '12',
+                                textColor: 'tertiary',
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (isGarageUser) ...[
+                        Row(
+                          children: [
+                            SvgIcon(
+                              svgPath: 'assets/icons_final/clock.svg',
+                              size: 16,
+                              color: DesignTokens.textTertiary,
+                            ),
+                            const SizedBox(width: 6),
+                            MyText(
+                              text: item.timeAgo ?? item.createdAt.replaceFirst('T', ' ').split('.').first,
                               textStyle: 'body',
                               textSize: '12',
                               textColor: 'tertiary',
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
+                  // Mô tả
+                  if ((item.description ?? '').isNotEmpty) ...[
+                    MyText(text: item.description ?? '', textStyle: 'body', textSize: '14', textColor: 'secondary'),
+                  ],
+                  const SizedBox(height: 12),
+                  // Row: Thời gian, nút Danh sách báo giá
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(
+                        child:
+                            isGarageUser
+                                ? MyButton(
+                                  text: 'Nhắn tin',
+                                  height: 30,
+                                  onPressed: () => onMessagePressed(item),
+                                  buttonType: ButtonType.secondary,
+                                  textStyle: 'label',
+                                  textSize: '12',
+                                  textColor: 'primary',
+                                  startIcon: 'assets/icons_final/message-text.svg',
+                                  sizeStartIcon: Size(16, 16),
+                                )
+                                : Row(
+                                  children: [
+                                    SvgIcon(
+                                      svgPath: 'assets/icons_final/clock.svg',
+                                      size: 16,
+                                      color: DesignTokens.textTertiary,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    MyText(
+                                      text: item.timeAgo ?? item.createdAt.replaceFirst('T', ' ').split('.').first,
+                                      textStyle: 'body',
+                                      textSize: '12',
+                                      textColor: 'tertiary',
+                                    ),
+                                  ],
+                                ),
                       ),
-                    ),
-                    if (isGarageUser) ...[
-                      Row(
-                        children: [
-                          SvgIcon(
-                            svgPath: 'assets/icons_final/clock.svg',
-                            size: 16,
-                            color: DesignTokens.textTertiary,
-                          ),
-                          const SizedBox(width: 6),
-                          MyText(
-                            text:
-                                item.timeAgo ??
-                                item.createdAt
-                                    .replaceFirst('T', ' ')
-                                    .split('.')
-                                    .first,
-                            textStyle: 'body',
-                            textSize: '12',
-                            textColor: 'tertiary',
-                          ),
-                        ],
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: MyButton(
+                          text: isGarageUser ? 'Báo giá' : 'Danh sách báo giá (${item.listQuotation?.length ?? 0})',
+                          height: 30,
+                          textStyle: 'label',
+                          textSize: '12',
+                          textColor: 'primary',
+                          buttonType: ButtonType.primary,
+                          startIcon: 'assets/icons_final/money-2.svg',
+                          sizeStartIcon: Size(16, 16),
+                          colorStartIcon: DesignTokens.surfaceTertiary,
+                          onPressed: () => onQuotationPressed(item),
+                        ),
                       ),
                     ],
-                  ],
-                ),
-                // Mô tả
-                if ((item.description ?? '').isNotEmpty) ...[
-                  MyText(
-                    text: item.description ?? '',
-                    textStyle: 'body',
-                    textSize: '14',
-                    textColor: 'secondary',
                   ),
                 ],
-                const SizedBox(height: 12),
-                // Row: Thời gian, nút Danh sách báo giá
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Expanded(
-                      child:
-                          isGarageUser
-                              ? MyButton(
-                                text: 'Nhắn tin',
-                                height: 30,
-                                onPressed: () => onMessagePressed(item),
-                                buttonType: ButtonType.secondary,
-                                textStyle: 'label',
-                                textSize: '12',
-                                textColor: 'primary',
-                                startIcon: 'assets/icons_final/message-text.svg',
-                                sizeStartIcon: Size(16, 16),
-                              )
-                              : Row(
-                                children: [
-                                  SvgIcon(
-                                    svgPath: 'assets/icons_final/clock.svg',
-                                    size: 16,
-                                    color: DesignTokens.textTertiary,
-                                  ),
-                                  const SizedBox(width: 6),
-                                  MyText(
-                                    text:
-                                        item.timeAgo ??
-                                        item.createdAt
-                                            .replaceFirst('T', ' ')
-                                            .split('.')
-                                            .first,
-                                    textStyle: 'body',
-                                    textSize: '12',
-                                    textColor: 'tertiary',
-                                  ),
-                                ],
-                              ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: MyButton(
-                        text:
-                            isGarageUser
-                                ? 'Báo giá'
-                                : 'Danh sách báo giá (${item.listQuotation?.length ?? 0})',
-                        height: 30,
-                        textStyle: 'label',
-                        textSize: '12',
-                        textColor: 'primary',
-                        buttonType: ButtonType.primary,
-                        startIcon: 'assets/icons_final/money-2.svg',
-                        sizeStartIcon: Size(16, 16),
-                        colorStartIcon: DesignTokens.surfaceTertiary,
-                        onPressed: () => onQuotationPressed(item),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+              ),
             ),
-          ),
-        ],
-      ),
+          ],
+        ),
       ),
     );
   }
@@ -580,10 +529,7 @@ class _RequestScreenState extends State<RequestScreen> {
         Navigator.pushNamed(
           context,
           '/image-viewer',
-          arguments: {
-            'files': item.listImageAttachment,
-            'initialIndex': index,
-          },
+          arguments: {'files': item.listImageAttachment, 'initialIndex': index},
         );
       },
     );
@@ -594,10 +540,7 @@ class _QuotationBottomSheet extends StatefulWidget {
   final RequestServiceModel item;
   final VoidCallback onSuccess;
 
-  const _QuotationBottomSheet({
-    required this.item,
-    required this.onSuccess,
-  });
+  const _QuotationBottomSheet({required this.item, required this.onSuccess});
 
   @override
   State<_QuotationBottomSheet> createState() => _QuotationBottomSheetState();
@@ -612,16 +555,16 @@ class _QuotationBottomSheetState extends State<_QuotationBottomSheet> {
   String formatPrice(String value) {
     // Remove all non-digit characters
     String digitsOnly = value.replaceAll(RegExp(r'[^\d]'), '');
-    
+
     if (digitsOnly.isEmpty) return '';
-    
+
     // Convert to number and format with thousand separators
     int number = int.tryParse(digitsOnly) ?? 0;
     String formatted = number.toString().replaceAllMapped(
       RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
       (Match m) => '${m[1]}.',
     );
-    
+
     return formatted;
   }
 
@@ -634,23 +577,17 @@ class _QuotationBottomSheetState extends State<_QuotationBottomSheet> {
   // Create quotation
   Future<void> createQuotation() async {
     if (isLoading) return;
-    
+
     final price = getNumericPrice(priceController.text);
     final description = descriptionController.text.trim();
-    
+
     if (price <= 0) {
-      AppToastHelper.showError(
-        context,
-        message: 'Vui lòng nhập giá dự kiến',
-      );
+      AppToastHelper.showError(context, message: 'Vui lòng nhập giá dự kiến');
       return;
     }
-    
+
     if (description.isEmpty) {
-      AppToastHelper.showWarning(
-        context,
-        message: 'Vui lòng nhập mô tả chi tiết',
-      );
+      AppToastHelper.showWarning(context, message: 'Vui lòng nhập mô tả chi tiết');
       return;
     }
 
@@ -667,24 +604,15 @@ class _QuotationBottomSheetState extends State<_QuotationBottomSheet> {
 
       if (response.success) {
         Navigator.pop(context);
-        AppToastHelper.showSuccess(
-          context,
-          message: 'Gửi báo giá thành công!',
-        );
+        AppToastHelper.showSuccess(context, message: 'Gửi báo giá thành công!');
         // Thông báo danh sách phòng chat có thể thay đổi để màn Tin nhắn cập nhật
         MessagingEventBus().emitRoomsDirty();
         widget.onSuccess();
       } else {
-        AppToastHelper.showError(
-          context,
-          message: 'Không thể gửi báo giá. Vui lòng thử lại sau.',
-        );
+        AppToastHelper.showError(context, message: 'Không thể gửi báo giá. Vui lòng thử lại sau.');
       }
     } catch (e) {
-      AppToastHelper.showError(
-        context,
-        message: 'Không thể gửi báo giá. Vui lòng thử lại sau.',
-      );
+      AppToastHelper.showError(context, message: 'Không thể gửi báo giá. Vui lòng thử lại sau.');
     } finally {
       setState(() {
         isLoading = false;
@@ -695,32 +623,20 @@ class _QuotationBottomSheetState extends State<_QuotationBottomSheet> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom,
-      ),
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: Container(
         height: 376,
         padding: const EdgeInsets.all(20),
         decoration: const BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(12),
-            topRight: Radius.circular(12),
-          ),
+          borderRadius: BorderRadius.only(topLeft: Radius.circular(12), topRight: Radius.circular(12)),
         ),
         child: Column(
           children: [
             // Header
             Row(
               children: [
-                Expanded(
-                  child: MyText(
-                    text: 'Gửi báo giá',
-                    textStyle: 'title',
-                    textSize: '16',
-                    textColor: 'primary',
-                  ),
-                ),
+                Expanded(child: MyText(text: 'Gửi báo giá', textStyle: 'title', textSize: '16', textColor: 'primary')),
               ],
             ),
             const SizedBox(height: 12),
@@ -797,4 +713,3 @@ class _QuotationBottomSheetState extends State<_QuotationBottomSheet> {
     );
   }
 }
-

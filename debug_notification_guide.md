@@ -38,7 +38,7 @@ adb logcat -s flutter
 1. **Terminate app hoàn toàn:**
    ```bash
    # Swipe app khỏi recent apps hoặc
-   adb shell am force-stop com.garageviet.gara
+   adb shell am force-stop com.garageviet.dev
    ```
 2. Gửi notification từ Firebase Console
 3. **Kiểm tra notification có hiển thị không**
@@ -103,7 +103,7 @@ adb shell dumpsys notification | grep -A 10 "gara_notifications"
 
 #### **Kiểm tra app permissions:**
 ```bash
-adb shell dumpsys package com.garageviet.gara | grep -i permission
+adb shell dumpsys package com.garageviet.dev | grep -i permission
 ```
 
 #### **Kiểm tra FCM token:**
@@ -113,7 +113,7 @@ adb logcat | grep "FCM Token"
 
 #### **Clear notification history:**
 ```bash
-adb shell pm clear com.garageviet.gara
+adb shell pm clear com.garageviet.dev
 ```
 
 ### **6. Test trên thiết bị thật**

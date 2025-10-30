@@ -1,0 +1,37 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Flutter iOS Debug",
+            "type": "dart",
+            "request": "launch",
+            "program": "lib/main.dart",
+            "deviceId": "00008120-0014450C0E58201E",
+            "args": [],
+            "env": {
+                "LANG": "en_US.UTF-8"
+            }
+        },
+        {
+            "name": "Flutter iOS Release",
+            "type": "dart",
+            "request": "launch",
+            "program": "lib/main.dart",
+            "deviceId": "00008120-0014450C0E58201E",
+            "args": [
+                "--release"
+            ],
+            "env": {
+                "LANG": "en_US.UTF-8"
+            }
+        },
+        {
+            "name": "Flutter iOS Simulator",
+            "type": "dart",
+            "request": "launch",
+            "program": "lib/main.dart",
+            "deviceId": "ios",
+            "args": []
+        }
+    ]
+}

@@ -37,7 +37,6 @@ class DepositModal extends StatefulWidget {
 class _DepositModalState extends State<DepositModal> {
   PaymentModel? _paymentData;
   bool _isLoading = true;
-  bool _isPolling = false;
   bool _isSavingQr = false;
   bool _qrSaved = false;
   String? _errorMessage;
@@ -72,10 +71,7 @@ class _DepositModalState extends State<DepositModal> {
         return Container(
           decoration: const BoxDecoration(
             color: DesignTokens.surfacePrimary,
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(12),
-              topRight: Radius.circular(12),
-            ),
+            borderRadius: BorderRadius.only(topLeft: Radius.circular(12), topRight: Radius.circular(12)),
           ),
           padding: const EdgeInsets.all(20),
           child: Column(
@@ -84,21 +80,11 @@ class _DepositModalState extends State<DepositModal> {
             children: [
               Row(
                 children: [
-                  MyText(
-                    text: 'Lưu ý : ',
-                    textStyle: 'head',
-                    textSize: '16',
-                    textColor: 'primary',
-                  ),
+                  MyText(text: 'Lưu ý : ', textStyle: 'head', textSize: '16', textColor: 'primary'),
                   Expanded(
                     child: Wrap(
                       children: [
-                        MyText(
-                          text: 'Voucher giảm ',
-                          textStyle: 'head',
-                          textSize: '16',
-                          textColor: 'primary',
-                        ),
+                        MyText(text: 'Voucher giảm ', textStyle: 'head', textSize: '16', textColor: 'primary'),
                         GestureDetector(
                           onTap: () {},
                           child: MyText(
@@ -108,12 +94,7 @@ class _DepositModalState extends State<DepositModal> {
                             textColor: 'brand',
                           ),
                         ),
-                        MyText(
-                          text: ' sẽ bị hủy bỏ',
-                          textStyle: 'head',
-                          textSize: '16',
-                          textColor: 'primary',
-                        ),
+                        MyText(text: ' sẽ bị hủy bỏ', textStyle: 'head', textSize: '16', textColor: 'primary'),
                       ],
                     ),
                   ),
@@ -211,9 +192,7 @@ class _DepositModalState extends State<DepositModal> {
   void _startPolling() {
     if (_paymentData == null) return;
 
-    setState(() {
-      _isPolling = true;
-    });
+    setState(() {});
 
     _pollingTimer = Timer.periodic(const Duration(seconds: 2), (timer) async {
       // Kiểm tra mounted trước khi setState
@@ -236,18 +215,14 @@ class _DepositModalState extends State<DepositModal> {
 
       if (result['success'] && result['data'] != null) {
         final updatedPayment = result['data'] as PaymentModel;
-        
+
         if (updatedPayment.isCompleted) {
           timer.cancel();
-          setState(() {
-            _isPolling = false;
-          });
+          setState(() {});
           _handleSuccessAndClose();
         } else if (updatedPayment.isExpired) {
           timer.cancel();
-          setState(() {
-            _isPolling = false;
-          });
+          setState(() {});
           final onFail = widget.onPaymentFailed;
           if (mounted) {
             Future.microtask(() {
@@ -255,7 +230,6 @@ class _DepositModalState extends State<DepositModal> {
                 Navigator.of(context).pop();
               }
               onFail?.call();
-
             });
           }
         }
@@ -272,9 +246,7 @@ class _DepositModalState extends State<DepositModal> {
 
     try {
       // Lưu trực tiếp từ cache QR bytes (nếu có) để tránh decode lại)
-      _qrBytes ??= Uint8List.fromList(
-        base64Decode(_paymentData!.qrCode.split(',').last),
-      );
+      _qrBytes ??= Uint8List.fromList(base64Decode(_paymentData!.qrCode.split(',').last));
 
       // Kiểm tra quyền truy cập thư viện ảnh
       final hasAccess = await Gal.hasAccess();
@@ -285,21 +257,15 @@ class _DepositModalState extends State<DepositModal> {
             setState(() {
               _isSavingQr = false;
             });
-            AppToastHelper.showWarning(
-              context,
-              message: 'Cần quyền truy cập thư viện ảnh để lưu QR code',
-            );
+            AppToastHelper.showWarning(context, message: 'Cần quyền truy cập thư viện ảnh để lưu QR code');
           }
           return;
         }
       }
 
       // Lưu vào thư viện ảnh của máy
-      await Gal.putImageBytes(
-        _qrBytes!,
-        name: 'QR_Code_${DateTime.now().millisecondsSinceEpoch}',
-      );
-      
+      await Gal.putImageBytes(_qrBytes!, name: 'QR_Code_${DateTime.now().millisecondsSinceEpoch}');
+
       // Kiểm tra mounted trước khi cập nhật UI
       if (mounted) {
         setState(() {
@@ -313,10 +279,7 @@ class _DepositModalState extends State<DepositModal> {
         setState(() {
           _isSavingQr = false;
         });
-        AppToastHelper.showError(
-          context,
-          message: 'Lỗi khi lưu QR code: $e',
-        );
+        AppToastHelper.showError(context, message: 'Lỗi khi lưu QR code: $e');
       }
     }
   }
@@ -324,9 +287,7 @@ class _DepositModalState extends State<DepositModal> {
   Future<void> _checkStatusAndClose() async {
     if (_paymentData == null) return;
     try {
-      final res = await PaymentService.checkPaymentStatus(
-        transactionId: _paymentData!.transactionId,
-      );
+      final res = await PaymentService.checkPaymentStatus(transactionId: _paymentData!.transactionId);
       if (!mounted) return;
 
       if (res['success'] && res['data'] != null) {
@@ -364,22 +325,13 @@ class _DepositModalState extends State<DepositModal> {
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
       decoration: const BoxDecoration(
         color: DesignTokens.surfacePrimary,
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(12),
-          topRight: Radius.circular(12),
-        ),
+        borderRadius: BorderRadius.only(topLeft: Radius.circular(12), topRight: Radius.circular(12)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          
           // Title
-          MyText(
-            text: 'Đặt cọc',
-            textStyle: 'title',
-            textSize: '16',
-            textColor: 'primary',
-          ),
+          MyText(text: 'Đặt cọc', textStyle: 'title', textSize: '16', textColor: 'primary'),
           const SizedBox(height: 12),
 
           // Content
@@ -398,9 +350,7 @@ class _DepositModalState extends State<DepositModal> {
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(color: DesignTokens.borderSecondary),
                       ),
-                      child: const Center(
-                        child: CircularProgressIndicator(),
-                      ),
+                      child: const Center(child: CircularProgressIndicator()),
                     ),
                   ] else if (_errorMessage != null) ...[
                     // Error state cho QR code
@@ -415,11 +365,7 @@ class _DepositModalState extends State<DepositModal> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(
-                            Icons.error_outline,
-                            size: 48,
-                            color: Colors.red,
-                          ),
+                          Icon(Icons.error_outline, size: 48, color: Colors.red),
                           const SizedBox(height: 8),
                           MyText(
                             text: _errorMessage ?? 'Lỗi tải QR',
@@ -447,7 +393,7 @@ class _DepositModalState extends State<DepositModal> {
                       ),
                     ),
                   ],
-                  
+
                   const SizedBox(height: 12),
 
                   // Inline message (errors/info)
@@ -480,7 +426,7 @@ class _DepositModalState extends State<DepositModal> {
                       ),
                     ),
                   ],
-                  
+
                   // Save QR button
                   GestureDetector(
                     onTap: (_isSavingQr || _qrSaved || _isLoading || _errorMessage != null) ? null : _saveQrToDevice,
@@ -497,25 +443,11 @@ class _DepositModalState extends State<DepositModal> {
                             ),
                           ),
                           const SizedBox(width: 8),
-                          MyText(
-                            text: 'Đang lưu...',
-                            textStyle: 'body',
-                            textSize: '14',
-                            textColor: 'brand',
-                          ),
+                          MyText(text: 'Đang lưu...', textStyle: 'body', textSize: '14', textColor: 'brand'),
                         ] else if (_qrSaved) ...[
-                          SvgIcon(
-                            svgPath: 'assets/icons_final/Check.svg',
-                            size: 20,
-                            color: Colors.green,
-                          ),
+                          SvgIcon(svgPath: 'assets/icons_final/Check.svg', size: 20, color: Colors.green),
                           const SizedBox(width: 8),
-                          MyText(
-                            text: 'Đã lưu',
-                            textStyle: 'body',
-                            textSize: '14',
-                            textColor: 'success',
-                          ),
+                          MyText(text: 'Đã lưu', textStyle: 'body', textSize: '14', textColor: 'success'),
                         ] else ...[
                           SvgIcon(
                             svgPath: 'assets/icons_final/gallery-import.svg',
@@ -523,41 +455,32 @@ class _DepositModalState extends State<DepositModal> {
                             color: DesignTokens.textBrand,
                           ),
                           const SizedBox(width: 8),
-                          MyText(
-                            text: 'Lưu QR về máy',
-                            textStyle: 'body',
-                            textSize: '14',
-                            textColor: 'brand',
-                          ),
+                          MyText(text: 'Lưu QR về máy', textStyle: 'body', textSize: '14', textColor: 'brand'),
                         ],
                       ],
                     ),
                   ),
-                  
+
                   const SizedBox(height: 12),
-                  
+
                   // Amount
                   Column(
                     children: [
+                      MyText(text: 'Số tiền', textStyle: 'body', textSize: '12', textColor: 'tertiary'),
                       MyText(
-                        text: 'Số tiền',
-                        textStyle: 'body',
-                        textSize: '12',
-                        textColor: 'tertiary',
-                      ),
-                      MyText(
-                        text: _paymentData != null 
-                            ? '${_formatPriceWithDots(_paymentData!.amount)}đ'
-                            : '${_formatPriceWithDots(widget.depositAmount)}đ',
+                        text:
+                            _paymentData != null
+                                ? '${_formatPriceWithDots(_paymentData!.amount)}đ'
+                                : '${_formatPriceWithDots(widget.depositAmount)}đ',
                         textStyle: 'head',
                         textSize: '24',
                         textColor: 'primary',
                       ),
                     ],
                   ),
-                  
+
                   const SizedBox(height: 12),
-                  
+
                   // Note
                   MyText(
                     text: 'Lưu ý: Bạn có thể thay đổi lịch hẹn sau khi đặt cọc.',
@@ -566,9 +489,9 @@ class _DepositModalState extends State<DepositModal> {
                     textColor: 'secondary',
                     textAlign: TextAlign.center,
                   ),
-                  
+
                   const SizedBox(height: 12),
-                  
+
                   // Action buttons
                   Row(
                     children: [
@@ -591,7 +514,6 @@ class _DepositModalState extends State<DepositModal> {
                       ),
                     ],
                   ),
-                  
                 ],
               ),
             ),
@@ -614,5 +536,4 @@ class _DepositModalState extends State<DepositModal> {
 
     return result.toString();
   }
-
 }

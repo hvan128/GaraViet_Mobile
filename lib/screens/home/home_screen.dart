@@ -19,6 +19,8 @@ import 'package:gara/widgets/app_toast.dart';
 import 'package:gara/widgets/cached_image_widget.dart';
 import 'package:gara/widgets/garage_status_notification.dart';
 import 'package:gara/services/messaging/navigation_event_bus.dart';
+import 'package:gara/services/messaging/fcm_token_service.dart';
+import 'package:gara/services/messaging/push_notification_service.dart';
 import 'package:provider/provider.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -130,7 +132,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
-    
+
     // Listen to user info reload events
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _setupUserInfoReloadListener();
@@ -153,14 +155,13 @@ class _HomeScreenState extends State<HomeScreen> {
         final isGarage = userProvider.isGarageUser;
         final isVerifiedGarage = userInfo?.isVerifiedGarage;
         if (isLoggedIn) {
-        debugPrint('UserProvider: isLoggedIn=$isLoggedIn, isGarage=$isGarage, isVerifiedGarage=$isVerifiedGarage, userDisplayName=$userDisplayName, userAvatar=$userAvatar');
-          
+          debugPrint(
+            'UserProvider: isLoggedIn=$isLoggedIn, isGarage=$isGarage, isVerifiedGarage=$isVerifiedGarage, userDisplayName=$userDisplayName, userAvatar=$userAvatar',
+          );
+
           // Kiểm tra nếu là tài khoản gara và có trạng thái cần hiển thị thông báo
           if (isGarage && isVerifiedGarage != null && (isVerifiedGarage == 0 || isVerifiedGarage == 2)) {
-            return GarageStatusNotification(
-              isVerifiedGarage: isVerifiedGarage,
-              garageName: userDisplayName,
-            );
+            return GarageStatusNotification(isVerifiedGarage: isVerifiedGarage, garageName: userDisplayName);
           }
 
           // User is logged in - show profile header (cho user thường hoặc gara đã active)
@@ -169,12 +170,10 @@ class _HomeScreenState extends State<HomeScreen> {
             return Container(
               height: 56,
               padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: const Center(
-                child: CircularProgressIndicator(),
-              ),
+              child: const Center(child: CircularProgressIndicator()),
             );
           }
-          
+
           print('DEBUG: Hiển thị profile header bình thường');
           return Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -189,13 +188,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       border: Border.all(color: DesignTokens.borderSecondary),
                     ),
                     child: CachedAvatarWidget(
-                      imageUrl: userAvatar != null && userAvatar.isNotEmpty
-                          ? resolveImageUrl(userAvatar)
-                          : null,
+                      imageUrl: userAvatar != null && userAvatar.isNotEmpty ? resolveImageUrl(userAvatar) : null,
                       radius: 20,
-                      fallbackText: userDisplayName.isNotEmpty
-                          ? userDisplayName[0].toUpperCase()
-                          : 'U',
+                      fallbackText: userDisplayName.isNotEmpty ? userDisplayName[0].toUpperCase() : 'U',
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -205,19 +200,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      MyText(
-                        text: 'Xin chào,',
-                        textStyle: 'body',
-                        textSize: '12',
-                        textColor: 'invert',
-                      ),
+                      MyText(text: 'Xin chào,', textStyle: 'body', textSize: '12', textColor: 'invert'),
                       const SizedBox(height: 2),
-                      MyText(
-                        text: userDisplayName,
-                        textStyle: 'title',
-                        textSize: '14',
-                        textColor: 'invert',
-                      ),
+                      MyText(text: userDisplayName, textStyle: 'title', textSize: '14', textColor: 'invert'),
                     ],
                   ),
 
@@ -230,11 +215,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     onTap: () {
                       Navigate.pushNamed('/announcements');
                     },
-                    child: SvgIcon(
-                      svgPath: 'assets/icons_final/notification.svg',
-                      width: 24,
-                      height: 24,
-                    ),
+                    child: SvgIcon(svgPath: 'assets/icons_final/notification.svg', width: 24, height: 24),
                   ),
 
                   const SizedBox(width: 8),
@@ -242,11 +223,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   // Profile icon
                   GestureDetector(
                     onTap: _showAccountMenu,
-                    child: SvgIcon(
-                      svgPath: 'assets/icons_final/profile.svg',
-                      width: 24,
-                      height: 24,
-                    ),
+                    child: SvgIcon(svgPath: 'assets/icons_final/profile.svg', width: 24, height: 24),
                   ),
                 ],
               ),
@@ -287,9 +264,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void _showAccountMenu() {
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (BuildContext context) {
         return Consumer<UserProvider>(
           builder: (context, userProvider, child) {
@@ -310,10 +285,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   Container(
                     width: 40,
                     height: 4,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[300],
-                      borderRadius: BorderRadius.circular(2),
-                    ),
+                    decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
                   ),
                   const SizedBox(height: 12),
 
@@ -321,25 +293,16 @@ class _HomeScreenState extends State<HomeScreen> {
                   Row(
                     children: [
                       CachedAvatarWidget(
-                        imageUrl: userAvatar != null && userAvatar.isNotEmpty
-                            ? resolveImageUrl(userAvatar)
-                            : null,
+                        imageUrl: userAvatar != null && userAvatar.isNotEmpty ? resolveImageUrl(userAvatar) : null,
                         radius: 25,
-                        fallbackText: userDisplayName.isNotEmpty
-                            ? userDisplayName[0].toUpperCase()
-                            : 'U',
+                        fallbackText: userDisplayName.isNotEmpty ? userDisplayName[0].toUpperCase() : 'U',
                       ),
                       const SizedBox(width: 16),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            MyText(
-                              text: userDisplayName,
-                              textStyle: 'title',
-                              textSize: '16',
-                              textColor: 'primary',
-                            ),
+                            MyText(text: userDisplayName, textStyle: 'title', textSize: '16', textColor: 'primary'),
                             MyText(
                               text: userInfo?.phone ?? '',
                               textStyle: 'body',
@@ -355,11 +318,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
                   // Menu items (use SVG icons + global text styles)
                   ListTile(
-                    leading: SvgIcon(
-                      svgPath: 'assets/icons_final/personalcard.svg',
-                      width: 24,
-                      height: 24,
-                    ),
+                    leading: SvgIcon(svgPath: 'assets/icons_final/personalcard.svg', width: 24, height: 24),
                     title: const MyText(
                       text: 'Thông tin tài khoản',
                       textStyle: 'title',
@@ -372,38 +331,31 @@ class _HomeScreenState extends State<HomeScreen> {
                     },
                   ),
                   ListTile(
-                    leading: SvgIcon(
-                      svgPath: 'assets/icons_final/setting.svg',
-                      width: 24,
-                      height: 24,
-                    ),
+                    leading: SvgIcon(svgPath: 'assets/icons_final/setting.svg', width: 24, height: 24),
+                    title: const MyText(text: 'Cài đặt', textStyle: 'title', textSize: '14', textColor: 'primary'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      AppToastHelper.showInfo(context, message: 'Tính năng đang được phát triển');
+                    },
+                  ),
+                  // Debug FCM Token button
+                  ListTile(
+                    leading: SvgIcon(svgPath: 'assets/icons_final/notification.svg', width: 24, height: 24),
                     title: const MyText(
-                      text: 'Cài đặt',
+                      text: 'Test FCM Token',
                       textStyle: 'title',
                       textSize: '14',
                       textColor: 'primary',
                     ),
                     onTap: () {
                       Navigator.pop(context);
-                      AppToastHelper.showInfo(
-                        context,
-                        message: 'Tính năng đang được phát triển',
-                      );
+                      _testFcmToken();
                     },
                   ),
                   const Divider(),
                   ListTile(
-                    leading: SvgIcon(
-                      svgPath: 'assets/icons_final/logout.svg',
-                      width: 24,
-                      height: 24,
-                    ),
-                    title: const MyText(
-                      text: 'Đăng xuất',
-                      textStyle: 'title',
-                      textSize: '14',
-                      textColor: 'primary',
-                    ),
+                    leading: SvgIcon(svgPath: 'assets/icons_final/logout.svg', width: 24, height: 24),
+                    title: const MyText(text: 'Đăng xuất', textStyle: 'title', textSize: '14', textColor: 'primary'),
                     onTap: () {
                       Navigator.pop(context);
                       _showLogoutDialog();
@@ -440,10 +392,7 @@ class _HomeScreenState extends State<HomeScreen> {
       await AuthService.logout();
       AppToastHelper.showSuccess(context, message: 'Đã đăng xuất thành công');
     } catch (e) {
-      AppToastHelper.showError(
-        context,
-        message: 'Lỗi khi đăng xuất: ${e.toString()}',
-      );
+      AppToastHelper.showError(context, message: 'Lỗi khi đăng xuất: ${e.toString()}');
     }
   }
 
@@ -468,7 +417,7 @@ class _HomeScreenState extends State<HomeScreen> {
       if (event.reason == 'announcement:activatedGarage') {
         final userProvider = Provider.of<UserProvider>(context, listen: false);
         await userProvider.forceRefreshUserInfo();
-        
+
         // Show status notification if needed
         if (mounted) {
           _showGarageActivationNotification(userProvider);
@@ -480,15 +429,12 @@ class _HomeScreenState extends State<HomeScreen> {
   void _showGarageActivationNotification(UserProvider userProvider) {
     final userInfo = userProvider.userInfo;
     if (userInfo == null || !userProvider.isGarageUser) return;
-    
+
     final isVerifiedGarage = userInfo.isVerifiedGarage;
-    
+
     if (isVerifiedGarage == 1) {
       // Garage đã được activate
-      AppToastHelper.showSuccess(
-        context,
-        message: 'Tài khoản gara của bạn đã được kích hoạt thành công!',
-      );
+      AppToastHelper.showSuccess(context, message: 'Tài khoản gara của bạn đã được kích hoạt thành công!');
     } else if (isVerifiedGarage == 2) {
       // Garage bị từ chối
       AppToastHelper.showError(
@@ -504,80 +450,83 @@ class _HomeScreenState extends State<HomeScreen> {
     await userProvider.forceRefreshUserInfo();
   }
 
+  Future<void> _testFcmToken() async {
+    try {
+      AppToastHelper.showInfo(context, message: 'Đang test FCM token...');
+
+      // Kiểm tra permission status trước
+      await PushNotificationService.checkNotificationPermissionStatus();
+
+      // Lấy và đăng ký FCM token
+      final token = await FcmTokenService.getAndRegisterFcmToken();
+
+      if (token != null) {
+        AppToastHelper.showSuccess(context, message: 'FCM Token thành công!\nToken: ${token.substring(0, 20)}...');
+      } else {
+        AppToastHelper.showError(context, message: 'Không thể lấy FCM token');
+      }
+    } catch (e) {
+      AppToastHelper.showError(context, message: 'Lỗi test FCM: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final isLoggedIn =
-        Provider.of<UserProvider>(context, listen: false).isLoggedIn;
-    final isGarage =
-        Provider.of<UserProvider>(context, listen: false).isGarageUser;
+    final isLoggedIn = Provider.of<UserProvider>(context, listen: false).isLoggedIn;
+    final isGarage = Provider.of<UserProvider>(context, listen: false).isGarageUser;
     return Scaffold(
       backgroundColor: DesignTokens.surfaceBrand,
       body: SafeArea(
+        bottom: false,
         child: RefreshIndicator(
           onRefresh: _onRefresh,
           child: CustomScrollView(
             slivers: [
-            SliverAppBar(
-              pinned: false,
-              expandedHeight: !isLoggedIn || !isGarage ? 270 : 214,
+              SliverAppBar(
+                pinned: false,
+                expandedHeight: !isLoggedIn || !isGarage ? 270 : 214,
 
-              automaticallyImplyLeading: false,
-              toolbarHeight: 80, // Tăng chiều cao của toolbar
-              actions: [
-                Expanded(
-                  child: Container(
-                    height:
-                        56, // Đặt chiều cao cố định cho container chứa actions
-                    padding: const EdgeInsets.only(
-                      left: 20,
-                      right: 20,
-                      top: 4,
-                      bottom: 4,
+                automaticallyImplyLeading: false,
+                toolbarHeight: 80, // Tăng chiều cao của toolbar
+                actions: [
+                  Expanded(
+                    child: Container(
+                      height: 56, // Đặt chiều cao cố định cho container chứa actions
+                      padding: const EdgeInsets.only(left: 20, right: 20, top: 4, bottom: 4),
+                      child: _buildAuthActions(),
                     ),
-                    child: _buildAuthActions(),
+                  ),
+                ],
+
+                flexibleSpace: FlexibleSpaceBar(
+                  expandedTitleScale: 1.5,
+                  background: Stack(
+                    children: [
+                      Column(
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: DesignTokens.surfaceBrand,
+                                borderRadius: BorderRadius.only(
+                                  bottomLeft: Radius.circular(12),
+                                  bottomRight: Radius.circular(12),
+                                ),
+                              ),
+                              height: 140,
+                            ),
+                          ),
+                          Expanded(child: Container(color: DesignTokens.surfaceSecondary)),
+                          Container(height: 10, color: DesignTokens.surfaceSecondary),
+                        ],
+                      ),
+                      Padding(padding: const EdgeInsets.only(top: 64), child: _buildRequestSection()),
+                    ],
                   ),
                 ),
-              ],
-
-              flexibleSpace: FlexibleSpaceBar(
-                expandedTitleScale: 1.5,
-                background: Stack(
-                  children: [
-                    Column(
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: DesignTokens.surfaceBrand,
-                              borderRadius: BorderRadius.only(
-                                bottomLeft: Radius.circular(12),
-                                bottomRight: Radius.circular(12),
-                              ),
-                            ),
-                            height: 140,
-                          ),
-                        ),
-                        Expanded(
-                          child: Container(
-                            color: DesignTokens.surfaceSecondary,
-                          ),
-                        ),
-                        Container(
-                          height: 10,
-                          color: DesignTokens.surfaceSecondary,
-                        ),
-                      ],
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.only(top: 64),
-                      child: _buildRequestSection(),
-                    ),
-                  ],
-                ),
               ),
-            ),
-            SliverToBoxAdapter(child: _buildBody()),
+              SliverToBoxAdapter(child: _buildBody()),
             ],
           ),
         ),
@@ -599,10 +548,7 @@ class _HomeScreenState extends State<HomeScreen> {
             products: _reputableProducts,
             onSeeMorePressed: () {
               // TODO: Navigate to reputable products page
-              AppToastHelper.showInfo(
-                context,
-                message: 'Tính năng đang được phát triển',
-              );
+              AppToastHelper.showInfo(context, message: 'Tính năng đang được phát triển');
             },
           ),
           const SizedBox(height: 20),
@@ -612,10 +558,7 @@ class _HomeScreenState extends State<HomeScreen> {
             reviews: _recentReviews,
             onSeeMorePressed: () {
               // TODO: Navigate to reviews page
-              AppToastHelper.showInfo(
-                context,
-                message: 'Tính năng đang được phát triển',
-              );
+              AppToastHelper.showInfo(context, message: 'Tính năng đang được phát triển');
             },
           ),
           const SizedBox(height: 20),
@@ -628,10 +571,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildRequestSection() {
-    final isLoggedIn =
-        Provider.of<UserProvider>(context, listen: false).isLoggedIn;
-    final isGarage =
-        Provider.of<UserProvider>(context, listen: false).isGarageUser;
+    final isLoggedIn = Provider.of<UserProvider>(context, listen: false).isLoggedIn;
+    final isGarage = Provider.of<UserProvider>(context, listen: false).isGarageUser;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
       child: Container(
@@ -664,56 +605,47 @@ class _HomeScreenState extends State<HomeScreen> {
             // Button đăng yêu cầu
             !isLoggedIn || !isGarage
                 ? GestureDetector(
-                  onTap: () {
-                    if (!isLoggedIn) {
-                      AppDialogHelper.confirm(
-                        context,
-                        title: 'Đăng nhập',
-                        message: 'Vui lòng đăng nhập để đăng yêu cầu',
-                        confirmText: 'Đăng nhập',
-                        cancelText: 'Hủy',
-                        confirmButtonType: ButtonType.primary,
-                        cancelButtonType: ButtonType.secondary,
-                        onConfirm: () {
-                          Navigator.pushNamed(context, '/login');
-                        },
-                      );
-                      return;
-                    }
-                    Navigator.pushNamed(context, '/create-request');
-                  },
-                  child: Container(
-                    width: double.infinity,
-                    // height: 48,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 12,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Color(0xFFF5F9FF),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: DesignTokens.borderBrandPrimary,
+                    onTap: () {
+                      if (!isLoggedIn) {
+                        AppDialogHelper.confirm(
+                          context,
+                          title: 'Đăng nhập',
+                          message: 'Vui lòng đăng nhập để đăng yêu cầu',
+                          confirmText: 'Đăng nhập',
+                          cancelText: 'Hủy',
+                          confirmButtonType: ButtonType.primary,
+                          cancelButtonType: ButtonType.secondary,
+                          onConfirm: () {
+                            Navigator.pushNamed(context, '/login');
+                          },
+                        );
+                        return;
+                      }
+                      Navigator.pushNamed(context, '/create-request');
+                    },
+                    child: Container(
+                      width: double.infinity,
+                      // height: 48,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: Color(0xFFF5F9FF),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: DesignTokens.borderBrandPrimary),
+                      ),
+                      child: Row(
+                        children: [
+                          SvgIcon(svgPath: 'assets/icons_final/add-square.svg', width: 24, height: 24),
+                          const SizedBox(width: 8),
+                          MyText(
+                            text: 'Đăng yêu cầu ngay và nhận báo giá',
+                            textStyle: 'title',
+                            textSize: '14',
+                            textColor: 'brand',
+                          ),
+                        ],
                       ),
                     ),
-                    child: Row(
-                      children: [
-                        SvgIcon(
-                          svgPath: 'assets/icons_final/add-square.svg',
-                          width: 24,
-                          height: 24,
-                        ),
-                        const SizedBox(width: 8),
-                        MyText(
-                          text: 'Đăng yêu cầu ngay và nhận báo giá',
-                          textStyle: 'title',
-                          textSize: '14',
-                          textColor: 'brand',
-                        ),
-                      ],
-                    ),
-                  ),
-                )
+                  )
                 : const SizedBox.shrink(),
           ],
         ),

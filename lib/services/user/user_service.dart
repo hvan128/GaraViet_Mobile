@@ -1,4 +1,4 @@
- import 'dart:convert';
+import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:gara/config.dart';
 import 'package:gara/models/user/user_info_model.dart';
@@ -8,6 +8,7 @@ import 'package:gara/services/auth/token_cache.dart';
 import 'package:gara/services/api/base_api_service.dart';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:gara/utils/debug_logger.dart';
 
 class UserService {
   // Tạo custom HTTP client để bỏ qua SSL certificate verification
@@ -27,13 +28,13 @@ class UserService {
       final client = _createHttpClient();
       final response = await client.get(
         Uri.parse(Config.carGetAllUrl),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $accessToken',
+        headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $accessToken'},
+      ).timeout(
+        const Duration(seconds: 30),
+        onTimeout: () {
+          throw Exception('Request timeout');
         },
-      ).timeout(const Duration(seconds: 30), onTimeout: () {
-        throw Exception('Request timeout');
-      });
+      );
 
       client.close();
 
@@ -69,20 +70,19 @@ class UserService {
 
       final client = _createHttpClient();
       final uri = Uri.parse('${Config.carGetByIdUrl}?car_id=$carId');
-      final response = await client.get(
-        uri,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $accessToken',
+      final response = await client
+          .get(uri, headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $accessToken'}).timeout(
+        const Duration(seconds: 30),
+        onTimeout: () {
+          throw Exception('Request timeout');
         },
-      ).timeout(const Duration(seconds: 30), onTimeout: () {
-        throw Exception('Request timeout');
-      });
+      );
 
       client.close();
 
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
+        DebugLogger.largeJson('[getCarById] response', decoded);
         Map<String, dynamic>? data;
         if (decoded is Map && decoded['data'] is Map) {
           data = Map<String, dynamic>.from(decoded['data']);
@@ -109,6 +109,8 @@ class UserService {
     required String address,
     required String description,
     required String radiusSearch,
+    String? latitude,
+    String? longitude,
     List<File>? files,
   }) async {
     try {
@@ -126,6 +128,12 @@ class UserService {
       request.fields['address'] = address;
       request.fields['description'] = description;
       request.fields['radius_search'] = radiusSearch;
+      if (latitude != null && latitude.isNotEmpty) {
+        request.fields['latitude'] = latitude;
+      }
+      if (longitude != null && longitude.isNotEmpty) {
+        request.fields['longitude'] = longitude;
+      }
 
       if (files != null && files.isNotEmpty) {
         for (final f in files) {
@@ -137,10 +145,52 @@ class UserService {
 
       final streamed = await request.send();
       final response = await http.Response.fromStream(streamed);
+      debugPrint('[createRequest] fields=${request.fields}');
       debugPrint('[createRequest] status=${response.statusCode} body=${response.body}');
       return response.statusCode >= 200 && response.statusCode < 300;
     } catch (e, st) {
       debugPrint('[createRequest] error=$e\n$st');
+      return false;
+    }
+  }
+
+  static Future<bool> createCar({
+    required String typeCar,
+    required String yearModel,
+    required String vehicleLicensePlate,
+    required String description,
+    List<File>? files,
+  }) async {
+    try {
+      final tokenFromCache = TokenCache.getAccessToken();
+      final tokenFromStorage = await Storage.getAccessToken();
+      final accessToken = tokenFromCache ?? tokenFromStorage;
+      if (accessToken == null) {
+        throw Exception('No access token found');
+      }
+
+      final uri = Uri.parse(Config.carCreateUrl);
+      final request = http.MultipartRequest('POST', uri);
+      request.headers['Authorization'] = 'Bearer $accessToken';
+      request.fields['type_car'] = typeCar;
+      request.fields['year_model'] = yearModel;
+      request.fields['vehicle_license_plate'] = vehicleLicensePlate;
+      request.fields['description'] = description;
+
+      if (files != null && files.isNotEmpty) {
+        for (final f in files) {
+          if (await f.exists()) {
+            request.files.add(await http.MultipartFile.fromPath('files', f.path));
+          }
+        }
+      }
+
+      final streamed = await request.send();
+      final response = await http.Response.fromStream(streamed);
+      debugPrint('[createCar] status=${response.statusCode} body=${response.body}');
+      return response.statusCode >= 200 && response.statusCode < 300;
+    } catch (e, st) {
+      debugPrint('[createCar] error=$e\n$st');
       return false;
     }
   }
@@ -151,20 +201,20 @@ class UserService {
       final tokenFromCache = TokenCache.getAccessToken();
       final tokenFromStorage = await Storage.getAccessToken();
       final accessToken = tokenFromCache ?? tokenFromStorage;
-      
+
       if (accessToken == null) {
         throw Exception('No access token found');
       }
 
       // Tạo custom HTTP client để handle SSL issues
       final client = _createHttpClient();
-      
+
+      debugPrint('[UserService.getUserInfo] GET: ${Config.userGetInfoUrl}');
+      debugPrint(
+          '[UserService.getUserInfo] Authorization: Bearer ${accessToken.substring(0, accessToken.length > 10 ? 10 : accessToken.length)}...');
       final response = await client.get(
         Uri.parse(Config.userGetInfoUrl),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $accessToken',
-        },
+        headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $accessToken'},
       ).timeout(
         const Duration(seconds: 30),
         onTimeout: () {
@@ -172,6 +222,8 @@ class UserService {
         },
       );
 
+      debugPrint('[UserService.getUserInfo] Status: ${response.statusCode}');
+      debugPrint('[UserService.getUserInfo] Body: ${response.body}');
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
 
@@ -199,19 +251,22 @@ class UserService {
         client.close();
         return null;
       } else if (response.statusCode == 404) {
+        debugPrint('[UserService.getUserInfo] 404 Not Found. Body: ${response.body}');
         client.close();
         return null;
       } else {
+        debugPrint('[UserService.getUserInfo] Non-200 Status: ${response.statusCode} Body: ${response.body}');
         client.close();
         throw Exception('Failed to get user info: ${response.statusCode}');
       }
     } catch (e) {
       // Nếu là SSL error, thử với HTTP thay vì HTTPS
-      if (e.toString().contains('CERTIFICATE_VERIFY_FAILED') || 
-          e.toString().contains('HandshakeException')) {
+      if (e.toString().contains('CERTIFICATE_VERIFY_FAILED') || e.toString().contains('HandshakeException')) {
+        debugPrint('[UserService.getUserInfo] SSL error detected, trying HTTP fallback... Error: $e');
         return await _getUserInfoWithHttpFallback();
       }
-      
+
+      debugPrint('[UserService.getUserInfo] Error: $e');
       return null;
     }
   }
@@ -225,18 +280,27 @@ class UserService {
         throw Exception('No access token found');
       }
 
+      // Chuyển đổi carId từ String sang int
+      final int carIdInt = int.tryParse(carId) ?? 0;
+      if (carIdInt == 0) {
+        debugPrint('[deleteCar] Invalid carId: $carId');
+        return false;
+      }
+
       final client = _createHttpClient();
       final uri = Uri.parse(Config.carDeleteUrl);
-      final response = await client.delete(
+      final response = await client
+          .delete(
         uri,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $accessToken',
+        headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $accessToken'},
+        body: jsonEncode({'car_id': carIdInt}),
+      )
+          .timeout(
+        const Duration(seconds: 30),
+        onTimeout: () {
+          throw Exception('Request timeout');
         },
-        body: jsonEncode({'car_id': carId}),
-      ).timeout(const Duration(seconds: 30), onTimeout: () {
-        throw Exception('Request timeout');
-      });
+      );
 
       client.close();
       if (response.statusCode >= 200 && response.statusCode < 300) {
@@ -256,21 +320,36 @@ class UserService {
       final tokenFromStorage = await Storage.getAccessToken();
       final accessToken = tokenFromCache ?? tokenFromStorage;
       if (accessToken == null) {
+        debugPrint('[UserService.uploadAvatar] No access token found');
         throw Exception('No access token found');
       }
+
+      debugPrint('[UserService.uploadAvatar] Starting upload to: ${Config.userUploadAvatarUrl}');
+      debugPrint('[UserService.uploadAvatar] File path: ${file.path}');
+      debugPrint('[UserService.uploadAvatar] File exists: ${await file.exists()}');
 
       final uri = Uri.parse(Config.userUploadAvatarUrl);
       final request = http.MultipartRequest('POST', uri);
       request.headers['Authorization'] = 'Bearer $accessToken';
       request.files.add(await http.MultipartFile.fromPath('file', file.path));
 
+      debugPrint('[UserService.uploadAvatar] Sending request...');
       final streamed = await request.send();
       final response = await http.Response.fromStream(streamed);
+
+      debugPrint('[UserService.uploadAvatar] Response status: ${response.statusCode}');
+      debugPrint('[UserService.uploadAvatar] Response body: ${response.body}');
+
       if (response.statusCode >= 200 && response.statusCode < 300) {
+        debugPrint('[UserService.uploadAvatar] Upload successful');
         return true;
+      } else {
+        debugPrint('[UserService.uploadAvatar] Upload failed with status: ${response.statusCode}');
+        return false;
       }
-      return false;
-    } catch (_) {
+    } catch (e, stackTrace) {
+      debugPrint('[UserService.uploadAvatar] Error: $e');
+      debugPrint('[UserService.uploadAvatar] Stack trace: $stackTrace');
       return false;
     }
   }
@@ -281,19 +360,19 @@ class UserService {
       // Sử dụng BaseApiService để có authentication flow đầy đủ
       final endpoint = Config.userGetInfoUrl.replaceFirst(Config.baseUrl, '');
       final httpEndpoint = endpoint.replaceFirst('https://', 'http://');
-      
-      final response = await BaseApiService.get(
-        httpEndpoint,
-        includeAuth: true,
-      );
+
+      debugPrint('[UserService._getUserInfoWithHttpFallback] GET: $httpEndpoint');
+      final response = await BaseApiService.get(httpEndpoint, includeAuth: true);
+      debugPrint('[UserService._getUserInfoWithHttpFallback] Response: $response');
 
       if (response['success'] == true && response['data'] != null) {
         final userData = response['data'] as Map<String, dynamic>;
         return UserInfoResponse.fromJson(userData);
       }
-      
+
       return null;
     } catch (e) {
+      debugPrint('[UserService._getUserInfoWithHttpFallback] Error: $e');
       return null;
     }
   }
@@ -312,10 +391,7 @@ class UserService {
       final client = _createHttpClient();
       final response = await client.put(
         Uri.parse(Config.userUpdateInfoUrl),
-        headers: {
-          'Authorization': 'Bearer $accessToken',
-          'Content-Type': 'application/json',
-        },
+        headers: {'Authorization': 'Bearer $accessToken', 'Content-Type': 'application/json'},
         body: jsonEncode(updateData),
       );
 
@@ -347,10 +423,7 @@ class UserService {
       final client = _createHttpClient();
       final response = await client.put(
         Uri.parse(Config.userUpdateGarageUrl),
-        headers: {
-          'Authorization': 'Bearer $accessToken',
-          'Content-Type': 'application/json',
-        },
+        headers: {'Authorization': 'Bearer $accessToken', 'Content-Type': 'application/json'},
         body: jsonEncode(updateData),
       );
 
@@ -383,10 +456,7 @@ class UserService {
       }
 
       final client = _createHttpClient();
-      final request = http.MultipartRequest(
-        'PUT',
-        Uri.parse(Config.userUpdateCertificateUrl),
-      );
+      final request = http.MultipartRequest('PUT', Uri.parse(Config.userUpdateCertificateUrl));
 
       // Headers
       request.headers['Authorization'] = 'Bearer $accessToken';
@@ -441,10 +511,7 @@ class UserService {
       }
 
       final client = _createHttpClient();
-      final request = http.MultipartRequest(
-        'PUT',
-        Uri.parse(Config.userUpdateGarageRegisterAttachmentUrl),
-      );
+      final request = http.MultipartRequest('PUT', Uri.parse(Config.userUpdateGarageRegisterAttachmentUrl));
 
       // Headers
       request.headers['Authorization'] = 'Bearer $accessToken';
@@ -481,6 +548,73 @@ class UserService {
     } catch (e) {
       debugPrint('[UserService.updateGarageRegisterAttachment] Error: $e');
       rethrow;
+    }
+  }
+
+  // Cập nhật thông tin xe
+  static Future<bool> updateCar({
+    required String carId,
+    required String typeCar,
+    required String yearModel,
+    required String vehicleLicensePlate,
+    required String description,
+    required List<Map<String, dynamic>> currentFiles,
+    List<File>? newFiles,
+  }) async {
+    try {
+      final tokenFromCache = TokenCache.getAccessToken();
+      final tokenFromStorage = await Storage.getAccessToken();
+      final accessToken = tokenFromCache ?? tokenFromStorage;
+      if (accessToken == null) {
+        throw Exception('No access token found');
+      }
+
+      final client = _createHttpClient();
+      final request = http.MultipartRequest('PUT', Uri.parse('${Config.baseUrl}/manager-car/update-car'));
+
+      // Headers
+      request.headers['Authorization'] = 'Bearer $accessToken';
+
+      // Basic fields
+      request.fields['car_id'] = carId;
+      request.fields['type_car'] = typeCar;
+      request.fields['year_model'] = yearModel;
+      request.fields['vehicle_license_plate'] = vehicleLicensePlate;
+      request.fields['description'] = description;
+
+      // Current files
+      request.fields['current_files'] = jsonEncode(currentFiles);
+
+      // New files
+      if (newFiles != null && newFiles.isNotEmpty) {
+        for (int i = 0; i < newFiles.length; i++) {
+          final file = newFiles[i];
+          final multipartFile = await http.MultipartFile.fromPath(
+            'files',
+            file.path,
+            filename: file.path.split('/').last,
+          );
+          request.files.add(multipartFile);
+        }
+      }
+
+      final response = await client.send(request);
+      final responseBody = await response.stream.bytesToString();
+
+      debugPrint('[UserService.updateCar] Status: ${response.statusCode}');
+      debugPrint('[UserService.updateCar] Response: $responseBody');
+      debugPrint('[UserService.updateCar] URL: ${Config.baseUrl}/manager-car/update-car');
+      debugPrint('[UserService.updateCar] Method: PUT');
+
+      if (response.statusCode == 200) {
+        debugPrint('[UserService.updateCar] Update successful');
+        return true;
+      } else {
+        throw Exception('Lỗi cập nhật xe: ${response.statusCode} - $responseBody');
+      }
+    } catch (e) {
+      debugPrint('[UserService.updateCar] Error: $e');
+      return false;
     }
   }
 }

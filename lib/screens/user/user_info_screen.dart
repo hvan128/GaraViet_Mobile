@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:gara/components/home/recent_reviews.dart';
-import 'package:gara/constant/constant.dart';
 import 'package:gara/providers/user_provider.dart';
 import 'package:gara/models/user/user_info_model.dart';
+import 'package:gara/models/review/garage_review_response_model.dart';
+import 'package:gara/models/review/review_model.dart';
+import 'package:gara/services/review/review_service.dart';
 import 'package:gara/theme/design_tokens.dart';
 import 'package:provider/provider.dart';
 
@@ -27,14 +29,17 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
   String? _errorMessage;
   bool _notificationsEnabled = true;
   String _languageCode = 'VN';
+
+  // Thêm state cho reviews
+  GarageReviewResponse? _garageReviews;
+  bool _isLoadingReviews = false;
+  String? _reviewsErrorMessage;
+
   bool get _isGarageUser {
     final info = _userInfo;
     if (info == null) return false;
     final code = info.roleCode.toUpperCase();
-    return info.roleId == 3 ||
-        code == 'GARA' ||
-        code == 'GARAGE' ||
-        code.contains('GARAGE');
+    return info.roleId == 3 || code == 'GARA' || code == 'GARAGE' || code.contains('GARAGE');
   }
 
   @override
@@ -72,7 +77,7 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
     try {
       final userProvider = Provider.of<UserProvider>(context, listen: false);
       final userInfo = userProvider.userInfo;
-      
+
       if (userInfo == null) {
         // Nếu chưa có user info, refresh từ provider
         await userProvider.refreshUserInfo();
@@ -89,6 +94,11 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
           _isLoading = false;
         });
       }
+
+      // Load reviews nếu là garage user
+      if (_isGarageUser && _userInfo != null) {
+        await _loadGarageReviews();
+      }
     } catch (e) {
       setState(() {
         _errorMessage = e.toString();
@@ -97,12 +107,31 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
     }
   }
 
+  Future<void> _loadGarageReviews() async {
+    if (_userInfo == null) return;
+
+    setState(() {
+      _isLoadingReviews = true;
+      _reviewsErrorMessage = null;
+    });
+
+    try {
+      final reviews = await ReviewService.getReviewsByGarage(_userInfo!.id);
+      setState(() {
+        _garageReviews = reviews;
+        _isLoadingReviews = false;
+      });
+    } catch (e) {
+      setState(() {
+        _reviewsErrorMessage = e.toString();
+        _isLoadingReviews = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: DesignTokens.surfaceSecondary,
-      body: SafeArea(child: _buildBody()),
-    );
+    return Scaffold(backgroundColor: DesignTokens.surfaceSecondary, body: SafeArea(child: _buildBody()));
   }
 
   Widget _buildBody() {
@@ -112,10 +141,7 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Header giả
-            Container(
-              height: 56,
-              color: DesignTokens.surfaceBrand,
-            ),
+            Container(height: 56, color: DesignTokens.surfaceBrand),
             Container(height: 12, color: DesignTokens.surfaceBrand),
             // Hero section skeleton
             Container(
@@ -134,13 +160,9 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
             Padding(
               padding: const EdgeInsets.all(20),
               child: Column(
-                children: [
-                  Skeleton.box(height: 120),
-                  const SizedBox(height: 12),
-                  Skeleton.box(height: 160),
-                ],
+                children: [Skeleton.box(height: 120), const SizedBox(height: 12), Skeleton.box(height: 160)],
               ),
-            )
+            ),
           ],
         ),
       );
@@ -153,21 +175,11 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
           children: [
             Icon(Icons.error_outline, size: 64, color: Colors.red[300]),
             const SizedBox(height: 16),
-            Text(
-              'Có lỗi xảy ra',
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
+            Text('Có lỗi xảy ra', style: Theme.of(context).textTheme.headlineSmall),
             const SizedBox(height: 8),
-            Text(
-              _errorMessage!,
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey[600]),
-            ),
+            Text(_errorMessage!, textAlign: TextAlign.center, style: TextStyle(color: Colors.grey[600])),
             const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: _loadUserInfo,
-              child: const Text('Thử lại'),
-            ),
+            ElevatedButton(onPressed: _loadUserInfo, child: const Text('Thử lại')),
           ],
         ),
       );
@@ -187,30 +199,19 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
             backgroundColor: DesignTokens.surfaceBrand,
             title: 'Hồ sơ',
             showRightButton: true,
-            rightIcon: SvgIcon(
-              svgPath: 'assets/icons_final/edit-2.svg',
-              size: 24,
-              color: DesignTokens.textInvert,
-            ),
+            rightIcon: SvgIcon(svgPath: 'assets/icons_final/edit-2.svg', size: 24, color: DesignTokens.textInvert),
             rightIconColor: DesignTokens.textInvert,
             leftIconColor: DesignTokens.textInvert,
-            customTitle: MyText(
-              text: 'Hồ sơ',
-              textStyle: 'head',
-              textSize: '16',
-              textColor: 'invert',
-            ),
+            customTitle: MyText(text: 'Hồ sơ', textStyle: 'head', textSize: '16', textColor: 'invert'),
             onRightPressed: () async {
               if (_userInfo != null) {
-                final result = await Navigator.of(
-                  context,
-                ).pushNamed('/user-info/edit', arguments: _userInfo);
+                final result = await Navigator.of(context).pushNamed('/user-info/edit', arguments: _userInfo);
                 if (!mounted) return;
                 if (result == true) {
-                  // Refresh UserProvider và cập nhật UI
+                  // Refresh UserProvider - Consumer sẽ tự động cập nhật UI
                   final userProvider = Provider.of<UserProvider>(context, listen: false);
                   await userProvider.refreshUserInfo();
-                  _loadUserInfo();
+                  // Không cần setState vì Consumer sẽ tự động rebuild
                 }
               }
             },
@@ -218,9 +219,7 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
           Container(height: 12, color: DesignTokens.surfaceBrand),
           _buildHeroSection(),
           Container(
-            decoration: const BoxDecoration(
-              color: DesignTokens.surfaceSecondary,
-            ),
+            decoration: const BoxDecoration(color: DesignTokens.surfaceSecondary),
             child: Padding(
               padding: const EdgeInsets.all(20),
               child: Column(
@@ -233,14 +232,10 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
                     const SizedBox(height: 20),
                     _buildServicesSection(),
                     const SizedBox(height: 20),
-                    RecentReviews(reviews: Constant.recentReviews),
+                    _buildReviewsSection(),
                     const SizedBox(height: 20),
                   ],
                   _buildSettingsCard(),
-                  const SizedBox(height: 20),
-                  _buildStatusCard(),
-                  const SizedBox(height: 20),
-                  _buildSessionCard(),
                   const SizedBox(height: 20),
                 ],
               ),
@@ -268,12 +263,7 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
             child: Row(
               children: [
                 const Expanded(
-                  child: MyText(
-                    text: 'Thông báo',
-                    textStyle: 'title',
-                    textSize: '16',
-                    textColor: 'primary',
-                  ),
+                  child: MyText(text: 'Thông báo', textStyle: 'title', textSize: '16', textColor: 'primary'),
                 ),
                 Switch.adaptive(
                   value: _notificationsEnabled,
@@ -292,22 +282,14 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
             child: Row(
               children: [
                 const Expanded(
-                  child: MyText(
-                    text: 'Ngôn ngữ',
-                    textStyle: 'title',
-                    textSize: '16',
-                    textColor: 'primary',
-                  ),
+                  child: MyText(text: 'Ngôn ngữ', textStyle: 'title', textSize: '16', textColor: 'primary'),
                 ),
                 GestureDetector(
                   onTap: () {
                     // TODO: mở modal chọn ngôn ngữ
                   },
                   child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
                       color: DesignTokens.surfaceSecondary,
                       borderRadius: BorderRadius.circular(20),
@@ -316,17 +298,9 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        MyText(
-                          text: _languageCode,
-                          textStyle: 'title',
-                          textSize: '14',
-                          textColor: 'primary',
-                        ),
+                        MyText(text: _languageCode, textStyle: 'title', textSize: '14', textColor: 'primary'),
                         const SizedBox(width: 4),
-                        SvgIcon(
-                          svgPath: 'assets/icons_final/arrow-down.svg',
-                          size: 16,
-                        ),
+                        SvgIcon(svgPath: 'assets/icons_final/arrow-down.svg', size: 16),
                       ],
                     ),
                   ),
@@ -354,11 +328,7 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
                       textColor: 'primary',
                     ),
                   ),
-                  SvgIcon(
-                    svgPath: 'assets/icons_final/arrow-right.svg',
-                    size: 24,
-                    color: DesignTokens.textBrand,
-                  ),
+                  SvgIcon(svgPath: 'assets/icons_final/arrow-right.svg', size: 24, color: DesignTokens.textBrand),
                 ],
               ),
             ),
@@ -381,19 +351,13 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
                 height: 70,
                 decoration: const BoxDecoration(
                   color: DesignTokens.surfaceBrand,
-                  borderRadius: BorderRadius.only(
-                    bottomLeft: Radius.circular(16),
-                    bottomRight: Radius.circular(16),
-                  ),
+                  borderRadius: BorderRadius.only(bottomLeft: Radius.circular(16), bottomRight: Radius.circular(16)),
                 ),
               ),
               Expanded(child: Container()),
             ],
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: _buildUserCard(),
-          ),
+          Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: _buildUserCard()),
         ],
       ),
     );
@@ -402,10 +366,7 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
   Widget _buildUserCard() {
     return Container(
       height: 132,
-      decoration: BoxDecoration(
-        color: DesignTokens.surfacePrimary,
-        borderRadius: BorderRadius.circular(20),
-      ),
+      decoration: BoxDecoration(color: DesignTokens.surfacePrimary, borderRadius: BorderRadius.circular(20)),
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
       width: double.infinity,
       child: Column(
@@ -414,27 +375,27 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
             child: Container(
               width: 64,
               height: 64,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white, width: 1),
-              ),
-              child: CachedAvatarWidget(
-                imageUrl: (_userInfo?.avatarPath != null && _userInfo!.avatarPath!.isNotEmpty)
-                    ? resolveImageUrl(_userInfo!.avatarPath!)
-                    : null,
-                radius: 50,
-                fallbackText: _userInfo!.name.isNotEmpty
-                    ? _userInfo!.name[0].toUpperCase()
-                    : 'U',
+              decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 1)),
+              child: Consumer<UserProvider>(
+                builder: (context, userProvider, child) {
+                  final currentUserInfo = userProvider.userInfo ?? _userInfo;
+                  if (currentUserInfo == null) return const SizedBox();
+                  final String? avatarPath = currentUserInfo.avatarPath;
+                  return CachedAvatarWidget(
+                    imageUrl: (avatarPath != null && avatarPath.isNotEmpty) ? resolveImageUrl(avatarPath) : null,
+                    radius: 50,
+                    fallbackText: currentUserInfo.name.isNotEmpty ? currentUserInfo.name[0].toUpperCase() : 'U',
+                  );
+                },
               ),
             ),
           ),
           const SizedBox(height: 12),
-          MyText(
-            text: _userInfo!.name,
-            textStyle: 'title',
-            textSize: '16',
-            textColor: 'primary',
+          Consumer<UserProvider>(
+            builder: (context, userProvider, child) {
+              final currentUserInfo = userProvider.userInfo ?? _userInfo;
+              return MyText(text: currentUserInfo!.name, textStyle: 'title', textSize: '16', textColor: 'primary');
+            },
           ),
         ],
       ),
@@ -442,183 +403,146 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
   }
 
   Widget _buildHighlights() {
-    final addressText =
-        (_userInfo?.address ?? '').isNotEmpty
-            ? _userInfo!.address!
-            : 'Chưa có địa chỉ';
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
+    return Consumer<UserProvider>(
+      builder: (context, userProvider, child) {
+        final currentUserInfo = userProvider.userInfo ?? _userInfo;
+        final addressText = (currentUserInfo?.address ?? '').isNotEmpty ? currentUserInfo!.address! : 'Chưa có địa chỉ';
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              child: _pill(
-                icon: SvgIcon(
-                  svgPath: 'assets/icons_final/document-text.svg',
-                  size: 16,
+            Row(
+              children: [
+                Expanded(
+                  child: _pill(
+                    icon: SvgIcon(svgPath: 'assets/icons_final/document-text.svg', size: 16),
+                    label: 'Tổng đánh giá',
+                    value: _garageReviews?.total.toString() ?? '0',
+                  ),
                 ),
-                label: 'Đơn hoàn thành',
-                value: '1200',
-              ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _pill(
+                    icon: SvgIcon(svgPath: 'assets/icons_final/star_outline.svg', size: 16),
+                    label: 'Đánh giá TB',
+                    value: _garageReviews?.averageRating.toStringAsFixed(1) ?? '0.0',
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _pill(
-                icon: SvgIcon(
-                  svgPath: 'assets/icons_final/star_outline.svg',
-                  size: 16,
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                if (currentUserInfo?.activeFrom != null && currentUserInfo!.activeFrom!.isNotEmpty) ...[
+                  Expanded(
+                    child: _pill(
+                      icon: SvgIcon(svgPath: 'assets/icons_final/award.svg'),
+                      label: 'Hoạt động từ',
+                      value: currentUserInfo.activeFrom!,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                ],
+                Expanded(
+                  child: _pill(
+                    icon: SvgIcon(svgPath: 'assets/icons_final/location.svg', color: DesignTokens.textPrimary),
+                    label: 'Vị trí',
+                    value: addressText,
+                  ),
                 ),
-                label: 'Tiêu chuẩn',
-                value: '1200',
-              ),
+              ],
             ),
           ],
-        ),
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            if (_userInfo?.activeFrom != null &&
-                _userInfo!.activeFrom!.isNotEmpty) ...[
-              Expanded(
-                child: _pill(
-                  icon: SvgIcon(svgPath: 'assets/icons_final/award.svg'),
-                  label: 'Hoạt động từ',
-                  value: _userInfo!.activeFrom!,
-                ),
-              ),
-              const SizedBox(width: 12),
-            ],
-            Expanded(
-              child: _pill(
-                icon: SvgIcon(svgPath: 'assets/icons_final/location.svg', color: DesignTokens.textPrimary),
-                label: 'Vị trí',
-                value: addressText,
-                
-              ),
-            ),
-          ],
-        ),
-      ],
+        );
+      },
     );
   }
 
   Widget _buildDescription() {
-    final desc =
-        (_userInfo?.descriptionGarage ?? '').isNotEmpty
-            ? _userInfo!.descriptionGarage!
+    return Consumer<UserProvider>(
+      builder: (context, userProvider, child) {
+        final currentUserInfo = userProvider.userInfo ?? _userInfo;
+        final desc = (currentUserInfo?.descriptionGarage ?? '').isNotEmpty
+            ? currentUserInfo!.descriptionGarage!
             : 'Chưa có mô tả.';
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        MyText(
-          text: 'Mô tả',
-          textStyle: 'body',
-          textSize: '12',
-          textColor: 'secondary',
-        ),
-        const SizedBox(height: 4),
-        MyText(
-          text: desc,
-          textStyle: 'body',
-          textSize: '12',
-          textColor: 'primary',
-        ),
-      ],
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            MyText(text: 'Mô tả', textStyle: 'body', textSize: '12', textColor: 'secondary'),
+            const SizedBox(height: 4),
+            MyText(text: desc, textStyle: 'body', textSize: '12', textColor: 'primary'),
+          ],
+        );
+      },
     );
   }
 
   Widget _buildServicesSection() {
-    final images =
-        _userInfo?.listFileAvatar?.map((e) => e.path).toList() ??
-        const <String>[];
-    final certificateImages =
-        _userInfo?.listFileCertificate?.map((e) => e.path).toList() ??
-        const <String>[];
-    
-    // debugPrint('[UserInfoScreen] _buildServicesSection called');
-    // debugPrint('[UserInfoScreen] listFileAvatar: ${_userInfo?.listFileAvatar}');
-    // debugPrint('[UserInfoScreen] listFileCertificate: ${_userInfo?.listFileCertificate}');
-    // debugPrint('[UserInfoScreen] images.length: ${images.length}');
-    // debugPrint('[UserInfoScreen] certificateImages.length: ${certificateImages.length}');
-    
-    for (int i = 0; i < images.length; i++) {
-      // debugPrint('[UserInfoScreen] Service image $i: ${images[i]}');
-    }
-    
-    for (int i = 0; i < certificateImages.length; i++) {
-      // debugPrint('[UserInfoScreen] Certificate image $i: ${certificateImages[i]}');
-    }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        MyText(
-          text: 'Dịch vụ cung cấp và chuyên môn',
-          textStyle: 'title',
-          textSize: '1162',
-          textColor: 'primary',
-        ),
-        const SizedBox(height: 8),
-        if (_userInfo?.servicesProvided != null &&
-            _userInfo!.servicesProvided!.isNotEmpty) ...[
-          MyText(
-            text: _userInfo!.servicesProvided!,
-            textStyle: 'body',
-            textSize: '12',
-            textColor: 'tertiary',
-          ),
-          const SizedBox(height: 4),
-        ],
-        Container(
-          decoration: BoxDecoration(color: DesignTokens.surfaceSecondary),
-          height: 80,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemBuilder:
-                (ctx, i) => _serviceItem(
-                  images[i],
-                ),
-            separatorBuilder: (_, __) => const SizedBox(width: 12),
-            itemCount: images.length,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Column(
+    return Consumer<UserProvider>(
+      builder: (context, userProvider, child) {
+        final currentUserInfo = userProvider.userInfo ?? _userInfo;
+        final images = currentUserInfo?.listFileAvatar?.map((e) => e.path).toList() ?? const <String>[];
+        final certificateImages = currentUserInfo?.listFileCertificate?.map((e) => e.path).toList() ?? const <String>[];
+
+        // debugPrint('[UserInfoScreen] _buildServicesSection called');
+        // debugPrint('[UserInfoScreen] listFileAvatar: ${currentUserInfo?.listFileAvatar}');
+        // debugPrint('[UserInfoScreen] listFileCertificate: ${currentUserInfo?.listFileCertificate}');
+        // debugPrint('[UserInfoScreen] images.length: ${images.length}');
+        // debugPrint('[UserInfoScreen] certificateImages.length: ${certificateImages.length}');
+
+        for (int i = 0; i < images.length; i++) {
+          // debugPrint('[UserInfoScreen] Service image $i: ${images[i]}');
+        }
+
+        for (int i = 0; i < certificateImages.length; i++) {
+          // debugPrint('[UserInfoScreen] Certificate image $i: ${certificateImages[i]}');
+        }
+        return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            MyText(
-              text: 'Chứng chỉ',
-              textStyle: 'body',
-              textSize: '12',
-              textColor: 'tertiary',
-            ),
+            MyText(text: 'Dịch vụ cung cấp và chuyên môn', textStyle: 'title', textSize: '1162', textColor: 'primary'),
             const SizedBox(height: 8),
-            SizedBox(
+            if (currentUserInfo?.servicesProvided != null && currentUserInfo!.servicesProvided!.isNotEmpty) ...[
+              MyText(text: currentUserInfo.servicesProvided!, textStyle: 'body', textSize: '12', textColor: 'tertiary'),
+              const SizedBox(height: 4),
+            ],
+            Container(
+              decoration: BoxDecoration(color: DesignTokens.surfaceSecondary),
               height: 80,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
-                itemBuilder:
-                    (ctx, i) => _certificateItem(
-                      certificateImages.isNotEmpty
-                          ? certificateImages[i]
-                          : null,
-                    ),
+                itemBuilder: (ctx, i) => _serviceItem(images[i]),
                 separatorBuilder: (_, __) => const SizedBox(width: 12),
-                itemCount:
-                    certificateImages.isEmpty
-                        ? 1
-                        : certificateImages.length.clamp(1, 10),
+                itemCount: images.length,
               ),
             ),
+            const SizedBox(height: 8),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                MyText(text: 'Chứng chỉ', textStyle: 'body', textSize: '12', textColor: 'tertiary'),
+                const SizedBox(height: 8),
+                SizedBox(
+                  height: 80,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemBuilder: (ctx, i) =>
+                        _certificateItem(certificateImages.isNotEmpty ? certificateImages[i] : null),
+                    separatorBuilder: (_, __) => const SizedBox(width: 12),
+                    itemCount: certificateImages.isEmpty ? 1 : certificateImages.length.clamp(1, 10),
+                  ),
+                ),
+              ],
+            ),
           ],
-        ),
-      ],
+        );
+      },
     );
   }
 
   Widget _certificateItem(String? imageUrl) {
     final resolvedUrl = imageUrl != null ? resolveImageUrl(imageUrl) : null;
     // debugPrint('[UserInfoScreen] _certificateItem: imageUrl=$imageUrl, resolvedUrl=$resolvedUrl');
-    
+
     return ClipRRect(
       borderRadius: BorderRadius.circular(12),
       child: Container(
@@ -633,12 +557,7 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
           imageUrl: resolvedUrl,
           fit: BoxFit.cover,
           placeholder: Center(child: Skeleton.box(height: 80)),
-          errorWidget: Center(
-            child: SvgIcon(
-              svgPath: 'assets/icons_final/document-text.svg',
-              size: 20,
-            ),
-          ),
+          errorWidget: Center(child: SvgIcon(svgPath: 'assets/icons_final/document-text.svg', size: 20)),
         ),
       ),
     );
@@ -658,25 +577,89 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
           imageUrl: imageUrl != null ? resolveImageUrl(imageUrl) : null,
           fit: BoxFit.cover,
           errorWidget: Center(
-            child: SizedBox(
-              width: 20,
-              height: 20,
-              child: SvgIcon(
-                svgPath: 'assets/icons_final/car.svg',
-                size: 20,
-              ),
-            ),
+            child: SizedBox(width: 20, height: 20, child: SvgIcon(svgPath: 'assets/icons_final/car.svg', size: 20)),
           ),
         ),
       ),
     );
   }
 
-  Widget _pill({
-    required Widget icon,
-    required String label,
-    required String value,
-  }) {
+  Widget _buildReviewsSection() {
+    if (_isLoadingReviews) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Skeleton.line(width: 150, height: 16),
+          const SizedBox(height: 12),
+          Skeleton.box(height: 100),
+        ],
+      );
+    }
+
+    if (_reviewsErrorMessage != null) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: DesignTokens.surfacePrimary,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: DesignTokens.borderSecondary),
+        ),
+        child: Column(
+          children: [
+            MyText(text: 'Đánh giá gần đây', textStyle: 'title', textSize: '16', textColor: 'primary'),
+            const SizedBox(height: 8),
+            MyText(text: 'Không thể tải đánh giá', textStyle: 'body', textSize: '12', textColor: 'secondary'),
+            const SizedBox(height: 8),
+            ElevatedButton(
+              onPressed: _loadGarageReviews,
+              child: const Text('Thử lại'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_garageReviews == null || _garageReviews!.reviews.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: DesignTokens.surfacePrimary,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: DesignTokens.borderSecondary),
+        ),
+        child: Column(
+          children: [
+            MyText(text: 'Đánh giá gần đây', textStyle: 'title', textSize: '16', textColor: 'primary'),
+            const SizedBox(height: 8),
+            MyText(text: 'Chưa có đánh giá nào', textStyle: 'body', textSize: '12', textColor: 'secondary'),
+          ],
+        ),
+      );
+    }
+
+    // Convert GarageReview to ReviewModel for RecentReviews component
+    final reviewModels = _garageReviews!.reviews.take(5).map((garageReview) {
+      return ReviewModel(
+        id: garageReview.id.toString(),
+        userName: garageReview.createdBy.name,
+        userAvatar: null, // API không trả về avatar
+        serviceName: 'Dịch vụ garage', // Có thể cần lấy từ quotation hoặc request service
+        comment: garageReview.comment,
+        rating: garageReview.starRating.round(),
+        createdAt: DateTime.tryParse(garageReview.createdAt),
+        context: 'Vietnam car',
+      );
+    }).toList();
+
+    return RecentReviews(
+      reviews: reviewModels,
+      onSeeMorePressed: () {
+        // TODO: Navigate to full reviews screen
+      },
+    );
+  }
+
+  Widget _pill({required Widget icon, required String label, required String value}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -685,200 +668,12 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
           children: [
             icon,
             const SizedBox(width: 4),
-            if (label.isNotEmpty)
-              MyText(
-                text: label,
-                textStyle: 'body',
-                textSize: '12',
-                textColor: 'secondary',
-              ),
+            if (label.isNotEmpty) MyText(text: label, textStyle: 'body', textSize: '12', textColor: 'secondary'),
           ],
         ),
         const SizedBox(height: 4),
-        MyText(
-          text: value,
-          textStyle: 'title',
-          textSize: '14',
-          textColor: 'brand',
-        ),
+        MyText(text: value, textStyle: 'title', textSize: '14', textColor: 'brand'),
       ],
     );
-  }
-
-  String _extractYear(String? date) {
-    if (date == null || date.isEmpty) return '';
-    try {
-      final dt = DateTime.parse(date);
-      return dt.year.toString();
-    } catch (_) {
-      return '';
-    }
-  }
-
-  Widget _buildInfoCard() {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Thông tin cơ bản',
-              style: Theme.of(
-                context,
-              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            _buildInfoRow('ID', _userInfo!.id.toString()),
-            _buildInfoRow('User ID', _userInfo!.userId.toString()),
-            _buildInfoRow('Tên', _userInfo!.name),
-            _buildInfoRow('Số điện thoại', _userInfo!.phone),
-            _buildInfoRow('Vai trò', _userInfo!.roleName),
-            _buildInfoRow('Mã vai trò', _userInfo!.roleCode),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStatusCard() {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Trạng thái tài khoản',
-              style: Theme.of(
-                context,
-              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            _buildStatusRow(
-              'Trạng thái hoạt động',
-              _userInfo!.isActive ? 'Đang hoạt động' : 'Không hoạt động',
-              _userInfo!.isActive ? Colors.green : Colors.red,
-            ),
-            _buildStatusRow(
-              'Xác thực số điện thoại',
-              _userInfo!.isPhoneVerified ? 'Đã xác thực' : 'Chưa xác thực',
-              _userInfo!.isPhoneVerified ? Colors.green : Colors.orange,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSessionCard() {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Thông tin phiên đăng nhập',
-              style: Theme.of(
-                context,
-              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            _buildInfoRow('Device ID', _userInfo!.deviceId),
-            _buildInfoRow('Session ID', _userInfo!.sessionId),
-            _buildInfoRow('Ngày tạo', _formatDateTime(_userInfo!.createdAt)),
-            _buildInfoRow(
-              'Cập nhật lần cuối',
-              _formatDateTime(_userInfo!.updatedAt),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInfoRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 120,
-            child: Text(
-              label,
-              style: TextStyle(
-                fontWeight: FontWeight.w500,
-                color: Colors.grey[700],
-              ),
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(fontWeight: FontWeight.w400),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatusRow(String label, String value, Color color) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 120,
-            child: Text(
-              label,
-              style: TextStyle(
-                fontWeight: FontWeight.w500,
-                color: Colors.grey[700],
-              ),
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Row(
-              children: [
-                Container(
-                  width: 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    color: color,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  value,
-                  style: TextStyle(fontWeight: FontWeight.w400, color: color),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _formatDateTime(String dateTimeString) {
-    try {
-      final dateTime = DateTime.parse(dateTimeString);
-      return '${dateTime.day}/${dateTime.month}/${dateTime.year} ${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}';
-    } catch (e) {
-      return dateTimeString;
-    }
   }
 }

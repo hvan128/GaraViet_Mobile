@@ -13,6 +13,7 @@ import 'package:gara/services/messaging/messaging_service.dart';
 import 'package:gara/services/quotation/quotation_service.dart';
 import 'package:gara/services/messaging/messaging_event_bus.dart';
 import 'package:gara/widgets/text_field.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class RequestDetailScreen extends StatefulWidget {
   final RequestServiceModel item;
@@ -26,6 +27,27 @@ class RequestDetailScreen extends StatefulWidget {
 class _RequestDetailScreenState extends State<RequestDetailScreen> {
   late final PageController _pageController;
   int _currentIndex = 0;
+
+  Future<void> _openInMaps({double? latitude, double? longitude, String? queryLabel}) async {
+    try {
+      Uri? uri;
+      if (latitude != null && longitude != null) {
+        final geoUri = Uri.parse(
+            'geo:$latitude,$longitude?q=$latitude,$longitude(${Uri.encodeComponent(queryLabel ?? 'Vị trí')})');
+        if (await canLaunchUrl(geoUri)) {
+          uri = geoUri;
+        } else {
+          uri = Uri.parse('https://www.google.com/maps/search/?api=1&query=$latitude,$longitude');
+        }
+      } else if ((queryLabel ?? '').isNotEmpty) {
+        final encoded = Uri.encodeComponent(queryLabel!);
+        uri = Uri.parse('https://www.google.com/maps/search/?api=1&query=$encoded');
+      }
+      if (uri != null) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+    } catch (_) {}
+  }
 
   bool get isGarageUser {
     final userProvider = Provider.of<UserProvider>(context, listen: false);
@@ -47,9 +69,7 @@ class _RequestDetailScreenState extends State<RequestDetailScreen> {
   Future<void> _onMessagePressed() async {
     final item = widget.item;
     try {
-      final res = await MessagingServiceApi.createRoomFromRequest(
-        requestServiceId: item.id,
-      );
+      final res = await MessagingServiceApi.createRoomFromRequest(requestServiceId: item.id);
       if (!mounted) return;
       if (res.success && res.data != null && res.data!.roomId.isNotEmpty) {
         Navigator.pushNamed(context, '/chat-room', arguments: res.data!.roomId);
@@ -76,10 +96,7 @@ class _RequestDetailScreenState extends State<RequestDetailScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => _QuotationBottomSheet(
-        item: item,
-        onSuccess: () {},
-      ),
+      builder: (context) => _QuotationBottomSheet(item: item, onSuccess: () {}),
     );
   }
 
@@ -93,23 +110,25 @@ class _RequestDetailScreenState extends State<RequestDetailScreen> {
         minimum: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         child: Row(
           children: [
-            Expanded(
-              child: MyButton(
-                text: 'Nhắn tin',
-                height: 36,
-                onPressed: _onMessagePressed,
-                buttonType: ButtonType.secondary,
-                textStyle: 'label',
-                textSize: '14',
-                textColor: 'primary',
-                startIcon: 'assets/icons_final/message-text.svg',
-                sizeStartIcon: const Size(18, 18),
+            if (isGarageUser) ...[
+              Expanded(
+                child: MyButton(
+                  text: 'Nhắn tin',
+                  height: 36,
+                  onPressed: _onMessagePressed,
+                  buttonType: ButtonType.secondary,
+                  textStyle: 'label',
+                  textSize: '14',
+                  textColor: 'primary',
+                  startIcon: 'assets/icons_final/message-text.svg',
+                  sizeStartIcon: const Size(18, 18),
+                ),
               ),
-            ),
-            const SizedBox(width: 12),
+              const SizedBox(width: 12),
+            ],
             Expanded(
               child: MyButton(
-                text: isGarageUser ? 'Báo giá' : 'Danh sách báo giá',
+                text: isGarageUser ? 'Báo giá' : 'Danh sách báo giá (${widget.item.listQuotation?.length ?? 0})',
                 height: 36,
                 onPressed: _onQuotationPressed,
                 buttonType: ButtonType.primary,
@@ -143,11 +162,7 @@ class _RequestDetailScreenState extends State<RequestDetailScreen> {
                       return Container(
                         color: DesignTokens.gray100,
                         child: Center(
-                          child: SvgIcon(
-                            svgPath: 'assets/icons_final/car.svg',
-                            size: 48,
-                            color: DesignTokens.gray400,
-                          ),
+                          child: SvgIcon(svgPath: 'assets/icons_final/car.svg', size: 48, color: DesignTokens.gray400),
                         ),
                       );
                     }
@@ -156,10 +171,7 @@ class _RequestDetailScreenState extends State<RequestDetailScreen> {
                         Navigator.pushNamed(
                           context,
                           '/image-viewer',
-                          arguments: {
-                            'files': imageFiles,
-                            'initialIndex': index,
-                          },
+                          arguments: {'files': imageFiles, 'initialIndex': index},
                         );
                       },
                       child: Image.network(url, fit: BoxFit.cover),
@@ -200,13 +212,7 @@ class _RequestDetailScreenState extends State<RequestDetailScreen> {
                         color: Colors.white.withOpacity(0.2),
                         borderRadius: BorderRadius.circular(40),
                         border: Border.all(color: Colors.white),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
-                            blurRadius: 10,
-                            spreadRadius: 0,
-                          ),
-                        ],
+                        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, spreadRadius: 0)],
                       ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(18),
@@ -215,11 +221,7 @@ class _RequestDetailScreenState extends State<RequestDetailScreen> {
                           child: IconButton(
                             padding: EdgeInsets.zero,
                             constraints: const BoxConstraints(),
-                            icon: SvgIcon(
-                              svgPath: 'assets/icons_final/arrow-left.svg',
-                              size: 20,
-                              color: Colors.white,
-                            ),
+                            icon: SvgIcon(svgPath: 'assets/icons_final/arrow-left.svg', size: 20, color: Colors.white),
                             onPressed: () => Navigator.pop(context),
                           ),
                         ),
@@ -260,7 +262,8 @@ class _RequestDetailScreenState extends State<RequestDetailScreen> {
                             height: 56,
                             decoration: BoxDecoration(
                               border: Border.all(
-                                color: _currentIndex == index ? DesignTokens.surfaceBrand : DesignTokens.borderSecondary,
+                                color:
+                                    _currentIndex == index ? DesignTokens.surfaceBrand : DesignTokens.borderSecondary,
                                 width: _currentIndex == index ? 2 : 1,
                               ),
                               color: DesignTokens.gray100,
@@ -299,11 +302,7 @@ class _RequestDetailScreenState extends State<RequestDetailScreen> {
                         textColor: 'primary',
                       ),
                     ),
-                    SvgIcon(
-                      svgPath: 'assets/icons_final/clock.svg',
-                      size: 16,
-                      color: DesignTokens.textTertiary,
-                    ),
+                    SvgIcon(svgPath: 'assets/icons_final/clock.svg', size: 16, color: DesignTokens.textTertiary),
                     const SizedBox(width: 4),
                     MyText(
                       text: widget.item.timeAgo ?? widget.item.createdAt.replaceFirst('T', ' ').split('.').first,
@@ -324,35 +323,35 @@ class _RequestDetailScreenState extends State<RequestDetailScreen> {
                 const SizedBox(height: 16),
                 // Vị trí + icon map
                 Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.start,
                   children: [
-                    MyText(
-                      text: 'Vị trí: ',
-                      textStyle: 'body',
-                      textSize: '14',
-                      textColor: 'tertiary',
-                    ),
-                    MyText(
-                      text: widget.item.address,
-                      textStyle: 'body',
-                      textSize: '14',
-                      textColor: 'secondary',
+                    MyText(text: 'Vị trí: ', textStyle: 'body', textSize: '14', textColor: 'tertiary'),
+                    Expanded(
+                      child: MyText(
+                        text: widget.item.address,
+                        textStyle: 'body',
+                        textSize: '14',
+                        textColor: 'secondary',
+                      ),
                     ),
                     const SizedBox(width: 8),
-                    SvgIcon(
-                      svgPath: 'assets/icons_final/map.svg',
-                      size: 20,
-                      color: DesignTokens.surfaceBrand,
+                    GestureDetector(
+                      onTap: () => _openInMaps(
+                        latitude: widget.item.addressLatitude,
+                        longitude: widget.item.addressLongitude,
+                        queryLabel: widget.item.address,
+                      ),
+                      child: SvgIcon(
+                        svgPath: 'assets/icons_final/map.svg',
+                        size: 20,
+                        color: DesignTokens.surfaceBrand,
+                      ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 16),
-                MyText(
-                  text: 'Mô tả yêu cầu',
-                  textStyle: 'body',
-                  textSize: '14',
-                  textColor: 'tertiary',
-                ),
+                MyText(text: 'Mô tả yêu cầu', textStyle: 'body', textSize: '14', textColor: 'tertiary'),
                 const SizedBox(height: 4),
                 if ((widget.item.description ?? '').isNotEmpty)
                   MyText(
@@ -389,10 +388,7 @@ class _QuotationBottomSheetState extends State<_QuotationBottomSheet> {
     final digitsOnly = value.replaceAll(RegExp(r'[^\d]'), '');
     if (digitsOnly.isEmpty) return '';
     final number = int.tryParse(digitsOnly) ?? 0;
-    final formatted = number.toString().replaceAllMapped(
-      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-      (m) => '${m[1]}.'
-    );
+    final formatted = number.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.');
     return formatted;
   }
 
@@ -454,14 +450,7 @@ class _QuotationBottomSheetState extends State<_QuotationBottomSheet> {
             // Header giống màn RequestScreen
             Row(
               children: [
-                Expanded(
-                  child: MyText(
-                    text: 'Gửi báo giá',
-                    textStyle: 'title',
-                    textSize: '16',
-                    textColor: 'primary',
-                  ),
-                ),
+                Expanded(child: MyText(text: 'Gửi báo giá', textStyle: 'title', textSize: '16', textColor: 'primary')),
               ],
             ),
             const SizedBox(height: 12),
@@ -537,6 +526,3 @@ class _QuotationBottomSheetState extends State<_QuotationBottomSheet> {
     );
   }
 }
-
-
-

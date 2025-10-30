@@ -6,6 +6,7 @@ import 'package:gara/screens/authentication/common/registration_wrapper_screen.d
 import 'package:gara/screens/authentication/user_registration/user_registration_flow_screen.dart';
 import 'package:gara/screens/authentication/gara_registration/gara_registration_flow_screen.dart';
 import 'package:gara/screens/main/main_navigation_screen.dart';
+import 'package:gara/screens/main/default_screen.dart';
 import 'package:gara/screens/create_request/create_request_screen.dart';
 import 'package:gara/screens/request/request_detail_screen.dart';
 import 'package:gara/screens/user/user_info_screen.dart';
@@ -18,21 +19,21 @@ import 'package:gara/models/request/request_service_model.dart';
 import 'package:gara/models/quotation/quotation_model.dart';
 import 'package:gara/screens/transaction/transaction_detail_screen.dart';
 import 'package:gara/screens/my_car/add_car_screen.dart';
+import 'package:gara/screens/my_car/edit_car_screen.dart';
 import 'package:gara/screens/messaging/messages_screen.dart';
 import 'package:gara/screens/messaging/chat_room_screen.dart';
 import 'package:gara/widgets/fullscreen_image_viewer.dart';
 import 'package:gara/screens/authentication/gara_registration/electronic_contract_page.dart';
+import 'package:gara/screens/garage/garage_info_screen.dart';
 
 Map<String, WidgetBuilder> routes = {
-  //* Initial Screen
-  '/': (context) => const MainNavigationScreen(),
+  //* Initial Screen - DefaultScreen cho người dùng chưa đăng nhập
+  '/': (context) => const DefaultScreen(),
   //* Main Navigation Screen (alias)
   '/home': (context) => const MainNavigationScreen(),
   //* Request Detail Screen
   '/request-detail':
-      (context) => RequestDetailScreen(
-        item: ModalRoute.of(context)?.settings.arguments as RequestServiceModel,
-      ),
+      (context) => RequestDetailScreen(item: ModalRoute.of(context)?.settings.arguments as RequestServiceModel),
   //* Fullscreen Image Viewer
   '/image-viewer': (context) {
     final args = ModalRoute.of(context)?.settings.arguments;
@@ -92,6 +93,15 @@ Map<String, WidgetBuilder> routes = {
   },
   //* Add Car Screen
   '/add-car': (context) => const AddCarScreen(),
+  //* Edit Car Screen
+  '/edit-car': (context) {
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args is Map && args['carInfo'] != null) {
+      return EditCarScreen(carInfo: args['carInfo']);
+    }
+    // fallback: return to home if no car data
+    return const MainNavigationScreen();
+  },
   //* Messages Screen
   '/messages': (context) => const MessagesScreen(),
   //* Chat Room Screen
@@ -99,12 +109,22 @@ Map<String, WidgetBuilder> routes = {
     return const ChatRoomScreen();
   },
   //* Electronic Contract Screen
-  '/electronic-contract': (context) => ElectronicContractPage(
-    onNext: () {
-      // Navigate back to home after successful contract signing
-      Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
-    },
-    currentStep: 1,
-    totalSteps: 1,
-  ),
+  '/electronic-contract':
+      (context) => ElectronicContractPage(
+        onNext: () {
+          // Navigate back to home after successful contract signing
+          Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+        },
+        currentStep: 1,
+        totalSteps: 1,
+      ),
+  //* Garage Info Screen
+  '/garage-info': (context) {
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args is UserInfoResponse) {
+      return GarageInfoScreen(garageInfo: args);
+    }
+    // fallback: return to home if no garage data
+    return const MainNavigationScreen();
+  },
 };

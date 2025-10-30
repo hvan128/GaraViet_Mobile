@@ -20,17 +20,17 @@ void main() async {
 
   Storage.newDeviceID();
   print('🚀 [MAIN] Device ID initialized');
-  
+
   // Khởi tạo network connectivity listener
   print('🚀 [MAIN] Initializing network connectivity listener...');
   NetworkUtils.initializeConnectivityListener();
   print('🚀 [MAIN] Network connectivity listener initialized');
-  
+
   // Khởi tạo hệ thống authentication
   print('🚀 [MAIN] Starting authentication initialization...');
   await AuthInitializer.initialize();
   print('🚀 [MAIN] Authentication initialization completed');
-  
+
   // Khởi tạo hệ thống notifications
   print('🚀 [MAIN] Starting notification initialization...');
   try {
@@ -39,7 +39,7 @@ void main() async {
   } catch (e) {
     print('❌ [MAIN] Error initializing notifications: $e');
   }
-  
+
   print('🚀 [MAIN] Starting app...');
   runApp(const MyApp());
 }
@@ -69,10 +69,7 @@ class MyApp extends StatelessWidget {
       child: MaterialApp(
         title: 'Gara App',
         navigatorKey: Navigate().navigationKey,
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-          useMaterial3: true,
-        ),
+        theme: ThemeData(colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple), useMaterial3: true),
         routes: routes,
         initialRoute: '/',
         debugShowCheckedModeBanner: false,
@@ -80,4 +77,3 @@ class MyApp extends StatelessWidget {
     );
   }
 }
-

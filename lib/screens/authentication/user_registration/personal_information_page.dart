@@ -26,38 +26,19 @@ class PersonalInformationPage extends StatefulWidget {
   });
 
   @override
-  State<PersonalInformationPage> createState() =>
-      _PersonalInformationPageState();
+  State<PersonalInformationPage> createState() => _PersonalInformationPageState();
 }
 
 class _PersonalInformationPageState extends State<PersonalInformationPage> {
   final TextEditingController _fullNameController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmPasswordController =
-      TextEditingController();
+  final TextEditingController _confirmPasswordController = TextEditingController();
 
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   bool _isLoading = false;
   bool _submitted = false;
-
-  // Form validator: true nếu tất cả trường hợp lệ
-  bool _isFormValid() {
-    final String fullName = _fullNameController.text.trim();
-    final String phone = _phoneController.text.trim();
-    final String password = _passwordController.text;
-    final String confirmPassword = _confirmPasswordController.text;
-
-    final bool hasFullName = fullName.isNotEmpty;
-    final bool hasPhone =
-        phone.isNotEmpty; // Có thể bổ sung regex VN phone nếu cần
-    final bool hasPassword = password.isNotEmpty && password.length >= 6;
-    final bool hasConfirm =
-        confirmPassword.isNotEmpty && confirmPassword == password;
-
-    return hasFullName && hasPhone && hasPassword && hasConfirm;
-  }
 
   // Điều kiện 1: độ dài hợp lệ (6-32)
   bool _isPasswordLengthValid(String password) {
@@ -85,15 +66,12 @@ class _PersonalInformationPageState extends State<PersonalInformationPage> {
 
   // Tổng hợp: mạnh khi thỏa cả 3 điều kiện
   bool _isPasswordStrong(String password) {
-    return _isPasswordLengthValid(password) &&
-        _hasSpecialChar(password) &&
-        _hasDigit(password);
+    return _isPasswordLengthValid(password) && _hasSpecialChar(password) && _hasDigit(password);
   }
 
   // Kiểm tra nhập lại mật khẩu đúng
   bool _isConfirmMatched() {
-    return _confirmPasswordController.text.isNotEmpty &&
-        _confirmPasswordController.text == _passwordController.text;
+    return _confirmPasswordController.text.isNotEmpty && _confirmPasswordController.text == _passwordController.text;
   }
 
   String? _fullNameError;
@@ -106,10 +84,7 @@ class _PersonalInformationPageState extends State<PersonalInformationPage> {
     super.initState();
     // Load existing data from RegistrationData
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final registrationData = Provider.of<RegistrationData>(
-        context,
-        listen: false,
-      );
+      final registrationData = Provider.of<RegistrationData>(context, listen: false);
       if (registrationData.fullName != null) {
         _fullNameController.text = registrationData.fullName!;
       }
@@ -196,10 +171,7 @@ class _PersonalInformationPageState extends State<PersonalInformationPage> {
     }
 
     final bool hasAnyError =
-        fullNameError != null ||
-        phoneError != null ||
-        passwordError != null ||
-        confirmError != null;
+        fullNameError != null || phoneError != null || passwordError != null || confirmError != null;
 
     if (hasAnyError) {
       setState(() {
@@ -213,10 +185,7 @@ class _PersonalInformationPageState extends State<PersonalInformationPage> {
     }
 
     // Lưu dữ liệu khi không có lỗi
-    final registrationData = Provider.of<RegistrationData>(
-      context,
-      listen: false,
-    );
+    final registrationData = Provider.of<RegistrationData>(context, listen: false);
     registrationData.setFullName(fullName);
     registrationData.setPhoneNumber(phone);
     registrationData.setPassword(password);
@@ -238,10 +207,7 @@ class _PersonalInformationPageState extends State<PersonalInformationPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Header
-            MyHeader(
-              title: 'Thông tin cá nhân',
-              onLeftPressed: widget.onBack ?? () => Navigator.pop(context),
-            ),
+            MyHeader(title: 'Thông tin cá nhân', onLeftPressed: widget.onBack ?? () => Navigator.pop(context)),
 
             // Progress bar
             StepProgressBar(
@@ -255,10 +221,7 @@ class _PersonalInformationPageState extends State<PersonalInformationPage> {
             Expanded(
               child: KeyboardDismissWrapper(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20.0,
-                    vertical: 24.0,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 24.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -267,12 +230,7 @@ class _PersonalInformationPageState extends State<PersonalInformationPage> {
                       const SizedBox(height: 12),
 
                       // Title
-                      MyText(
-                        text: 'Bạn là...',
-                        textStyle: 'head',
-                        textSize: '24',
-                        textColor: 'primary',
-                      ),
+                      MyText(text: 'Bạn là...', textStyle: 'head', textSize: '24', textColor: 'primary'),
 
                       const SizedBox(height: 4),
 
@@ -301,16 +259,13 @@ class _PersonalInformationPageState extends State<PersonalInformationPage> {
                               final String v = value.trim();
                               if (_submitted) {
                                 setState(() {
-                                  _fullNameError =
-                                      v.isEmpty
-                                          ? 'Vui lòng nhập tên đầy đủ'
-                                          : null;
+                                  _fullNameError = v.isEmpty ? 'Vui lòng nhập tên đầy đủ' : null;
                                 });
                               }
                             },
                           ),
                           const SizedBox(height: 16),
-                      
+
                           // Phone number input
                           MyTextField(
                             controller: _phoneController,
@@ -322,17 +277,13 @@ class _PersonalInformationPageState extends State<PersonalInformationPage> {
                             hintText: 'Nhập số điện thoại',
                             onChange: (value) {
                               final String v = value.trim();
-                              final RegExp vnPhone = RegExp(
-                                r'^(?:\+?84|0)\d{9,10}$',
-                              );
+                              final RegExp vnPhone = RegExp(r'^(?:\+?84|0)\d{9,10}$');
                               if (_submitted) {
                                 setState(() {
                                   if (v.isEmpty) {
-                                    _phoneError =
-                                        'Vui lòng nhập số điện thoại';
+                                    _phoneError = 'Vui lòng nhập số điện thoại';
                                   } else if (!vnPhone.hasMatch(v)) {
-                                    _phoneError =
-                                        'Số điện thoại không hợp lệ';
+                                    _phoneError = 'Số điện thoại không hợp lệ';
                                   } else {
                                     _phoneError = null;
                                   }
@@ -341,7 +292,7 @@ class _PersonalInformationPageState extends State<PersonalInformationPage> {
                             },
                           ),
                           const SizedBox(height: 16),
-                      
+
                           // Password input
                           MyTextField(
                             controller: _passwordController,
@@ -350,16 +301,13 @@ class _PersonalInformationPageState extends State<PersonalInformationPage> {
                             hasError: _submitted && _passwordError != null,
                             errorText: _passwordError,
                             suffixIcon:
-                                (_isPasswordStrong(
-                                      _passwordController.text,
-                                    ))
+                                (_isPasswordStrong(_passwordController.text))
                                     ? Container(
                                       width: 24,
                                       height: 24,
                                       alignment: Alignment.center,
                                       child: SvgIcon(
-                                        svgPath:
-                                            'assets/icons_final/Check-blue.svg',
+                                        svgPath: 'assets/icons_final/Check-blue.svg',
                                         width: 24,
                                         height: 24,
                                       ),
@@ -374,41 +322,33 @@ class _PersonalInformationPageState extends State<PersonalInformationPage> {
                               } else if (!_isPasswordLengthValid(pw)) {
                                 err = 'Mật khẩu phải dài 6-32 ký tự';
                               } else if (!_hasSpecialChar(pw)) {
-                                err =
-                                    'Mật khẩu phải bao gồm ký tự đặc biệt';
+                                err = 'Mật khẩu phải bao gồm ký tự đặc biệt';
                               } else if (!_hasDigit(pw)) {
                                 err = 'Mật khẩu phải bao gồm chữ số';
                               }
-                      
+
                               if (_submitted) {
                                 setState(() {
                                   _passwordError = err;
                                   // Đồng bộ lại lỗi xác nhận khi mật khẩu thay đổi
-                                  if (_confirmPasswordController
-                                      .text
-                                      .isNotEmpty) {
+                                  if (_confirmPasswordController.text.isNotEmpty) {
                                     _confirmPasswordError =
-                                        (_confirmPasswordController.text ==
-                                                pw)
-                                            ? null
-                                            : 'Mật khẩu không khớp';
+                                        (_confirmPasswordController.text == pw) ? null : 'Mật khẩu không khớp';
                                   }
                                 });
                               }
                             },
                           ),
                           const SizedBox(height: 8),
-                          if (_passwordController.text.isNotEmpty)
-                            _buildPasswordStrengthHelperText(),
+                          if (_passwordController.text.isNotEmpty) _buildPasswordStrengthHelperText(),
                           const SizedBox(height: 16),
-                      
+
                           // Confirm Password input
                           MyTextField(
                             controller: _confirmPasswordController,
                             label: 'Nhập lại mật khẩu',
                             obscureText: _obscureConfirmPassword,
-                            hasError:
-                                _submitted && _confirmPasswordError != null,
+                            hasError: _submitted && _confirmPasswordError != null,
                             errorText: _confirmPasswordError,
                             suffixIcon:
                                 (_isConfirmMatched())
@@ -417,8 +357,7 @@ class _PersonalInformationPageState extends State<PersonalInformationPage> {
                                       height: 24,
                                       alignment: Alignment.center,
                                       child: SvgIcon(
-                                        svgPath:
-                                            'assets/icons_final/Check-blue.svg',
+                                        svgPath: 'assets/icons_final/Check-blue.svg',
                                         width: 24,
                                         height: 24,
                                       ),
@@ -429,12 +368,9 @@ class _PersonalInformationPageState extends State<PersonalInformationPage> {
                               if (_submitted) {
                                 setState(() {
                                   if (value.isEmpty) {
-                                    _confirmPasswordError =
-                                        'Vui lòng nhập lại mật khẩu';
-                                  } else if (value !=
-                                      _passwordController.text) {
-                                    _confirmPasswordError =
-                                        'Mật khẩu không khớp';
+                                    _confirmPasswordError = 'Vui lòng nhập lại mật khẩu';
+                                  } else if (value != _passwordController.text) {
+                                    _confirmPasswordError = 'Mật khẩu không khớp';
                                   } else {
                                     _confirmPasswordError = null;
                                   }
@@ -443,31 +379,20 @@ class _PersonalInformationPageState extends State<PersonalInformationPage> {
                             },
                           ),
                           const SizedBox(height: 24),
-                      
+
                           // Continue button
                           MyButton(
                             text: _isLoading ? 'Đang xử lý...' : 'Tiếp tục',
-                            buttonType:
-                                (!_isFormNotEmpty() || _isLoading)
-                                    ? ButtonType.disable
-                                    : ButtonType.primary,
-                            onPressed:
-                                (!_isFormNotEmpty() || _isLoading)
-                                    ? null
-                                    : _validateAndNext,
+                            buttonType: (!_isFormNotEmpty() || _isLoading) ? ButtonType.disable : ButtonType.primary,
+                            onPressed: (!_isFormNotEmpty() || _isLoading) ? null : _validateAndNext,
                           ),
                           const SizedBox(height: 12),
-                      
+
                           // Login link
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              MyText(
-                                text: 'Đã có tài khoản?',
-                                textStyle: 'body',
-                                textSize: '14',
-                                textColor: 'primary',
-                              ),
+                              MyText(text: 'Đã có tài khoản?', textStyle: 'body', textSize: '14', textColor: 'primary'),
                               const SizedBox(width: 8),
                               MyText(
                                 text: 'Đăng nhập ngay!',
@@ -499,20 +424,12 @@ class _PersonalInformationPageState extends State<PersonalInformationPage> {
     Widget line(bool ok, String text) => Row(
       children: [
         SvgIcon(
-          svgPath:
-              ok
-                  ? 'assets/icons_final/check_outline.svg'
-                  : 'assets/icons_final/close.svg',
+          svgPath: ok ? 'assets/icons_final/check_outline.svg' : 'assets/icons_final/close.svg',
           width: 16,
           height: 16,
         ),
         const SizedBox(width: 8),
-        MyText(
-          text: text,
-          textStyle: 'body',
-          textSize: '14',
-          textColor: 'secondary',
-        ),
+        MyText(text: text, textStyle: 'body', textSize: '14', textColor: 'secondary'),
       ],
     );
 
