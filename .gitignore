@@ -1,3 +1,51 @@
+# Flutter/Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+
+# Build outputs
+build/
+**/build/
+ios/Flutter/
+android/.gradle/
+android/app/build/
+**/GeneratedPluginRegistrant.*
+
+# IDE configs
+.idea/
+.vscode/
+*.iml
+
+# CocoaPods
+ios/Pods/
+macos/Pods/
+
+# Xcode user data
+**/*.xcuserstate
+**/*.xcworkspace/xcuserdata/
+**/*.xcodeproj/xcuserdata/
+
+# OS junk
+.DS_Store
+
+# Local SDKs, large archives, vendor bundles
+flutter/
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.7z
+
+# App binaries
+*.ipa
+*.apk
+*.aab
+
+# Logs
+*.log
 # Miscellaneous
 *.class
 *.log
