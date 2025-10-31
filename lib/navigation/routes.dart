@@ -25,6 +25,11 @@ import 'package:gara/screens/messaging/chat_room_screen.dart';
 import 'package:gara/widgets/fullscreen_image_viewer.dart';
 import 'package:gara/screens/authentication/gara_registration/electronic_contract_page.dart';
 import 'package:gara/screens/garage/garage_info_screen.dart';
+import 'package:gara/screens/settings/settings_screen.dart';
+import 'package:gara/screens/settings/change_password_screen.dart';
+import 'package:gara/screens/authentication/forgot_password/forgot_password_phone_screen.dart';
+import 'package:gara/screens/authentication/forgot_password/forgot_password_otp_screen.dart';
+import 'package:gara/screens/authentication/forgot_password/forgot_password_new_password_screen.dart';
 
 Map<String, WidgetBuilder> routes = {
   //* Initial Screen - DefaultScreen cho người dùng chưa đăng nhập
@@ -32,8 +37,8 @@ Map<String, WidgetBuilder> routes = {
   //* Main Navigation Screen (alias)
   '/home': (context) => const MainNavigationScreen(),
   //* Request Detail Screen
-  '/request-detail':
-      (context) => RequestDetailScreen(item: ModalRoute.of(context)?.settings.arguments as RequestServiceModel),
+  '/request-detail': (context) =>
+      RequestDetailScreen(item: ModalRoute.of(context)?.settings.arguments as RequestServiceModel),
   //* Fullscreen Image Viewer
   '/image-viewer': (context) {
     final args = ModalRoute.of(context)?.settings.arguments;
@@ -109,8 +114,7 @@ Map<String, WidgetBuilder> routes = {
     return const ChatRoomScreen();
   },
   //* Electronic Contract Screen
-  '/electronic-contract':
-      (context) => ElectronicContractPage(
+  '/electronic-contract': (context) => ElectronicContractPage(
         onNext: () {
           // Navigate back to home after successful contract signing
           Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
@@ -126,5 +130,21 @@ Map<String, WidgetBuilder> routes = {
     }
     // fallback: return to home if no garage data
     return const MainNavigationScreen();
+  },
+  //* Settings Screen
+  '/settings': (context) => const SettingsScreen(),
+  //* Change Password Screen
+  '/change-password': (context) => const ChangePasswordScreen(),
+  //* Forgot Password Flow
+  '/forgot-password/phone': (context) => const ForgotPasswordPhoneScreen(),
+  '/forgot-password/otp': (context) {
+    final args = ModalRoute.of(context)?.settings.arguments;
+    final phone = (args is Map) ? args['phone'] as String? : null;
+    return ForgotPasswordOtpScreen(phone: phone ?? '');
+  },
+  '/forgot-password/new-password': (context) {
+    final args = ModalRoute.of(context)?.settings.arguments;
+    final token = (args is Map) ? args['reset_token'] as String? : null;
+    return ForgotPasswordNewPasswordScreen(resetToken: token ?? '');
   },
 };

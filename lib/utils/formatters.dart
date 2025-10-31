@@ -10,3 +10,28 @@ String formatCurrency(num value) {
   }
   return buffer.toString();
 }
+
+String formatMessageTime(String timeString) {
+  try {
+    final time = DateTime.parse(timeString);
+    final now = DateTime.now();
+    final difference = now.difference(time);
+
+    if (difference.inDays > 0) {
+      return '${time.day}/${time.month} ${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+    } else {
+      return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+    }
+  } catch (e) {
+    return timeString;
+  }
+}
+
+String formatLicensePlate(String? raw) {
+  if (raw == null) return '';
+  final cleaned = raw.replaceAll(RegExp(r'[^A-Za-z0-9]'), '');
+  if (cleaned.length <= 5) return cleaned;
+  final head = cleaned.substring(0, cleaned.length - 5);
+  final tail = cleaned.substring(cleaned.length - 5);
+  return '$head-$tail';
+}

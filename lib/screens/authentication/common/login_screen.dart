@@ -239,11 +239,14 @@ class _LoginScreenState extends State<LoginScreen> {
                       children: [
                         MyText(text: 'Quên mật khẩu?', textStyle: 'body', textSize: '14', textColor: 'primary'),
                         const SizedBox(width: 8),
-                        MyText(
-                          text: 'Cài lại mật khẩu',
-                          textStyle: 'title',
-                          textSize: '14',
-                          color: DesignTokens.primaryBlue,
+                        GestureDetector(
+                          onTap: () => Navigate.pushNamed('/forgot-password/phone'),
+                          child: MyText(
+                            text: 'Cài lại mật khẩu',
+                            textStyle: 'title',
+                            textSize: '14',
+                            color: DesignTokens.primaryBlue,
+                          ),
                         ),
                       ],
                     ),

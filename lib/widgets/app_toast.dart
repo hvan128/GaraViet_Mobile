@@ -33,7 +33,7 @@ class _AppToastState extends State<AppToast> with SingleTickerProviderStateMixin
     _animationController = AnimationController(duration: const Duration(milliseconds: 300), vsync: this);
 
     _slideAnimation = Tween<double>(
-      begin: 1.0,
+      begin: -1.0,
       end: 0.0,
     ).animate(CurvedAnimation(parent: _animationController, curve: Curves.easeOutBack));
 
@@ -199,23 +199,22 @@ class AppToastHelper {
     _safeRemoveCurrentToast();
 
     _currentToast = OverlayEntry(
-      builder:
-          (context) => Positioned(
-            bottom: MediaQuery.of(context).padding.bottom + 16,
-            left: 0,
-            right: 0,
-            child: IgnorePointer(
-              ignoring: false,
-              child: AppToast(
-                message: message,
-                type: type,
-                duration: duration,
-                onDismiss: () {
-                  _forceRemoveCurrentToast();
-                },
-              ),
-            ),
+      builder: (context) => Positioned(
+        top: MediaQuery.of(context).padding.top + 16,
+        left: 0,
+        right: 0,
+        child: IgnorePointer(
+          ignoring: false,
+          child: AppToast(
+            message: message,
+            type: type,
+            duration: duration,
+            onDismiss: () {
+              _forceRemoveCurrentToast();
+            },
           ),
+        ),
+      ),
     );
     // Sử dụng maybeOf để tránh ném lỗi khi Overlay chưa sẵn sàng
     final overlayState = Overlay.maybeOf(context, rootOverlay: true);
@@ -242,23 +241,22 @@ class AppToastHelper {
     if (overlay == null) return;
     _safeRemoveCurrentToast();
     _currentToast = OverlayEntry(
-      builder:
-          (context) => Positioned(
-            bottom: MediaQuery.of(overlay.context).padding.bottom + 16,
-            left: 0,
-            right: 0,
-            child: IgnorePointer(
-              ignoring: false,
-              child: AppToast(
-                message: message,
-                type: type,
-                duration: duration,
-                onDismiss: () {
-                  _forceRemoveCurrentToast();
-                },
-              ),
-            ),
+      builder: (context) => Positioned(
+        top: MediaQuery.of(overlay.context).padding.top + 16,
+        left: 0,
+        right: 0,
+        child: IgnorePointer(
+          ignoring: false,
+          child: AppToast(
+            message: message,
+            type: type,
+            duration: duration,
+            onDismiss: () {
+              _forceRemoveCurrentToast();
+            },
           ),
+        ),
+      ),
     );
     overlay.insert(_currentToast!);
   }

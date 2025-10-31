@@ -15,6 +15,8 @@ import 'package:gara/widgets/header.dart';
 import 'package:gara/widgets/cached_image_widget.dart';
 import 'package:gara/utils/url.dart';
 import 'package:gara/widgets/skeleton.dart';
+import 'package:gara/widgets/app_dialog.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class UserInfoScreen extends StatefulWidget {
   const UserInfoScreen({super.key});
@@ -46,26 +48,6 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
   void initState() {
     super.initState();
     _loadUserInfo();
-    // Set status bar (system notification area) color to surfaceBrand with light icons
-    SystemChrome.setSystemUIOverlayStyle(
-      SystemUiOverlayStyle(
-        statusBarColor: DesignTokens.surfaceBrand,
-        statusBarIconBrightness: Brightness.light,
-        statusBarBrightness: Brightness.dark,
-      ),
-    );
-  }
-
-  @override
-  void dispose() {
-    SystemChrome.setSystemUIOverlayStyle(
-      SystemUiOverlayStyle(
-        statusBarColor: DesignTokens.surfacePrimary,
-        statusBarIconBrightness: Brightness.dark,
-        statusBarBrightness: Brightness.light,
-      ),
-    );
-    super.dispose();
   }
 
   Future<void> _loadUserInfo() async {
@@ -131,7 +113,12 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(backgroundColor: DesignTokens.surfaceSecondary, body: SafeArea(child: _buildBody()));
+    return Scaffold(
+        backgroundColor: DesignTokens.surfaceBrand,
+        body: SafeArea(
+          bottom: false,
+          child: Container(height: double.infinity, color: DesignTokens.surfaceSecondary, child: _buildBody()),
+        ));
   }
 
   Widget _buildBody() {
@@ -411,31 +398,27 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
                   child: _pill(
                     icon: SvgIcon(svgPath: 'assets/icons_final/document-text.svg', size: 16),
-                    label: 'Tổng đánh giá',
-                    value: _garageReviews?.total.toString() ?? '0',
+                    label: 'Đơn hoàn thành',
+                    value: currentUserInfo?.numberOfCompletedOrders?.toString() ?? '0',
                   ),
                 ),
                 const SizedBox(width: 12),
-                Expanded(
-                  child: _pill(
-                    icon: SvgIcon(svgPath: 'assets/icons_final/star_outline.svg', size: 16),
-                    label: 'Đánh giá TB',
-                    value: _garageReviews?.averageRating.toStringAsFixed(1) ?? '0.0',
-                  ),
-                ),
+                Expanded(child: _ratingPill(currentUserInfo?.starRatingStandard ?? 0.0)),
               ],
             ),
             const SizedBox(height: 16),
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (currentUserInfo?.activeFrom != null && currentUserInfo!.activeFrom!.isNotEmpty) ...[
                   Expanded(
                     child: _pill(
-                      icon: SvgIcon(svgPath: 'assets/icons_final/award.svg'),
+                      icon: SvgIcon(svgPath: 'assets/icons_final/award.svg', size: 16),
                       label: 'Hoạt động từ',
                       value: currentUserInfo.activeFrom!,
                     ),
@@ -444,9 +427,11 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
                 ],
                 Expanded(
                   child: _pill(
-                    icon: SvgIcon(svgPath: 'assets/icons_final/location.svg', color: DesignTokens.textPrimary),
+                    icon:
+                        SvgIcon(svgPath: 'assets/icons_final/location.svg', color: DesignTokens.textPrimary, size: 16),
                     label: 'Vị trí',
                     value: addressText,
+                    onTap: _openMap,
                   ),
                 ),
               ],
@@ -482,6 +467,13 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
         final currentUserInfo = userProvider.userInfo ?? _userInfo;
         final images = currentUserInfo?.listFileAvatar?.map((e) => e.path).toList() ?? const <String>[];
         final certificateImages = currentUserInfo?.listFileCertificate?.map((e) => e.path).toList() ?? const <String>[];
+        final bool hasServiceImages = images.isNotEmpty;
+        final bool hasCertificateImages = certificateImages.isNotEmpty;
+
+        // Nếu không có ảnh ở cả dịch vụ và chứng chỉ thì ẩn toàn bộ section
+        if (!hasServiceImages && !hasCertificateImages) {
+          return const SizedBox.shrink();
+        }
 
         // debugPrint('[UserInfoScreen] _buildServicesSection called');
         // debugPrint('[UserInfoScreen] listFileAvatar: ${currentUserInfo?.listFileAvatar}');
@@ -499,40 +491,45 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            MyText(text: 'Dịch vụ cung cấp và chuyên môn', textStyle: 'title', textSize: '1162', textColor: 'primary'),
-            const SizedBox(height: 8),
-            if (currentUserInfo?.servicesProvided != null && currentUserInfo!.servicesProvided!.isNotEmpty) ...[
-              MyText(text: currentUserInfo.servicesProvided!, textStyle: 'body', textSize: '12', textColor: 'tertiary'),
-              const SizedBox(height: 4),
-            ],
-            Container(
-              decoration: BoxDecoration(color: DesignTokens.surfaceSecondary),
-              height: 80,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemBuilder: (ctx, i) => _serviceItem(images[i]),
-                separatorBuilder: (_, __) => const SizedBox(width: 12),
-                itemCount: images.length,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                MyText(text: 'Chứng chỉ', textStyle: 'body', textSize: '12', textColor: 'tertiary'),
-                const SizedBox(height: 8),
-                SizedBox(
-                  height: 80,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    itemBuilder: (ctx, i) =>
-                        _certificateItem(certificateImages.isNotEmpty ? certificateImages[i] : null),
-                    separatorBuilder: (_, __) => const SizedBox(width: 12),
-                    itemCount: certificateImages.isEmpty ? 1 : certificateImages.length.clamp(1, 10),
-                  ),
-                ),
+            if (hasServiceImages) ...[
+              MyText(
+                  text: 'Dịch vụ cung cấp và chuyên môn', textStyle: 'title', textSize: '1162', textColor: 'primary'),
+              const SizedBox(height: 8),
+              if (currentUserInfo?.servicesProvided != null && currentUserInfo!.servicesProvided!.isNotEmpty) ...[
+                MyText(
+                    text: currentUserInfo.servicesProvided!, textStyle: 'body', textSize: '12', textColor: 'tertiary'),
+                const SizedBox(height: 4),
               ],
-            ),
+              Container(
+                decoration: BoxDecoration(color: DesignTokens.surfaceSecondary),
+                height: 80,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemBuilder: (ctx, i) => _serviceItem(images[i]),
+                  separatorBuilder: (_, __) => const SizedBox(width: 12),
+                  itemCount: images.length,
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
+            if (hasCertificateImages) ...[
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  MyText(text: 'Chứng chỉ', textStyle: 'body', textSize: '12', textColor: 'tertiary'),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    height: 80,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      itemBuilder: (ctx, i) => _certificateItem(certificateImages[i]),
+                      separatorBuilder: (_, __) => const SizedBox(width: 12),
+                      itemCount: certificateImages.length.clamp(1, 10),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ],
         );
       },
@@ -586,19 +583,23 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
 
   Widget _buildReviewsSection() {
     if (_isLoadingReviews) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Skeleton.line(width: 150, height: 16),
-          const SizedBox(height: 12),
-          Skeleton.box(height: 100),
-        ],
+      return SizedBox(
+        width: double.infinity,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Skeleton.line(width: 150, height: 16),
+            const SizedBox(height: 12),
+            Skeleton.box(height: 100),
+          ],
+        ),
       );
     }
 
     if (_reviewsErrorMessage != null) {
       return Container(
         padding: const EdgeInsets.all(16),
+        width: double.infinity,
         decoration: BoxDecoration(
           color: DesignTokens.surfacePrimary,
           borderRadius: BorderRadius.circular(12),
@@ -621,6 +622,7 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
 
     if (_garageReviews == null || _garageReviews!.reviews.isEmpty) {
       return Container(
+        width: double.infinity,
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: DesignTokens.surfacePrimary,
@@ -628,6 +630,7 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
           border: Border.all(color: DesignTokens.borderSecondary),
         ),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             MyText(text: 'Đánh giá gần đây', textStyle: 'title', textSize: '16', textColor: 'primary'),
             const SizedBox(height: 8),
@@ -659,8 +662,8 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
     );
   }
 
-  Widget _pill({required Widget icon, required String label, required String value}) {
-    return Column(
+  Widget _pill({required Widget icon, required String label, required String value, VoidCallback? onTap}) {
+    final content = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
@@ -675,5 +678,93 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
         MyText(text: value, textStyle: 'title', textSize: '14', textColor: 'brand'),
       ],
     );
+
+    if (onTap == null) return content;
+    return InkWell(
+      borderRadius: BorderRadius.circular(8),
+      onTap: onTap,
+      child: content,
+    );
+  }
+
+  Widget _ratingPill(double rating) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SvgIcon(svgPath: 'assets/icons_final/star_outline.svg', size: 16),
+            const SizedBox(width: 4),
+            MyText(text: 'Tiêu chuẩn', textStyle: 'body', textSize: '12', textColor: 'secondary'),
+            const SizedBox(width: 4),
+            InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: _showStandardInfo,
+              child: Padding(
+                padding: const EdgeInsets.all(2.0),
+                child:
+                    SvgIcon(svgPath: 'assets/icons_final/info-circle.svg', size: 14, color: DesignTokens.textSecondary),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        _buildStarRow(rating),
+      ],
+    );
+  }
+
+  Widget _buildStarRow(double rating) {
+    final int filledStars = rating.round().clamp(0, 5);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(5, (index) {
+        final bool isFilled = index < filledStars;
+        return Padding(
+          padding: const EdgeInsets.only(right: 2),
+          child: SvgIcon(
+            svgPath: isFilled ? 'assets/icons_final/star.svg' : 'assets/icons_final/star_outline.svg',
+            size: 16,
+            color: isFilled ? DesignTokens.textBrand : DesignTokens.textPrimary,
+          ),
+        );
+      }),
+    );
+  }
+
+  void _showStandardInfo() {
+    AppDialogHelper.show(
+      context,
+      title: 'Tiêu chuẩn garage là gì?',
+      message:
+          '“Tiêu chuẩn” là mức xếp hạng nội bộ của Garage Việt dựa trên nhiều yếu tố: chất lượng sửa chữa, tay nghề kỹ thuật, sự hài lòng của khách hàng, tốc độ xử lý, chính sách bảo hành và minh bạch về chi phí.\n\nMức sao càng cao thể hiện garage duy trì quy trình chuyên nghiệp, dịch vụ ổn định và nhận nhiều phản hồi tích cực – tương tự hệ thống xếp hạng sao của khách sạn.',
+      type: AppDialogType.info,
+      confirmText: 'Đã hiểu',
+    );
+  }
+
+  Future<void> _openMap() async {
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    final info = userProvider.userInfo ?? _userInfo;
+    final String? latStr = info?.latitude;
+    final String? lngStr = info?.longitude;
+
+    final double? lat = double.tryParse(latStr ?? '');
+    final double? lng = double.tryParse(lngStr ?? '');
+
+    if (lat == null || lng == null) {
+      AppDialogHelper.show(
+        context,
+        title: 'Không có toạ độ',
+        message: 'Không tìm thấy vị trí hợp lệ để mở bản đồ.',
+        type: AppDialogType.info,
+        confirmText: 'Đóng',
+      );
+      return;
+    }
+
+    final Uri uri = Uri.parse('https://www.google.com/maps/search/?api=1&query=$lat,$lng');
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 }

@@ -11,23 +11,9 @@ import 'package:gara/utils/status/status_widget.dart';
 import 'package:gara/widgets/fullscreen_image_viewer.dart';
 import 'package:gara/widgets/svg_icon.dart';
 import 'package:gara/widgets/text.dart';
+import 'package:gara/utils/formatters.dart';
 
 // Helper functions moved from chat_room_screen.dart
-String _formatMessageTime(String timeString) {
-  try {
-    final time = DateTime.parse(timeString);
-    final now = DateTime.now();
-    final difference = now.difference(time);
-
-    if (difference.inDays > 0) {
-      return '${time.day}/${time.month} ${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
-    } else {
-      return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
-    }
-  } catch (e) {
-    return timeString;
-  }
-}
 
 String _formatCurrency(num value) {
   final digits = value.toInt().toString();
@@ -354,7 +340,7 @@ class MessageBubble extends StatelessWidget {
           const SizedBox(width: 6),
         ],
         MyText(
-          text: _formatMessageTime(message.createdAt),
+          text: formatMessageTime(message.createdAt),
           textStyle: 'body',
           textSize: '12',
           textColor: 'placeholder',
@@ -625,26 +611,36 @@ class MessageBubble extends StatelessWidget {
     final thumbnailPath = videoThumbnails[videoPath];
     final isGeneratingThumbnail = generatingThumbnails[videoPath] ?? false;
 
+    // Lấy aspect ratio từ map (nếu chưa có, fallback 16/9)
+    final aspectRatio = videoAspectRatios[videoPath] ?? (16.0 / 9.0);
+    final w = width ?? 240.0;
+    final h = height ?? (w / aspectRatio);
+
+    // Hiển thị loading đợi sinh thumbnail, giữ nguyên kích thước
     if (isGeneratingThumbnail) {
       return Container(
-        width: width,
-        height: height,
+        width: w,
+        height: h,
         color: DesignTokens.surfaceSecondary,
-        child: const Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))),
+        child: const Center(
+          child: SizedBox(width: 30, height: 30, child: CircularProgressIndicator(strokeWidth: 2)),
+        ),
       );
     }
 
+    // Hiển thị thumbnail nếu có
     if (thumbnailPath != null) {
       return _buildVideoThumbnailWidget(
         thumbnailUrl: thumbnailPath,
         videoUrl: file.path,
-        width: width,
-        height: height,
+        width: w,
+        height: h,
         expand: expand,
       );
     }
 
-    return _buildDefaultVideoIcon(size: width ?? 60, fileSize: _getFileSize(file));
+    // Fallback: hiển thị icon video với info file
+    return _buildDefaultVideoIcon(size: w, fileSize: _getFileSize(file));
   }
 
   Widget _buildVideoThumbnailWidget({

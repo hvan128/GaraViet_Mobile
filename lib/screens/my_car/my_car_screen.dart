@@ -6,7 +6,7 @@ import 'package:gara/widgets/button.dart';
 import 'package:gara/widgets/svg_icon.dart';
 import 'package:gara/widgets/header.dart';
 import 'package:gara/widgets/dropdown.dart';
-import 'package:gara/utils/format.dart';
+import 'package:gara/utils/formatters.dart';
 import 'package:gara/services/user/user_service.dart';
 import 'package:gara/models/car/car_info_model.dart';
 import 'package:gara/widgets/text.dart';

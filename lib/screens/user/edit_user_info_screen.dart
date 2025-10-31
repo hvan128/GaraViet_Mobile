@@ -18,6 +18,7 @@ import 'package:gara/utils/url.dart';
 import 'package:gara/providers/user_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:gara/widgets/app_toast.dart';
+import 'package:gara/widgets/loading_spinner.dart';
 import 'package:gara/services/location/goong_place_service.dart';
 import 'package:uuid/uuid.dart';
 
@@ -49,6 +50,7 @@ class _EditUserInfoScreenState extends State<EditUserInfoScreen> {
   static const int _maxCertificateImages = 3;
   bool _hasChanges = false;
   bool _isUploadingAvatar = false; // Loading state cho avatar upload
+  bool _isSubmitting = false; // Loading overlay khi gọi API cập nhật
 
   // Autocomplete state (chỉ dùng cho garage)
   Timer? _debounce;
@@ -131,170 +133,179 @@ class _EditUserInfoScreenState extends State<EditUserInfoScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: DesignTokens.surfaceSecondary,
-      body: SafeArea(
-        child: KeyboardDismissWrapper(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              MyHeader(
-                height: 56,
-                backgroundColor: DesignTokens.surfaceBrand,
-                customTitle: const MyText(
-                  text: 'Chỉnh sửa hồ sơ',
-                  textStyle: 'head',
-                  textSize: '16',
-                  textColor: 'invert',
-                ),
-                showRightButton: true,
-                rightIcon: const Icon(Icons.check, color: Colors.white, size: 20),
-                onRightPressed: _isUploadingAvatar ? null : _onSubmit,
-                leftIconColor: DesignTokens.textInvert,
-                rightIconColor: DesignTokens.textInvert,
-                onLeftPressed: () {
-                  Navigator.of(context).pop(_hasChanges);
-                },
-              ),
-              Container(height: 12, color: DesignTokens.surfaceBrand),
-              _buildHeroEdit(),
-              Consumer<UserProvider>(
-                builder: (context, userProvider, child) {
-                  // Nếu không phải garage user thì chỉ hiển thị trường tên
-                  if (!userProvider.isGarageUser) {
-                    return const SizedBox.shrink();
-                  }
+      backgroundColor: DesignTokens.surfaceBrand,
+      body: LoadingOverlay(
+        isLoading: _isSubmitting,
+        loadingText: 'Đang cập nhật...',
+        child: SafeArea(
+          bottom: false,
+          child: Container(
+            height: double.infinity,
+            color: DesignTokens.surfaceSecondary,
+            child: KeyboardDismissWrapper(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  MyHeader(
+                    height: 56,
+                    backgroundColor: DesignTokens.surfaceBrand,
+                    customTitle: const MyText(
+                      text: 'Chỉnh sửa hồ sơ',
+                      textStyle: 'head',
+                      textSize: '16',
+                      textColor: 'invert',
+                    ),
+                    showRightButton: true,
+                    rightIcon: const Icon(Icons.check, color: Colors.white, size: 20),
+                    onRightPressed: _isUploadingAvatar ? null : _onSubmit,
+                    leftIconColor: DesignTokens.textInvert,
+                    rightIconColor: DesignTokens.textInvert,
+                    onLeftPressed: () {
+                      Navigator.of(context).pop(_hasChanges);
+                    },
+                  ),
+                  Container(height: 12, color: DesignTokens.surfaceBrand),
+                  _buildHeroEdit(),
+                  Consumer<UserProvider>(
+                    builder: (context, userProvider, child) {
+                      // Nếu không phải garage user thì chỉ hiển thị trường tên
+                      if (!userProvider.isGarageUser) {
+                        return const SizedBox.shrink();
+                      }
 
-                  // Nếu là garage user thì hiển thị tất cả các trường
-                  return Container(
-                    decoration: const BoxDecoration(color: DesignTokens.surfaceSecondary),
-                    child: Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Column(
+                      // Nếu là garage user thì hiển thị tất cả các trường
+                      return Container(
+                        decoration: const BoxDecoration(color: DesignTokens.surfaceSecondary),
+                        child: Padding(
+                          padding: const EdgeInsets.all(20),
+                          child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              MyTextField(
-                                label: 'Hoạt động từ',
-                                controller: _fromCtrl,
-                                obscureText: false,
-                                hasError: false,
-                              ),
-                              const SizedBox(height: 12),
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   MyTextField(
-                                    label: 'Địa chỉ',
-                                    controller: _addressCtrl,
+                                    label: 'Hoạt động từ',
+                                    controller: _fromCtrl,
                                     obscureText: false,
                                     hasError: false,
-                                    suffixIcon: _isSearchingAddress
-                                        ? const SizedBox(
-                                            width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                                        : null,
-                                    onChange: _onAddressChanged,
                                   ),
-                                  if (_addressSuggestions.isNotEmpty)
-                                    Container(
-                                      margin: const EdgeInsets.only(top: 8),
-                                      decoration: BoxDecoration(
-                                        color: DesignTokens.surfacePrimary,
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(color: DesignTokens.borderPrimary),
+                                  const SizedBox(height: 12),
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      MyTextField(
+                                        label: 'Địa chỉ',
+                                        controller: _addressCtrl,
+                                        obscureText: false,
+                                        hasError: false,
+                                        suffixIcon: _isSearchingAddress
+                                            ? const SizedBox(
+                                                width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                                            : null,
+                                        onChange: _onAddressChanged,
                                       ),
-                                      constraints: const BoxConstraints(maxHeight: 260),
-                                      child: ListView.separated(
-                                        controller: _suggestionScrollController,
-                                        shrinkWrap: true,
-                                        itemCount: _addressSuggestions.length,
-                                        separatorBuilder: (_, __) =>
-                                            Divider(height: 1, color: DesignTokens.borderPrimary),
-                                        itemBuilder: (ctx, i) {
-                                          final s = _addressSuggestions[i];
-                                          return _suggestionItem(s);
-                                        },
-                                      ),
-                                    ),
+                                      if (_addressSuggestions.isNotEmpty)
+                                        Container(
+                                          margin: const EdgeInsets.only(top: 8),
+                                          decoration: BoxDecoration(
+                                            color: DesignTokens.surfacePrimary,
+                                            borderRadius: BorderRadius.circular(12),
+                                            border: Border.all(color: DesignTokens.borderPrimary),
+                                          ),
+                                          constraints: const BoxConstraints(maxHeight: 260),
+                                          child: ListView.separated(
+                                            controller: _suggestionScrollController,
+                                            shrinkWrap: true,
+                                            itemCount: _addressSuggestions.length,
+                                            separatorBuilder: (_, __) =>
+                                                Divider(height: 1, color: DesignTokens.borderPrimary),
+                                            itemBuilder: (ctx, i) {
+                                              final s = _addressSuggestions[i];
+                                              return _suggestionItem(s);
+                                            },
+                                          ),
+                                        ),
+                                    ],
+                                  ),
                                 ],
+                              ),
+                              const SizedBox(height: 12),
+                              MyTextField(
+                                obscureText: false,
+                                hasError: false,
+                                label: 'Mô tả',
+                                controller: _descCtrl,
+                                height: 144,
+                                maxLines: 6,
+                              ),
+                              const SizedBox(height: 12),
+                              MyTextField(
+                                label: 'Dịch vụ cung cấp và chuyên môn',
+                                controller: _servicesCtrl,
+                                obscureText: false,
+                                hasError: false,
+                              ),
+                              const SizedBox(height: 12),
+                              SizedBox(
+                                width: double.infinity,
+                                child: Row(
+                                  children: [
+                                    SmartImagePicker(
+                                      label: 'Thêm ảnh dịch vụ',
+                                      showPreview: false,
+                                      onImageSelected: (file) {
+                                        if (file == null) return;
+                                        if (_serviceImages.length >= _maxServiceImages) {
+                                          AppToastHelper.showWarning(
+                                            context,
+                                            message: 'Chỉ được thêm tối đa 3 ảnh dịch vụ',
+                                          );
+                                          return;
+                                        }
+                                        setState(() => _serviceImages.add(file));
+                                      },
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(child: _buildServiceImagesDisplay()),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              MyText(text: 'Chứng chỉ', textStyle: 'label', textSize: '16', textColor: 'primary'),
+                              SizedBox(
+                                width: double.infinity,
+                                child: Row(
+                                  children: [
+                                    SmartImagePicker(
+                                      label: 'Thêm chứng chỉ',
+                                      showPreview: false,
+                                      onImageSelected: (file) {
+                                        if (file == null) return;
+                                        if (_certificateImages.length >= _maxCertificateImages) {
+                                          AppToastHelper.showWarning(
+                                            context,
+                                            message: 'Chỉ được thêm tối đa 1 ảnh chứng chỉ',
+                                          );
+                                          return;
+                                        }
+                                        setState(() => _certificateImages.add(file));
+                                      },
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(child: _buildCertificateImagesDisplay()),
+                                  ],
+                                ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 12),
-                          MyTextField(
-                            obscureText: false,
-                            hasError: false,
-                            label: 'Mô tả',
-                            controller: _descCtrl,
-                            height: 144,
-                            maxLines: 6,
-                          ),
-                          const SizedBox(height: 12),
-                          MyTextField(
-                            label: 'Dịch vụ cung cấp và chuyên môn',
-                            controller: _servicesCtrl,
-                            obscureText: false,
-                            hasError: false,
-                          ),
-                          const SizedBox(height: 12),
-                          SizedBox(
-                            width: double.infinity,
-                            child: Row(
-                              children: [
-                                SmartImagePicker(
-                                  label: 'Thêm ảnh dịch vụ',
-                                  showPreview: false,
-                                  onImageSelected: (file) {
-                                    if (file == null) return;
-                                    if (_serviceImages.length >= _maxServiceImages) {
-                                      AppToastHelper.showWarning(
-                                        context,
-                                        message: 'Chỉ được thêm tối đa 3 ảnh dịch vụ',
-                                      );
-                                      return;
-                                    }
-                                    setState(() => _serviceImages.add(file));
-                                  },
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(child: _buildServiceImagesDisplay()),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          MyText(text: 'Chứng chỉ', textStyle: 'label', textSize: '16', textColor: 'primary'),
-                          SizedBox(
-                            width: double.infinity,
-                            child: Row(
-                              children: [
-                                SmartImagePicker(
-                                  label: 'Thêm chứng chỉ',
-                                  showPreview: false,
-                                  onImageSelected: (file) {
-                                    if (file == null) return;
-                                    if (_certificateImages.length >= _maxCertificateImages) {
-                                      AppToastHelper.showWarning(
-                                        context,
-                                        message: 'Chỉ được thêm tối đa 1 ảnh chứng chỉ',
-                                      );
-                                      return;
-                                    }
-                                    setState(() => _certificateImages.add(file));
-                                  },
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(child: _buildCertificateImagesDisplay()),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
+                        ),
+                      );
+                    },
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),
@@ -672,6 +683,7 @@ class _EditUserInfoScreenState extends State<EditUserInfoScreen> {
   }
 
   Future<void> _onSubmit() async {
+    setState(() => _isSubmitting = true);
     try {
       final userProvider = Provider.of<UserProvider>(context, listen: false);
       final isGarageUser = userProvider.isGarageUser;
@@ -688,17 +700,11 @@ class _EditUserInfoScreenState extends State<EditUserInfoScreen> {
       if (!hasChanges) {
         if (mounted) {
           AppToastHelper.showInfo(context, message: 'Không có thay đổi nào để cập nhật');
+          setState(() => _isSubmitting = false);
           Navigator.of(context).pop(false);
         }
         return;
       }
-
-      // Hiển thị loading
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => const Center(child: CircularProgressIndicator()),
-      );
 
       // debugPrint('[EditUserInfoScreen] Updating user info, isGarage: $isGarageUser');
 
@@ -709,9 +715,6 @@ class _EditUserInfoScreenState extends State<EditUserInfoScreen> {
         // User thường: Gọi 1 API
         await _updateUserInfo();
       }
-
-      // Đóng loading dialog
-      if (mounted) Navigator.of(context).pop();
 
       // Cập nhật UserProvider với thông tin mới
       await userProvider.refreshUserInfo();
@@ -724,15 +727,14 @@ class _EditUserInfoScreenState extends State<EditUserInfoScreen> {
       // Quay về màn hình trước
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
-      // Đóng loading dialog nếu đang hiển thị
-      if (mounted) Navigator.of(context).pop();
-
       // Hiển thị thông báo lỗi
       if (mounted) {
         AppToastHelper.showError(context, message: 'Lỗi khi cập nhật: $e');
       }
 
       // debugPrint('[EditUserInfoScreen] Error updating user info: $e');
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
     }
   }
 
@@ -778,13 +780,16 @@ class _EditUserInfoScreenState extends State<EditUserInfoScreen> {
     final currentFrom = _fromCtrl.text.trim();
 
     // Kiểm tra thay đổi thông tin cơ bản
-    bool hasBasicChanges = currentNameGarage != originalNameGarage ||
-        currentEmailGarage != originalEmailGarage ||
-        currentAddress != originalAddress ||
-        currentWorker != originalWorker ||
-        currentDesc != originalDesc ||
-        currentServices != originalServices ||
-        currentFrom != originalFrom;
+    final nameChanged = currentNameGarage != originalNameGarage;
+    final emailChanged = currentEmailGarage != originalEmailGarage;
+    final addressChanged = currentAddress != originalAddress;
+    final workerChanged = currentWorker != originalWorker;
+    final descChanged = currentDesc != originalDesc;
+    final servicesChanged = currentServices != originalServices;
+    final fromChanged = currentFrom != originalFrom;
+
+    bool hasBasicChanges =
+        nameChanged || emailChanged || addressChanged || workerChanged || descChanged || servicesChanged || fromChanged;
 
     // Kiểm tra thay đổi ảnh
     bool hasImageChanges = _avatarFile != null ||
@@ -834,27 +839,39 @@ class _EditUserInfoScreenState extends State<EditUserInfoScreen> {
     final originalFrom = _extractYear(currentUserInfo.createdAt);
     final currentFrom = _fromCtrl.text.trim();
 
-    bool hasBasicChanges = currentNameGarage != originalNameGarage ||
-        currentEmailGarage != originalEmailGarage ||
-        currentAddress != originalAddress ||
-        currentWorker != originalWorker ||
-        currentDesc != originalDesc ||
-        currentServices != originalServices ||
-        currentFrom != originalFrom;
+    final nameChanged = currentNameGarage != originalNameGarage;
+    final emailChanged = currentEmailGarage != originalEmailGarage;
+    final addressChanged = currentAddress != originalAddress;
+    final workerChanged = currentWorker != originalWorker;
+    final descChanged = currentDesc != originalDesc;
+    final servicesChanged = currentServices != originalServices;
+    final fromChanged = currentFrom != originalFrom;
+
+    bool hasBasicChanges =
+        nameChanged || emailChanged || addressChanged || workerChanged || descChanged || servicesChanged || fromChanged;
 
     // 1. Cập nhật thông tin gara (chỉ khi có thay đổi)
     if (hasBasicChanges) {
-      final garageData = {
+      // Backend yêu cầu các trường này là bắt buộc => luôn gửi
+      final Map<String, dynamic> garageData = {
         'name_garage': _nameCtrl.text,
         'email_garage': _emailCtrl.text,
-        'address': _addressCtrl.text,
-        if (_selectedLat != null) 'latitude': _selectedLat.toString(),
-        if (_selectedLng != null) 'longitude': _selectedLng.toString(),
         'number_of_worker': _workerCtrl.text,
         'description_garage': _descCtrl.text,
         'services_provided': _servicesCtrl.text,
         'active_from': _fromCtrl.text,
       };
+
+      // Chỉ gửi address nếu thay đổi; lat/lng chỉ gửi khi có cả hai giá trị mới
+      if (addressChanged) {
+        garageData['address'] = _addressCtrl.text;
+        if (_selectedLat != null && _selectedLng != null) {
+          // Backend yêu cầu string cho latitude/longitude
+          garageData['latitude'] = _selectedLat.toString();
+          garageData['longitude'] = _selectedLng.toString();
+        }
+      }
+
       await UserService.updateGarageInfo(garageData);
       // debugPrint('[EditUserInfoScreen] Garage info updated');
     }

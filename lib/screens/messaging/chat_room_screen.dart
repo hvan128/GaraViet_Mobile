@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:gara/screens/messaging/widgets/service_info_card.dart';
+import 'package:gara/components/chat_room/messages_skeleton.dart';
+import 'package:gara/components/chat_room/service_info_card.dart';
 import 'package:gara/theme/index.dart';
+import 'package:gara/utils/formatters.dart';
 import 'package:gara/widgets/header.dart';
 import 'package:gara/widgets/text_field.dart';
 import 'package:gara/services/messaging/messaging_service.dart';
@@ -11,22 +13,20 @@ import 'package:gara/widgets/app_toast.dart';
 import 'package:gara/providers/user_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:gara/utils/debug_logger.dart';
-import 'package:gara/widgets/skeleton.dart';
 import 'package:gara/services/messaging/chat_presence.dart';
-import 'package:gara/services/quotation/quotation_service.dart';
-import 'package:gara/services/messaging/messaging_event_bus.dart';
-import 'package:gara/models/quotation/quotation_model.dart';
 import 'package:gara/utils/status/status_widget.dart';
 import 'package:gara/utils/status/quotation_status.dart';
 import 'package:gara/widgets/svg_icon.dart';
 import 'package:gara/widgets/fullscreen_image_viewer.dart';
 import 'package:gara/models/file/file_info_model.dart';
-import 'package:v_video_compressor/v_video_compressor.dart';
 import 'package:wechat_assets_picker/wechat_assets_picker.dart';
+import 'package:video_compress/video_compress.dart';
 import 'dart:async';
 import 'dart:io';
 import 'dart:convert';
 import 'package:gara/widgets/keyboard_dismiss_wrapper.dart';
+import 'package:gara/services/messaging/messaging_event_bus.dart';
+import 'package:gara/components/chat_room/media_options_bottom_sheet.dart';
 
 class ChatRoomScreen extends StatefulWidget {
   const ChatRoomScreen({super.key});
@@ -60,7 +60,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with WidgetsBindingObse
   // Media selection state
   List<File> _selectedImages = [];
   List<File> _selectedVideos = [];
-  final VVideoCompressor _videoCompressor = VVideoCompressor();
+  // Nén video và tạo thumbnail bằng video_compress
 
   // Upload state
   final Map<String, double> _uploadProgress = {}; // messageId -> progress (0.0 to 1.0)
@@ -109,6 +109,13 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with WidgetsBindingObse
         _scrollToBottom();
       }
     });
+
+    // Nâng giới hạn cache ảnh để hạn chế tải lại thumbnail khi cuộn nhanh
+    try {
+      final cache = PaintingBinding.instance.imageCache;
+      cache.maximumSize = 300; // số lượng entries
+      cache.maximumSizeBytes = 250 << 20; // ~250MB
+    } catch (_) {}
   }
 
   bool _didInit = false;
@@ -134,8 +141,11 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with WidgetsBindingObse
     _inputFocusNode.dispose();
     WidgetsBinding.instance.removeObserver(this);
 
-    // Cleanup video compressor
-    _videoCompressor.cleanup();
+    // Cleanup cache của video_compress
+    try {
+      VideoCompress.cancelCompression();
+      VideoCompress.deleteAllCache();
+    } catch (_) {}
 
     super.dispose();
   }
@@ -271,26 +281,14 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with WidgetsBindingObse
         });
         // Set presence: vào phòng
         ChatPresence.enterRoom(id);
-        DebugLogger.largeJson('[ChatRoomScreen] call getRoomDetailWithMessages', {
-          'roomId': id,
-          'limit': _limit,
-          'startAfter': _startAfterOffset,
-          'state_len': _messagesDesc.length,
-          'state_firstId': _messagesDesc.isNotEmpty ? _messagesDesc.first.messageId : null,
-          'state_lastId': _messagesDesc.isNotEmpty ? _messagesDesc.last.messageId : null,
-          'isAtBottom': _isAtBottom,
-          'newIncoming': _newIncomingCount,
-        });
         final detail = await MessagingServiceApi.getRoomDetailWithMessages(
           roomId: id,
           limit: _limit,
           startAfterOffset: _startAfterOffset,
         );
-        DebugLogger.largeJson('[ChatRoomScreen] fetch completed', {'detail_null': detail == null, 'mounted': mounted});
         if (mounted && detail != null) {
           setState(() {
             _room = detail.roomInfo;
-            DebugLogger.log('[Chat Room Detail ] $_room');
             // Merge tránh ghi đè các tin mới đã nhận qua realtime
             final merged = [..._messagesDesc];
             for (final m in detail.messages) {
@@ -303,18 +301,10 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with WidgetsBindingObse
             _loading = false;
             _initialListReady = false;
           });
-          DebugLogger.largeJson('[ChatRoomScreen] after merge initial', {
-            'len': _messagesDesc.length,
-            'firstId': _messagesDesc.isNotEmpty ? _messagesDesc.first.messageId : null,
-            'firstCreatedAt': _messagesDesc.isNotEmpty ? _messagesDesc.first.createdAt : null,
-            'lastId': _messagesDesc.isNotEmpty ? _messagesDesc.last.messageId : null,
-            'lastCreatedAt': _messagesDesc.isNotEmpty ? _messagesDesc.last.createdAt : null,
-          });
           _ensureInitialScrollToBottom();
           // _markOpponentMessagesRead();
           return;
         }
-        DebugLogger.log('[ChatRoomScreen] getRoomDetailWithMessages returned null');
       }
     } catch (e, st) {
       DebugLogger.largeJson('[ChatRoomScreen] init error', {'error': e.toString(), 'stack': st.toString()});
@@ -411,20 +401,11 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with WidgetsBindingObse
           _messagesDesc.addAll(toAppend);
           appendedCount = _messagesDesc.length - oldLen;
           // Không jump; Flutter giữ vị trí ổn với reverse:true
-          DebugLogger.log('[ChatRoom] appended older messages: +$appendedCount');
         }
         // Offset tăng theo tổng số item đã có
         _startAfterOffset = _messagesDesc.length;
         _loading = false;
         _loadingMore = false;
-      });
-      DebugLogger.largeJson('[ChatRoomScreen] after loadMore append', {
-        'len': _messagesDesc.length,
-        'firstId': _messagesDesc.isNotEmpty ? _messagesDesc.first.messageId : null,
-        'firstCreatedAt': _messagesDesc.isNotEmpty ? _messagesDesc.first.createdAt : null,
-        'lastId': _messagesDesc.isNotEmpty ? _messagesDesc.last.messageId : null,
-        'lastCreatedAt': _messagesDesc.isNotEmpty ? _messagesDesc.last.createdAt : null,
-        'startAfter_next': _startAfterOffset,
       });
 
       // Fallback: nếu server trả về trùng trang (bỏ qua start_after) → thử dịch cursor 1 lần
@@ -435,10 +416,6 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with WidgetsBindingObse
           if (serverFirstId == currentFirstId) {
             _loadMoreRetrying = true;
             final nextCursor = _messagesDesc.length;
-            DebugLogger.largeJson('[ChatRoomScreen] loadMore fallback retry', {
-              'prev_start_after': _startAfterOffset,
-              'retry_start_after': nextCursor,
-            });
             _startAfterOffset = nextCursor;
             await _loadMoreMessages();
             _loadMoreRetrying = false;
@@ -577,21 +554,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with WidgetsBindingObse
     final tempId = 'temp-media-${DateTime.now().microsecondsSinceEpoch}';
     final mediaType = messageType == 2 ? 'ảnh' : 'video';
 
-    // For videos, use compressed version if available
+    // Chuẩn bị biến, quyết định file gửi sau khi (nếu có) đã đợi nén
     List<File> filesToSend = files;
-    if (messageType == 3) {
-      filesToSend = files.map((file) {
-        return _compressedVideos[file.path] ?? file;
-      }).toList();
-      DebugLogger.largeJson('[ChatRoom] Video send mapping (original -> used)', {
-        'pairs': files
-            .map((f) => {
-                  'original': f.path,
-                  'used': (_compressedVideos[f.path]?.path ?? f.path),
-                })
-            .toList(),
-      });
-    }
 
     // Create temp message with file URLs for thumbnail display
     final fileUrls = filesToSend.map((file) => file.path).join(',');
@@ -625,6 +589,21 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with WidgetsBindingObse
         DebugLogger.log('[ChatRoom] Waiting for video compression before upload...');
         await _waitForVideoCompression(files);
         DebugLogger.log('[ChatRoom] Done waiting, continue to upload videos');
+      }
+
+      // Sau khi (nếu có) đã đợi nén xong, ánh xạ lại sang file nén
+      if (messageType == 3) {
+        filesToSend = files.map((file) {
+          return _compressedVideos[file.path] ?? file;
+        }).toList();
+        DebugLogger.largeJson('[ChatRoom] Video send mapping (original -> used)', {
+          'pairs': files
+              .map((f) => {
+                    'original': f.path,
+                    'used': (_compressedVideos[f.path]?.path ?? f.path),
+                  })
+              .toList(),
+        });
       }
 
       // For videos, ensure and collect thumbnails one-to-one with filesToSend
@@ -762,15 +741,11 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with WidgetsBindingObse
         messageType: 1,
       );
 
-      DebugLogger.log('[ChatRoom] Send message response received');
-
       if (!mounted) {
-        DebugLogger.log('[ChatRoom] Widget not mounted, skipping UI update');
         return;
       }
 
       if (response.success && response.data != null) {
-        DebugLogger.log('[ChatRoom] Message sent successfully');
         setState(() {
           final idx = _messagesDesc.indexWhere((m) => m.messageId == localMessageId);
           if (idx != -1) {
@@ -873,17 +848,25 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with WidgetsBindingObse
     try {
       // For videos, use compressed version if available
       List<File> filesToSend = files;
+      // Chỉ ánh xạ sang file nén sau khi (nếu có) đã đợi nén xong
       if (storedMessageType == 3) {
+        await _waitForVideoCompression(files);
         filesToSend = files.map((file) {
           return _compressedVideos[file.path] ?? file;
         }).toList();
+        DebugLogger.largeJson('[ChatRoom][Retry] Video send mapping (original -> used)', {
+          'pairs': files
+              .map((f) => {
+                    'original': f.path,
+                    'used': (_compressedVideos[f.path]?.path ?? f.path),
+                  })
+              .toList(),
+        });
       }
 
       // For videos, ensure and collect thumbnails one-to-one with filesToSend
       List<File>? thumbnailsToSend;
       if (storedMessageType == 3) {
-        // Wait for any ongoing compression before retrying
-        await _waitForVideoCompression(files);
         await _ensureThumbnailsForVideos(filesToSend);
         final tmp = <File>[];
         for (final file in filesToSend) {
@@ -940,8 +923,14 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with WidgetsBindingObse
       } else {
         if (!mounted) return;
         setState(() {
-          // Giữ lại message failed cũ
-          _messagesDesc.insert(0, message);
+          // Thay thế temp message bằng message failed cũ, tránh tạo bản sao
+          final tempIdx = _messagesDesc.indexWhere((m) => m.messageId == tempId);
+          if (tempIdx != -1) {
+            _messagesDesc[tempIdx] = message;
+          } else {
+            // Nếu vì lý do nào đó không tìm thấy temp, thêm lại message cũ vào đầu để không mất UI
+            _messagesDesc.insert(0, message);
+          }
           _pendingMessageIds.remove(tempId);
           _failedMessageIds.add(oldMessageId);
           _uploadProgress.remove(tempId);
@@ -951,8 +940,13 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with WidgetsBindingObse
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        // Giữ lại message failed cũ
-        _messagesDesc.insert(0, message);
+        // Thay thế temp message bằng message failed cũ, tránh tạo bản sao
+        final tempIdx = _messagesDesc.indexWhere((m) => m.messageId == tempId);
+        if (tempIdx != -1) {
+          _messagesDesc[tempIdx] = message;
+        } else {
+          _messagesDesc.insert(0, message);
+        }
         _pendingMessageIds.remove(tempId);
         _failedMessageIds.add(oldMessageId);
         _uploadProgress.remove(tempId);
@@ -1022,16 +1016,9 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with WidgetsBindingObse
             // Generate thumbnail asynchronously (runs in background)
             _generateVideoThumbnail(videoPath);
 
-            // Check file size - if larger than 50MB, compress it in background
-            final fileSizeMB = videoFile.lengthSync() / (1024 * 1024);
-            DebugLogger.log('[ChatRoom] Picked video: path=$videoPath, sizeMB=${fileSizeMB.toStringAsFixed(1)}');
-            if (fileSizeMB > 50) {
-              DebugLogger.log('[ChatRoom] Video > 50MB → start background compression: $videoPath');
-              // Compress in background without blocking UI
-              _compressVideoInBackground(videoFile);
-            } else {
-              DebugLogger.log('[ChatRoom] Video <= 50MB → skip compression: $videoPath');
-            }
+            // Luôn nén nền để đảm bảo tính tương thích/ổn định codec
+            DebugLogger.log('[ChatRoom] Picked video: start background compression: $videoPath');
+            _compressVideoInBackground(videoFile);
           }
         }
       }
@@ -1088,62 +1075,45 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with WidgetsBindingObse
 
     try {
       DebugLogger.log('[ChatRoom] Start compressing video: $videoPath');
-      // Compress video with medium quality in background
-      final compressionResult = await _videoCompressor.compressVideo(
-        videoPath,
-        const VVideoCompressionConfig.medium(),
-        onProgress: (progress) {
-          final int bucket = (progress * 20).floor(); // 5% per bucket
-          if (_compressionProgressBuckets[videoPath] != bucket) {
-            _compressionProgressBuckets[videoPath] = bucket;
-            if (mounted) {
-              setState(() {
-                _compressionProgress[videoPath] = progress;
-              });
-            }
+
+      {
+        // Dùng video_compress: chất lượng trung bình, giữ audio, không xóa gốc
+        final info = await VideoCompress.compressVideo(
+          videoPath,
+          quality: VideoQuality.MediumQuality,
+          deleteOrigin: false,
+          includeAudio: true,
+          frameRate: 30,
+        );
+
+        if (info != null && info.path != null && mounted) {
+          final compressedPath = info.path!;
+          DebugLogger.log('[ChatRoom] Compress done (video_compress): $videoPath -> $compressedPath');
+
+          final originalThumbnail = _videoThumbnails[videoPath];
+          if (originalThumbnail != null) {
+            setState(() {
+              _videoThumbnails[compressedPath] = originalThumbnail;
+              _videoThumbnails[videoPath] = originalThumbnail;
+            });
           }
-          DebugLogger.log('[ChatRoom] Compress progress for $videoPath: ${(progress * 100).toStringAsFixed(0)}%');
-        },
-      );
 
-      if (compressionResult != null && mounted) {
-        final compressedPath = compressionResult.compressedFilePath;
-        DebugLogger.log(
-            '[ChatRoom] Compress done: $videoPath -> $compressedPath | original=${compressionResult.originalSizeFormatted}, compressed=${compressionResult.compressedSizeFormatted}');
-
-        // Copy thumbnail from original video to compressed video
-        final originalThumbnail = _videoThumbnails[videoPath];
-        if (originalThumbnail != null) {
           setState(() {
-            _videoThumbnails[compressedPath] = originalThumbnail;
-            // Also keep the original thumbnail mapping for the original path
-            _videoThumbnails[videoPath] = originalThumbnail;
-          });
-        }
-
-        // Keep original file in selection to maintain stable keys; store compressed for sending/preview
-        setState(() {
-          _compressedVideos[videoPath] = File(compressedPath);
-          _isCompressing[videoPath] = false;
-          _compressionProgress[videoPath] = 1.0;
-          _compressionProgressBuckets[videoPath] = 20;
-        });
-
-        // // Show success message
-        // AppToastHelper.showSuccess(
-        //   context,
-        //   message:
-        //       'Video đã được nén thành công! Giảm từ ${compressionResult.originalSizeFormatted} xuống ${compressionResult.compressedSizeFormatted}',
-        // );
-      } else {
-        if (mounted) {
-          setState(() {
+            _compressedVideos[videoPath] = File(compressedPath);
             _isCompressing[videoPath] = false;
-            _compressionProgress.remove(videoPath);
-            _compressionProgressBuckets.remove(videoPath);
+            _compressionProgress[videoPath] = 1.0;
+            _compressionProgressBuckets[videoPath] = 20;
           });
+        } else {
+          if (mounted) {
+            setState(() {
+              _isCompressing[videoPath] = false;
+              _compressionProgress.remove(videoPath);
+              _compressionProgressBuckets.remove(videoPath);
+            });
+          }
+          DebugLogger.log('[ChatRoom] Compress returned null (video_compress) for: $videoPath');
         }
-        DebugLogger.log('[ChatRoom] Compress returned null for: $videoPath');
       }
     } catch (e) {
       if (mounted) {
@@ -1162,25 +1132,20 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with WidgetsBindingObse
     final Set<String> pathsToWait = {};
     for (final file in videos) {
       final path = file.path;
-      bool needsCompression = false;
-      try {
-        final sizeMb = file.lengthSync() / (1024 * 1024);
-        needsCompression = sizeMb > 50;
-      } catch (_) {}
-      if (_isCompressing[path] == true || needsCompression) {
+      // Nếu chưa có bản nén và cũng không đang nén → khởi động nén ngay
+      if (_compressedVideos[path] == null && _isCompressing[path] != true) {
+        _compressVideoInBackground(file);
+      }
+      if (_isCompressing[path] == true || _compressedVideos[path] == null) {
         pathsToWait.add(path);
       }
     }
     if (pathsToWait.isEmpty) return;
 
-    DebugLogger.largeJson('[ChatRoom] Waiting for compression to finish', {
-      'videoCount': videos.length,
-      'paths': pathsToWait.toList(),
-    });
     while (mounted) {
       bool allDone = true;
       for (final path in pathsToWait) {
-        if (_isCompressing[path] == true) {
+        if (_isCompressing[path] == true || _compressedVideos[path] == null) {
           allDone = false;
           break;
         }
@@ -1218,35 +1183,22 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with WidgetsBindingObse
     });
 
     try {
-      DebugLogger.log('[ChatRoom] Calling getVideoThumbnail for: $videoPath');
-
-      final thumbnail = await _videoCompressor.getVideoThumbnail(
-        videoPath,
-        const VVideoThumbnailConfig(
-          timeMs: 100, // 0.1 second into video
-          maxWidth: 300,
-          maxHeight: 200,
-          format: VThumbnailFormat.jpeg,
+      {
+        // Dùng video_compress để tạo thumbnail (ổn định trên nhiều thiết bị)
+        final file = await VideoCompress.getFileThumbnail(
+          videoPath,
           quality: 50,
-        ),
-      );
+          position: 100,
+        );
 
-      DebugLogger.log('[ChatRoom] Thumbnail result - path: ${thumbnail?.thumbnailPath}');
-      DebugLogger.log('[ChatRoom] Thumbnail result - not null: ${thumbnail != null}');
-
-      if (thumbnail != null && mounted) {
-        setState(() {
-          _videoThumbnails[videoPath] = thumbnail.thumbnailPath;
-          _generatingThumbnails[videoPath] = false;
-        });
-        // Compute and cache aspect ratio based on thumbnail image
-        _computeAndCacheThumbnailAspect(thumbnail.thumbnailPath, videoPath);
-        DebugLogger.log('[ChatRoom] Thumbnail saved successfully');
-      } else if (mounted) {
-        DebugLogger.log('[ChatRoom] Thumbnail is null or widget not mounted');
-        setState(() {
-          _generatingThumbnails[videoPath] = false;
-        });
+        if (mounted) {
+          setState(() {
+            _videoThumbnails[videoPath] = file.path;
+            _generatingThumbnails[videoPath] = false;
+          });
+        }
+        await _computeAndCacheThumbnailAspect(file.path, videoPath);
+        DebugLogger.log('[ChatRoom] Thumbnail saved successfully (video_compress)');
       }
     } catch (e, stackTrace) {
       DebugLogger.log('[ChatRoom] Error generating thumbnail: $e');
@@ -1262,34 +1214,61 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with WidgetsBindingObse
   // Compute width/height ratio from thumbnail file and cache it for sizing
   Future<void> _computeAndCacheThumbnailAspect(String thumbnailPath, String videoPath) async {
     try {
-      final image = Image.file(File(thumbnailPath)).image;
-      final ImageStream stream = image.resolve(const ImageConfiguration());
+      final provider = FileImage(File(thumbnailPath));
+      await _computeAndCacheThumbnailAspectFromProvider(provider, videoPath);
+    } catch (_) {}
+  }
+
+  // Generalized aspect ratio resolver from any ImageProvider (file/network)
+  Future<void> _computeAndCacheThumbnailAspectFromProvider(ImageProvider provider, String videoKey) async {
+    try {
+      final ImageStream stream = provider.resolve(const ImageConfiguration());
       late ImageStreamListener listener;
       final completer = Completer<void>();
+      bool completed = false;
       listener = ImageStreamListener(
         (ImageInfo info, bool _) {
-          final width = info.image.width.toDouble();
-          final height = info.image.height.toDouble();
-          if (width > 0 && height > 0) {
-            final ratio = width / height;
-            if (mounted) {
-              setState(() {
-                _videoAspectRatios[videoPath] = ratio;
-              });
-            } else {
-              _videoAspectRatios[videoPath] = ratio;
+          if (!completed) {
+            completed = true;
+            final width = info.image.width.toDouble();
+            final height = info.image.height.toDouble();
+            if (width > 0 && height > 0) {
+              final ratio = width / height;
+              if (mounted) {
+                setState(() {
+                  _videoAspectRatios[videoKey] = ratio;
+                });
+              } else {
+                _videoAspectRatios[videoKey] = ratio;
+              }
             }
+            stream.removeListener(listener);
+            completer.complete();
           }
-          stream.removeListener(listener);
-          completer.complete();
         },
         onError: (dynamic _, __) {
-          stream.removeListener(listener);
-          completer.complete();
+          if (!completed) {
+            completed = true;
+            stream.removeListener(listener);
+            completer.complete();
+          }
         },
       );
       stream.addListener(listener);
       await completer.future;
+    } catch (_) {}
+  }
+
+  // Ensure aspect ratio for a network thumbnail is cached (keyed by video URL)
+  void _ensureNetworkThumbnailAspect(String thumbnailUrl, String videoKey) {
+    if (_videoAspectRatios.containsKey(videoKey)) return;
+    try {
+      final provider = NetworkImage(thumbnailUrl);
+      _computeAndCacheThumbnailAspectFromProvider(provider, videoKey);
+      // Prefetch để giảm độ trễ lần hiển thị tiếp theo
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) precacheImage(provider, context);
+      });
     } catch (_) {}
   }
 
@@ -1301,83 +1280,6 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with WidgetsBindingObse
         await _generateVideoThumbnail(path);
       }
     }
-  }
-
-  void _showMediaOptions() {
-    showModalBottomSheet(
-      context: context,
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            MyText(text: 'Chọn phương thức', textStyle: 'head', textSize: '16', textColor: 'primary'),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: MyButton(
-                    text: _selectedImages.length >= 3 ? 'Đã đủ ảnh (3/3)' : 'Chọn ảnh (${_selectedImages.length}/3)',
-                    onPressed: _selectedImages.length >= 3
-                        ? null
-                        : () {
-                            Navigator.pop(context);
-                            _pickImages();
-                          },
-                    buttonType: _selectedImages.length >= 3 ? ButtonType.disable : ButtonType.primary,
-                    height: 40,
-                    textStyle: 'label',
-                    textSize: '14',
-                    textColor: 'invert',
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: MyButton(
-                    text:
-                        _selectedVideos.length >= 3 ? 'Đã đủ video (3/3)' : 'Chọn video (${_selectedVideos.length}/3)',
-                    onPressed: _selectedVideos.length >= 3
-                        ? null
-                        : () {
-                            Navigator.pop(context);
-                            _pickVideos();
-                          },
-                    buttonType: _selectedVideos.length >= 3 ? ButtonType.disable : ButtonType.secondary,
-                    height: 40,
-                    textStyle: 'label',
-                    textSize: '14',
-                    textColor: 'primary',
-                  ),
-                ),
-              ],
-            ),
-            // Commented out: Combined image and video picker
-            // const SizedBox(height: 12),
-            // MyButton(
-            //   text:
-            //       _selectedImages.length >= 3 && _selectedVideos.length >= 3
-            //           ? 'Đã đủ file'
-            //           : 'Chọn cả ảnh và video',
-            //   onPressed:
-            //       (_selectedImages.length >= 3 && _selectedVideos.length >= 3)
-            //           ? null
-            //           : () {
-            //             Navigator.pop(context);
-            //             _pickImagesAndVideos();
-            //           },
-            //   buttonType:
-            //       (_selectedImages.length >= 3 && _selectedVideos.length >= 3)
-            //           ? ButtonType.disable
-            //           : ButtonType.primary,
-            //   height: 40,
-            //   textStyle: 'label',
-            //   textSize: '14',
-            //   textColor: 'invert',
-            // ),
-          ],
-        ),
-      ),
-    );
   }
 
   Widget _buildMediaContent(String mediaUrl, MessageData message, bool isUploading, double progress, bool isMe) {
@@ -1500,14 +1402,29 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with WidgetsBindingObse
                 ? Image.network(
                     thumbnailUrl,
                     fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => _buildDefaultVideoIcon(size: (size ?? w)),
+                    width: width,
+                    height: height,
+                    gaplessPlayback: true,
+                    key: ValueKey<String>(thumbnailUrl),
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) return child;
+                      return _buildImageSkeleton(width: width, height: height);
+                    },
+                    errorBuilder: (context, error, stackTrace) =>
+                        _buildVideoPlaceholderBox(width: width ?? w, height: height ?? h),
                   )
                 : Image.network(
                     thumbnailUrl,
                     fit: BoxFit.cover,
                     width: w,
                     height: h,
-                    errorBuilder: (context, error, stackTrace) => _buildDefaultVideoIcon(size: (size ?? w)),
+                    gaplessPlayback: true,
+                    key: ValueKey<String>(thumbnailUrl),
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) return child;
+                      return _buildImageSkeleton(width: w, height: h);
+                    },
+                    errorBuilder: (context, error, stackTrace) => _buildVideoPlaceholderBox(width: w, height: h),
                   ))
           // Otherwise try file
           else
@@ -1515,14 +1432,19 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with WidgetsBindingObse
                 ? Image.file(
                     File(thumbnailUrl),
                     fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => _buildDefaultVideoIcon(size: (size ?? w)),
+                    width: width,
+                    height: height,
+                    gaplessPlayback: true,
+                    errorBuilder: (context, error, stackTrace) =>
+                        _buildVideoPlaceholderBox(width: width ?? w, height: height ?? h),
                   )
                 : Image.file(
                     File(thumbnailUrl),
                     fit: BoxFit.cover,
                     width: w,
                     height: h,
-                    errorBuilder: (context, error, stackTrace) => _buildDefaultVideoIcon(size: (size ?? w)),
+                    gaplessPlayback: true,
+                    errorBuilder: (context, error, stackTrace) => _buildVideoPlaceholderBox(width: w, height: h),
                   )),
           // Play icon overlay
           if (showPlayIcon) _buildPlayIconOverlay(),
@@ -1531,7 +1453,37 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with WidgetsBindingObse
     }
 
     // Fallback: show default video icon
+    if (width != null && height != null) {
+      return _buildVideoPlaceholderBox(width: width, height: height);
+    }
     return _buildDefaultVideoIcon(size: size ?? 60);
+  }
+
+  // Skeleton hiển thị trong lúc ảnh đang tải
+  Widget _buildImageSkeleton({double? width, double? height}) {
+    return Container(
+      width: width,
+      height: height,
+      color: DesignTokens.surfaceSecondary,
+      child: const Center(
+        child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)),
+      ),
+    );
+  }
+
+  // Placeholder hộp giữ tỉ lệ khi thumbnail lỗi/không có
+  Widget _buildVideoPlaceholderBox({required double width, required double height}) {
+    return Container(
+      width: width,
+      height: height,
+      color: DesignTokens.surfaceSecondary,
+      child: Stack(
+        children: [
+          Center(child: _buildDefaultVideoIcon(size: 24)),
+          _buildPlayIconOverlay(size: 28, iconSize: 18),
+        ],
+      ),
+    );
   }
 
   /// Build default video icon placeholder
@@ -1598,20 +1550,39 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with WidgetsBindingObse
                   thumbnailUrl = null;
                 }
               }
+              // Ensure aspect ratio for video thumbnails (network) is cached
+              if (isVideo && thumbnailUrl != null && thumbnailUrl.startsWith('http')) {
+                _ensureNetworkThumbnailAspect(thumbnailUrl, url);
+              }
+
+              final ratio = isVideo ? _videoAspectRatios[url] : null;
+              final isSingle = urls.length == 1;
+              final targetWidth = isVideo && isSingle ? contentWidth : itemWidth;
+              final targetHeight = isVideo
+                  ? (ratio != null ? (targetWidth / ratio) : (isSingle ? (contentWidth * 9.0 / 16.0) : itemWidth))
+                  : itemWidth;
+
               final child = isVideo
-                  ? _buildVideoThumbnailWidget(thumbnailUrl: thumbnailUrl, videoUrl: url, size: itemWidth)
+                  ? _buildVideoThumbnailWidget(
+                      thumbnailUrl: thumbnailUrl,
+                      videoUrl: url,
+                      width: targetWidth,
+                      height: targetHeight,
+                      expand: isSingle,
+                    )
                   : Image.network(
                       url,
                       fit: BoxFit.cover,
                       width: itemWidth,
                       height: itemWidth,
+                      gaplessPlayback: true,
+                      key: ValueKey<String>(url),
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return _buildImageSkeleton(width: itemWidth, height: itemWidth);
+                      },
                       errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          width: itemWidth,
-                          height: itemWidth,
-                          color: DesignTokens.surfaceSecondary,
-                          child: const Icon(Icons.broken_image, size: 20),
-                        );
+                        return _buildImageSkeleton(width: itemWidth, height: itemWidth);
                       },
                     );
 
@@ -1623,7 +1594,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with WidgetsBindingObse
                   );
                 },
                 child: Container(
-                  width: itemWidth,
+                  width: isVideo && isSingle ? contentWidth : itemWidth,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: DesignTokens.borderSecondary),
@@ -1745,6 +1716,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with WidgetsBindingObse
                           fit: BoxFit.cover,
                           width: (isSingle ? contentWidth : itemWidth).toDouble(),
                           height: isSingle ? (contentWidth * 9.0 / 16.0).toDouble() : itemWidth.toDouble(),
+                          gaplessPlayback: true,
                           errorBuilder: (context, error, stackTrace) {
                             return Container(
                               width: (isSingle ? contentWidth : itemWidth).toDouble(),
@@ -1948,347 +1920,22 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with WidgetsBindingObse
     );
   }
 
-  void _onEditQuotation() {
-    if (_room?.quotationInfo == null) return;
-    if ((_room!.quotationInfo!.id) == 0) {
-      AppToastHelper.showError(context, message: 'Thiếu ID báo giá, không thể sửa.');
-      return;
-    }
-    _showEditQuotationBottomSheet(_room!.quotationInfo!);
-  }
-
-  // Bottom sheet: Sửa báo giá
-  void _showEditQuotationBottomSheet(QuotationModel quotation) {
-    final TextEditingController priceController = TextEditingController(text: _formatCurrency(quotation.price));
-    final TextEditingController descriptionController = TextEditingController(text: quotation.description);
-    bool isSubmitting = false;
-
-    String formatPrice(String value) {
-      final onlyDigits = value.replaceAll(RegExp(r'[^\d]'), '');
-      if (onlyDigits.isEmpty) return '';
-      final number = int.tryParse(onlyDigits) ?? 0;
-      return number.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.');
-    }
-
-    int parsePrice(String formatted) {
-      final onlyDigits = formatted.replaceAll(RegExp(r'[^\d]'), '');
-      return int.tryParse(onlyDigits) ?? 0;
-    }
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            Future<void> submit() async {
-              if (isSubmitting) return;
-              final price = parsePrice(priceController.text);
-              final desc = descriptionController.text.trim();
-              if (price <= 0) {
-                AppToastHelper.showError(context, message: 'Vui lòng nhập giá hợp lệ');
-                return;
-              }
-              if (desc.isEmpty) {
-                AppToastHelper.showWarning(context, message: 'Vui lòng nhập mô tả');
-                return;
-              }
-              setModalState(() {
-                isSubmitting = true;
-              });
-              try {
-                final res = await QuotationServiceApi.updateQuotation(
-                  quotationId: quotation.id,
-                  price: price,
-                  description: desc,
-                  status: quotation.status,
-                );
-                if (res.success) {
-                  if (!mounted) return;
-                  Navigator.pop(context);
-                  AppToastHelper.showSuccess(context, message: 'Cập nhật báo giá thành công');
-                  // Báo rooms dirty để danh sách hội thoại cập nhật khi cần
-                  MessagingEventBus().emitRoomsDirty();
-                  // Refresh room info
-                  final id = _room?.roomId;
-                  if (id != null) {
-                    final detail = await MessagingServiceApi.getRoomDetailWithMessages(roomId: id, limit: _limit);
-                    if (!mounted || detail == null) return;
-                    setState(() {
-                      _room = detail.roomInfo;
-                      // Merge messages while preserving existing
-                      final merged = [..._messagesDesc];
-                      for (final m in detail.messages) {
-                        if (!merged.any((e) => e.messageId == m.messageId)) {
-                          merged.add(m);
-                        }
-                      }
-                      _messagesDesc = _sortDesc(merged);
-                      _startAfterOffset = _messagesDesc.length;
-                    });
-                  }
-                } else {
-                  if (!mounted) return;
-                  AppToastHelper.showError(context, message: res.message);
-                }
-              } catch (_) {
-                if (!mounted) return;
-                AppToastHelper.showError(context, message: 'Không thể cập nhật báo giá');
-              } finally {
-                if (mounted)
-                  setModalState(() {
-                    isSubmitting = false;
-                  });
-              }
-            }
-
-            return Padding(
-              padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-              child: Container(
-                padding: const EdgeInsets.all(20),
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.only(topLeft: Radius.circular(12), topRight: Radius.circular(12)),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: MyText(text: 'Sửa báo giá', textStyle: 'title', textSize: '16', textColor: 'primary'),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    MyTextField(
-                      controller: priceController,
-                      label: 'Giá*',
-                      hintText: 'Nhập giá (VND)',
-                      obscureText: false,
-                      hasError: false,
-                      keyboardType: TextInputType.number,
-                      onChange: (value) {
-                        final formatted = formatPrice(value);
-                        if (formatted != value) {
-                          priceController.value = TextEditingValue(
-                            text: formatted,
-                            selection: TextSelection.collapsed(offset: formatted.length),
-                          );
-                        }
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    MyTextField(
-                      controller: descriptionController,
-                      label: 'Mô tả',
-                      hintText: 'Nhập mô tả',
-                      height: 120,
-                      obscureText: false,
-                      hasError: false,
-                      maxLines: 5,
-                      minLines: 3,
-                    ),
-                    const SizedBox(height: 12),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: MyButton(
-                            text: 'Hủy',
-                            height: 40,
-                            onPressed: () => Navigator.pop(context),
-                            buttonType: ButtonType.secondary,
-                            textStyle: 'label',
-                            textSize: '14',
-                            textColor: 'primary',
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: MyButton(
-                            text: isSubmitting ? 'Đang lưu...' : 'Lưu',
-                            height: 40,
-                            onPressed: isSubmitting ? null : submit,
-                            buttonType: isSubmitting ? ButtonType.disable : ButtonType.primary,
-                            textStyle: 'label',
-                            textSize: '14',
-                            textColor: 'primary',
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Widget _buildServiceInfoCard() {
-    return GestureDetector(
-      onTap: () {
-        // Navigate to request detail screen
-        if (_room?.requestServiceInfo != null) {
-          Navigator.pushNamed(context, '/request-detail', arguments: _room!.requestServiceInfo);
+  void _refreshRoomData() async {
+    final id = _room?.roomId;
+    if (id != null) {
+      final detail = await MessagingServiceApi.getRoomDetailWithMessages(roomId: id, limit: _limit);
+      if (!mounted || detail == null) return;
+      setState(() {
+        _room = detail.roomInfo;
+        final merged = [..._messagesDesc];
+        for (final m in detail.messages) {
+          if (!merged.any((e) => e.messageId == m.messageId)) {
+            merged.add(m);
+          }
         }
-      },
-      child: Container(
-        width: double.infinity,
-        margin: EdgeInsets.only(left: 16, right: 16, bottom: 12),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: DesignTokens.surfacePrimary,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: DesignEffects.medCardShadow,
-        ),
-        child: _loading
-            ? Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Skeleton.line(height: 20, margin: const EdgeInsets.only(bottom: 4)),
-                  Skeleton.line(height: 20, width: 180),
-                ],
-              )
-            : Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Left: title + description
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: MyText(
-                                text: (_room?.carInfo != null && _room!.carInfo!.isNotEmpty)
-                                    ? _room!.carInfo!
-                                    : ((_room?.requestCode != null && _room!.requestCode!.isNotEmpty)
-                                        ? _room!.requestCode!
-                                        : '—'),
-                                textStyle: 'head',
-                                textSize: '16',
-                                textColor: 'primary',
-                              ),
-                            ),
-                            if (isGarageUser && _room?.quotationInfo != null) ...[
-                              MyButton(
-                                text: 'Sửa báo giá',
-                                onPressed: _onEditQuotation,
-                                buttonType: ButtonType.primary,
-                                width: 93,
-                                height: 30,
-                                textStyle: 'label',
-                                textSize: '12',
-                                textColor: 'invert',
-                              ),
-                            ],
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: MyText(
-                                text: (_room?.serviceDescription != null && _room!.serviceDescription!.isNotEmpty)
-                                    ? _room!.serviceDescription!
-                                    : ((_room?.statusText != null && _room!.statusText!.isNotEmpty)
-                                        ? _room!.statusText!
-                                        : '—'),
-                                textStyle: 'body',
-                                textSize: '14',
-                                textColor: 'secondary',
-                              ),
-                            ),
-                            if (isGarageUser && _room?.quotationInfo != null) ...[
-                              const SizedBox(width: 12),
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.baseline,
-                                textBaseline: TextBaseline.alphabetic,
-                                children: [
-                                  MyText(text: 'Giá:', textStyle: 'body', textSize: '14', textColor: 'tertiary'),
-                                  const SizedBox(width: 6),
-                                  MyText(
-                                    text: '${_formatCurrency(_room!.quotationInfo!.price)} đ',
-                                    textStyle: 'head',
-                                    textSize: '16',
-                                    textColor: 'brand',
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // Right: edit button + price (when has quotation)
-                ],
-              ),
-      ),
-    );
-  }
-
-  Widget _buildListMessagesSkeleton() {
-    return ListView.builder(
-      controller: _scrollController,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      itemCount: 8,
-      itemBuilder: (context, index) {
-        final isMe = index % 2 == 0;
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: Row(
-            mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              // avatar skeleton removed per request
-              Flexible(
-                child: Container(
-                  constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.6),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: DesignTokens.surfaceSecondary,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: DesignTokens.borderSecondary),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Skeleton.line(height: 14, width: 140),
-                      const SizedBox(height: 6),
-                      Skeleton.line(height: 10, width: 60),
-                    ],
-                  ),
-                ),
-              ),
-              // avatar skeleton removed per request
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  String _formatMessageTime(String timeString) {
-    try {
-      final time = DateTime.parse(timeString);
-      final now = DateTime.now();
-      final difference = now.difference(time);
-
-      if (difference.inDays > 0) {
-        return '${time.day}/${time.month} ${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
-      } else {
-        return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
-      }
-    } catch (e) {
-      return timeString;
+        _messagesDesc = _sortDesc(merged);
+        _startAfterOffset = _messagesDesc.length;
+      });
     }
   }
 
@@ -2360,13 +2007,13 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with WidgetsBindingObse
                   loading: false,
                   room: _room,
                   isGarageUser: true,
-                  onEditQuotation: () {},
+                  onQuotationUpdated: _refreshRoomData,
                 ),
 
                 // Messages list
                 Expanded(
                   child: _loading
-                      ? _buildListMessagesSkeleton()
+                      ? MessagesSkeleton(scrollController: _scrollController)
                       : _messagesDesc.isEmpty
                           ? Center(
                               child: MyText(
@@ -2381,6 +2028,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with WidgetsBindingObse
                               reverse: true,
                               physics: const AlwaysScrollableScrollPhysics(),
                               padding: const EdgeInsets.symmetric(horizontal: 16),
+                              cacheExtent: 1500,
                               itemCount: _messagesDesc.length + (_loadingMore ? 1 : 0),
                               itemBuilder: (context, index) {
                                 // Nếu đang loading và đây là item cuối cùng (tin nhắn cũ nhất)
@@ -2473,7 +2121,25 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with WidgetsBindingObse
                         children: [
                           // Attachment button
                           GestureDetector(
-                            onTap: _showMediaOptions,
+                            onTap: () => showModalBottomSheet(
+                              context: context,
+                              builder: (context) => MediaOptionsBottomSheet(
+                                imageCount: _selectedImages.length,
+                                videoCount: _selectedVideos.length,
+                                onPickImage: _selectedImages.length >= 3
+                                    ? null
+                                    : () {
+                                        Navigator.pop(context);
+                                        _pickImages();
+                                      },
+                                onPickVideo: _selectedVideos.length >= 3
+                                    ? null
+                                    : () {
+                                        Navigator.pop(context);
+                                        _pickVideos();
+                                      },
+                              ),
+                            ),
                             child: Container(
                               width: 40,
                               height: 40,
@@ -2783,7 +2449,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with WidgetsBindingObse
                     const SizedBox(width: 6),
                   ],
                   MyText(
-                    text: _formatMessageTime(message.createdAt),
+                    text: formatMessageTime(message.createdAt),
                     textStyle: 'body',
                     textSize: '12',
                     textColor: 'placeholder',
@@ -2935,7 +2601,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with WidgetsBindingObse
                     const SizedBox(width: 6),
                   ],
                   MyText(
-                    text: _formatMessageTime(message.createdAt),
+                    text: formatMessageTime(message.createdAt),
                     textStyle: 'body',
                     textSize: '12',
                     textColor: 'placeholder',
@@ -3086,7 +2752,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with WidgetsBindingObse
                       const SizedBox(width: 6),
                     ],
                     MyText(
-                      text: _formatMessageTime(message.createdAt),
+                      text: formatMessageTime(message.createdAt),
                       textStyle: 'body',
                       textSize: '12',
                       textColor: 'placeholder',
@@ -3146,8 +2812,6 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with WidgetsBindingObse
               ],
             ),
           ),
-
-          // Removed avatar for current user (isMe) as per requirement
         ],
       ),
     );

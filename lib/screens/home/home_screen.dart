@@ -335,7 +335,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     title: const MyText(text: 'Cài đặt', textStyle: 'title', textSize: '14', textColor: 'primary'),
                     onTap: () {
                       Navigator.pop(context);
-                      AppToastHelper.showInfo(context, message: 'Tính năng đang được phát triển');
+                      Navigate.pushNamed('/settings');
                     },
                   ),
                   // Debug FCM Token button
